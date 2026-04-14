@@ -1,0 +1,31 @@
+{% if ok %}
+  <div class="inline-block px-2 py-1 rounded bg-emerald-50 text-emerald-800">✅ {{ detail }}</div>
+  {% if holdings %}
+    <div class="mt-2 overflow-x-auto">
+      <table class="min-w-full text-xs border border-slate-200 rounded overflow-hidden">
+        <thead class="bg-slate-50 text-slate-600">
+          <tr>
+            <th class="text-left px-3 py-2">마켓</th>
+            <th class="text-right px-3 py-2">보유 수량</th>
+            <th class="text-right px-3 py-2">보유 KRW</th>
+            <th class="text-right px-3 py-2">주문중</th>
+            <th class="text-right px-3 py-2">평균 매수가</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for holding in holdings %}
+            <tr class="border-t border-slate-200 bg-white">
+              <td class="px-3 py-2 font-mono">{{ holding.market }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ holding.quantity_text }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ holding.krw_value_text }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ holding.locked_text }}</td>
+              <td class="px-3 py-2 text-right font-mono">{{ holding.avg_buy_price_text }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% else %}
+  <span class="inline-block px-2 py-1 rounded bg-red-50 text-red-700">❌ {{ detail }}</span>
+{% endif %}

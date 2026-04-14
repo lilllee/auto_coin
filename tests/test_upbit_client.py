@@ -83,3 +83,37 @@ def test_unauthenticated_blocks_private_calls():
 def test_get_krw_balance(mocker, client):
     mocker.patch.object(client._upbit, "get_balance", return_value=50000.0)
     assert client.get_krw_balance() == 50000.0
+
+
+def test_get_holdings_filters_zero_and_krw(mocker, client):
+    mocker.patch.object(
+        client._upbit,
+        "get_balances",
+        return_value=[
+            {"currency": "BTC", "unit_currency": "KRW", "balance": "0.01",
+             "locked": "0.002", "avg_buy_price": "100000000"},
+            {"currency": "KRW", "unit_currency": "KRW", "balance": "5000",
+             "locked": "0", "avg_buy_price": "0"},
+            {"currency": "XRP", "unit_currency": "KRW", "balance": "0",
+             "locked": "0", "avg_buy_price": "1000"},
+        ],
+    )
+    holdings = client.get_holdings()
+    assert len(holdings) == 1
+    assert holdings[0].market == "KRW-BTC"
+    assert holdings[0].total_volume == pytest.approx(0.012)
+
+
+def test_get_holdings_can_include_krw_and_zero_balances(mocker, client):
+    mocker.patch.object(
+        client._upbit,
+        "get_balances",
+        return_value=[
+            {"currency": "KRW", "unit_currency": "KRW", "balance": "5000",
+             "locked": "0", "avg_buy_price": "0"},
+            {"currency": "XRP", "unit_currency": "KRW", "balance": "0",
+             "locked": "0", "avg_buy_price": "1000"},
+        ],
+    )
+    holdings = client.get_holdings(include_zero=True, include_krw=True)
+    assert [holding.market for holding in holdings] == ["KRW", "KRW-XRP"]

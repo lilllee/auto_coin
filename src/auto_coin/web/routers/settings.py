@@ -23,7 +23,11 @@ from auto_coin.web.auth import flash, get_box, get_manager, get_session_db, requ
 from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
 from auto_coin.web.services import upbit_scan
-from auto_coin.web.services.credentials_check import check_telegram, check_upbit
+from auto_coin.web.services.credentials_check import (
+    check_telegram,
+    check_upbit,
+    fetch_upbit_holdings,
+)
 from auto_coin.web.settings_service import load_runtime_settings, save_runtime_settings
 
 router = APIRouter(prefix="/settings")
@@ -42,6 +46,26 @@ def _validate_settings(candidate: dict) -> tuple[Settings | None, str | None]:
             loc = ".".join(str(x) for x in er["loc"]) if er["loc"] else "?"
             msgs.append(f"{loc}: {er['msg']}")
         return None, " / ".join(msgs)
+
+
+def _effective_api_settings(current: Settings) -> Settings:
+    """API 키 조회/테스트용 유효 설정.
+
+    우선순위:
+    1. DB에 저장된 현재 런타임 값
+    2. DB 값이 비어 있으면 `.env` 값 폴백
+    """
+    env_settings = Settings()
+    candidate = current.model_dump()
+    if not current.upbit_access_key.get_secret_value():
+        candidate["upbit_access_key"] = env_settings.upbit_access_key
+    if not current.upbit_secret_key.get_secret_value():
+        candidate["upbit_secret_key"] = env_settings.upbit_secret_key
+    if not current.telegram_bot_token.get_secret_value():
+        candidate["telegram_bot_token"] = env_settings.telegram_bot_token
+    if not current.telegram_chat_id:
+        candidate["telegram_chat_id"] = env_settings.telegram_chat_id
+    return Settings(_env_file=None, **candidate)
 
 
 def _summary_for_audit(s: Settings) -> dict:
@@ -264,7 +288,7 @@ def api_keys_get(request: Request,
                  db: Session = Depends(get_session_db),
                  box: SecretBox = Depends(get_box),
                  _uid=Depends(require_auth)):
-    s = load_runtime_settings(db, box)
+    s = _effective_api_settings(load_runtime_settings(db, box))
     return templates.TemplateResponse(
         request=request, name="settings/api_keys.html",
         context={
@@ -324,7 +348,7 @@ def api_keys_test_upbit(
     box: SecretBox = Depends(get_box),
     _uid=Depends(require_auth),
 ):
-    s = load_runtime_settings(db, box)
+    s = _effective_api_settings(load_runtime_settings(db, box))
     result = check_upbit(
         s.upbit_access_key.get_secret_value(),
         s.upbit_secret_key.get_secret_value(),
@@ -335,6 +359,24 @@ def api_keys_test_upbit(
     )
 
 
+@router.post("/api-keys/upbit-holdings", response_class=HTMLResponse)
+def api_keys_upbit_holdings(
+    request: Request,
+    db: Session = Depends(get_session_db),
+    box: SecretBox = Depends(get_box),
+    _uid=Depends(require_auth),
+):
+    s = _effective_api_settings(load_runtime_settings(db, box))
+    result = fetch_upbit_holdings(
+        s.upbit_access_key.get_secret_value(),
+        s.upbit_secret_key.get_secret_value(),
+    )
+    return templates.TemplateResponse(
+        request=request, name="partials/upbit_holdings.html",
+        context={"ok": result.ok, "detail": result.detail, "holdings": result.holdings},
+    )
+
+
 @router.post("/api-keys/test-telegram", response_class=HTMLResponse)
 def api_keys_test_telegram(
     request: Request,
@@ -342,7 +384,7 @@ def api_keys_test_telegram(
     box: SecretBox = Depends(get_box),
     _uid=Depends(require_auth),
 ):
-    s = load_runtime_settings(db, box)
+    s = _effective_api_settings(load_runtime_settings(db, box))
     result = check_telegram(
         s.telegram_bot_token.get_secret_value(),
         s.telegram_chat_id,

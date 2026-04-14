@@ -2,8 +2,13 @@ from __future__ import annotations
 
 import pytest
 
+from auto_coin.exchange.upbit_client import AssetBalance, UpbitError
 from auto_coin.web.services import upbit_scan
-from auto_coin.web.services.credentials_check import check_telegram, check_upbit
+from auto_coin.web.services.credentials_check import (
+    check_telegram,
+    check_upbit,
+    fetch_upbit_holdings,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -108,6 +113,72 @@ def test_check_upbit_success(mocker):
     r = check_upbit("ak", "sk")
     assert r.ok is True
     assert "1,234,000" in r.detail
+
+
+def test_fetch_upbit_holdings_success(mocker):
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_current_price",
+        side_effect=[100000000.0],
+    )
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_holdings",
+        return_value=[
+            AssetBalance(
+                currency="KRW",
+                unit_currency="KRW",
+                balance=50000.0,
+                locked=0.0,
+                avg_buy_price=0.0,
+            ),
+            AssetBalance(
+                currency="BTC",
+                unit_currency="KRW",
+                balance=0.01,
+                locked=0.0,
+                avg_buy_price=100000000.0,
+            )
+        ],
+    )
+    r = fetch_upbit_holdings("ak", "sk")
+    assert r.ok is True
+    assert r.holdings[0].market == "KRW"
+    assert r.holdings[0].avg_buy_price_text == "-"
+    assert r.holdings[0].krw_value_text == "50,000"
+    assert r.holdings[1].market == "KRW-BTC"
+    assert r.holdings[1].quantity_text == "0.01"
+    assert r.holdings[1].krw_value_text == "1,000,000"
+
+
+def test_fetch_upbit_holdings_failure(mocker):
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_holdings",
+        side_effect=UpbitError("bad key"),
+    )
+    r = fetch_upbit_holdings("ak", "sk")
+    assert r.ok is False
+    assert "조회 실패" in r.detail
+
+
+def test_fetch_upbit_holdings_falls_back_to_avg_buy_price_when_price_lookup_fails(mocker):
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_current_price",
+        side_effect=UpbitError("ticker fail"),
+    )
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_holdings",
+        return_value=[
+            AssetBalance(
+                currency="ETH",
+                unit_currency="KRW",
+                balance=1.5,
+                locked=0.0,
+                avg_buy_price=3_000_000.0,
+            )
+        ],
+    )
+    r = fetch_upbit_holdings("ak", "sk")
+    assert r.ok is True
+    assert r.holdings[0].krw_value_text == "4,500,000"
 
 
 def test_check_telegram_empty_token():

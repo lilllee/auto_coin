@@ -49,6 +49,19 @@ def _current_row():
         return db.exec(select(AppSettings).where(AppSettings.id == 1)).first()
 
 
+def _overwrite_api_key_row(*, access: str = "", secret: str = "",
+                           telegram_token: str = "", telegram_chat_id: str = ""):
+    box = SecretBox()
+    with Session(web_db.engine()) as db:
+        row = db.exec(select(AppSettings).where(AppSettings.id == 1)).first()
+        row.upbit_access_key_enc = box.encrypt(access)
+        row.upbit_secret_key_enc = box.encrypt(secret)
+        row.telegram_bot_token_enc = box.encrypt(telegram_token)
+        row.telegram_chat_id = telegram_chat_id
+        db.add(row)
+        db.commit()
+
+
 def test_settings_index_renders(app_env):
     app = create_app()
     with TestClient(app) as client:
@@ -257,6 +270,59 @@ def test_api_keys_test_upbit_success(app_env, mocker):
         assert r.status_code == 200
         assert "✅" in r.text
         assert "1,000" in r.text
+
+
+def test_api_keys_upbit_holdings_renders_saved_assets(app_env, mocker):
+    from auto_coin.web.services.credentials_check import HoldingRow
+
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        client.post("/settings/api-keys",
+                    data={"upbit_access_key": "AK", "upbit_secret_key": "SK",
+                          "telegram_bot_token": "", "telegram_chat_id": ""})
+        mocker.patch(
+            "auto_coin.web.routers.settings.fetch_upbit_holdings",
+            return_value=__import__("auto_coin.web.services.credentials_check",
+                                    fromlist=["HoldingsResult"]).HoldingsResult(
+                ok=True,
+                detail="보유 코인 2개",
+                holdings=(
+                    HoldingRow("KRW-BTC", "0.01", "-", "100,000,000", "1,000,000"),
+                    HoldingRow("KRW-ETH", "1.25", "0.2", "3,500,000", "4,375,000"),
+                ),
+            ),
+        )
+        r = client.post("/settings/api-keys/upbit-holdings")
+        assert r.status_code == 200
+        assert "KRW-BTC" in r.text
+        assert "KRW-ETH" in r.text
+        assert "1,000,000" in r.text
+        assert "보유 코인 2개" in r.text
+
+
+def test_api_keys_upbit_holding_falls_back_to_env_when_db_blank(app_env, mocker):
+    app_env.joinpath(".env").write_text(
+        "TICKER=KRW-BTC\nWATCH_INTERVAL_MINUTES=1440\n"
+        "HEARTBEAT_INTERVAL_HOURS=0\nCHECK_INTERVAL_SECONDS=3600\n"
+        "UPBIT_ACCESS_KEY=ENV_AK\nUPBIT_SECRET_KEY=ENV_SK\n",
+        encoding="utf-8",
+    )
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        _overwrite_api_key_row(access="", secret="")
+        fetch = mocker.patch(
+            "auto_coin.web.routers.settings.fetch_upbit_holdings",
+            return_value=__import__("auto_coin.web.services.credentials_check",
+                                    fromlist=["HoldingsResult"]).HoldingsResult(
+                ok=True, detail="보유 코인 0개", holdings=()
+            ),
+        )
+        r = client.post("/settings/api-keys/upbit-holdings")
+        assert r.status_code == 200
+        fetch.assert_called_once_with("ENV_AK", "ENV_SK")
 
 
 def test_api_keys_test_telegram_failure(app_env, mocker):

@@ -31,6 +31,14 @@
       Upbit 연결 테스트
     </button>
     <div id="upbit-check" class="mt-2 text-sm"></div>
+    <button type="button"
+            hx-post="/settings/api-keys/upbit-holdings"
+            hx-target="#upbit-holdings"
+            hx-swap="innerHTML"
+            class="mt-2 text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
+      Upbit 보유 코인 목록 가져오기
+    </button>
+    <div id="upbit-holdings" class="mt-2 text-sm"></div>
   </fieldset>
 
   <fieldset class="border border-slate-200 rounded p-3">
@@ -59,6 +67,7 @@
 </form>
 
 <p class="text-xs text-slate-400 mt-4">
-  테스트 버튼은 <strong>현재 DB에 저장된</strong> 키 기준입니다. 새 키 입력 → 저장 → 다시 테스트 순서로 확인하세요.
+  테스트/조회 버튼은 <strong>DB 저장값 우선</strong>, 비어 있으면 <strong>.env 저장값</strong> 기준입니다.
+  새 키 입력 후 확인하려면 먼저 저장하세요.
 </p>
 {% endblock %}

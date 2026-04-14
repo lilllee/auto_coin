@@ -23,6 +23,25 @@ class OrderResult:
     raw: dict[str, Any]
 
 
+@dataclass(frozen=True)
+class AssetBalance:
+    currency: str
+    unit_currency: str
+    balance: float
+    locked: float
+    avg_buy_price: float
+
+    @property
+    def market(self) -> str:
+        if self.currency == self.unit_currency:
+            return self.currency
+        return f"{self.unit_currency}-{self.currency}"
+
+    @property
+    def total_volume(self) -> float:
+        return self.balance + self.locked
+
+
 class UpbitClient:
     """`pyupbit` 래퍼.
 
@@ -108,6 +127,38 @@ class UpbitClient:
         upbit = self._require_auth()
         return float(self._call(f"get_balance({ticker})",
                                 lambda: upbit.get_balance(ticker)) or 0.0)
+
+    def get_holdings(self, *, include_zero: bool = False,
+                     include_krw: bool = False) -> list[AssetBalance]:
+        upbit = self._require_auth()
+        raw_balances = self._call("get_balances", lambda: upbit.get_balances())
+        if not isinstance(raw_balances, list):
+            raise UpbitError(f"unexpected balances response: {raw_balances!r}")
+
+        holdings: list[AssetBalance] = []
+        for raw in raw_balances:
+            if not isinstance(raw, dict):
+                raise UpbitError(f"unexpected balance entry: {raw!r}")
+            currency = str(raw.get("currency") or "").upper()
+            unit_currency = str(raw.get("unit_currency") or "KRW").upper()
+            balance = float(raw.get("balance") or 0.0)
+            locked = float(raw.get("locked") or 0.0)
+            avg_buy_price = float(raw.get("avg_buy_price") or 0.0)
+            if not currency:
+                continue
+            asset = AssetBalance(
+                currency=currency,
+                unit_currency=unit_currency,
+                balance=balance,
+                locked=locked,
+                avg_buy_price=avg_buy_price,
+            )
+            if not include_krw and asset.currency == "KRW":
+                continue
+            if not include_zero and asset.total_volume <= 0:
+                continue
+            holdings.append(asset)
+        return sorted(holdings, key=lambda asset: asset.market)
 
     def buy_market(self, ticker: str, krw_amount: float) -> OrderResult:
         upbit = self._require_auth()

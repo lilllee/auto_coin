@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.exchange.upbit_client import AssetBalance, UpbitClient, UpbitError
+from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 
 
@@ -16,6 +17,47 @@ from auto_coin.notifier.telegram import TelegramNotifier
 class CheckResult:
     ok: bool
     detail: str
+
+
+@dataclass(frozen=True)
+class HoldingRow:
+    market: str
+    quantity_text: str
+    locked_text: str
+    avg_buy_price_text: str
+    krw_value_text: str
+
+
+@dataclass(frozen=True)
+class HoldingsResult:
+    ok: bool
+    detail: str
+    holdings: tuple[HoldingRow, ...] = ()
+
+
+def _format_volume(value: float) -> str:
+    return f"{value:,.8f}".rstrip("0").rstrip(".") or "0"
+
+
+def _estimate_krw_value(asset: AssetBalance, current_price: float | None) -> float | None:
+    if asset.currency == "KRW":
+        return asset.total_volume
+    if current_price is not None and current_price > 0:
+        return asset.total_volume * current_price
+    if asset.avg_buy_price > 0:
+        return asset.total_volume * asset.avg_buy_price
+    return None
+
+
+def _to_holding_row(asset: AssetBalance, current_price: float | None = None) -> HoldingRow:
+    krw_value = _estimate_krw_value(asset, current_price)
+    return HoldingRow(
+        market=asset.market,
+        quantity_text=_format_volume(asset.total_volume),
+        locked_text=_format_volume(asset.locked) if asset.locked else "-",
+        avg_buy_price_text=format_price(asset.avg_buy_price) if asset.avg_buy_price > 0 else "-",
+        krw_value_text=format_price(krw_value) if krw_value is not None else "-",
+    )
 
 
 def check_upbit(access_key: str, secret_key: str) -> CheckResult:
@@ -30,6 +72,31 @@ def check_upbit(access_key: str, secret_key: str) -> CheckResult:
     except UpbitError as e:
         return CheckResult(False, f"인증 실패: {e}")
     return CheckResult(True, f"OK — KRW 잔고 {krw:,.0f}")
+
+
+def fetch_upbit_holdings(access_key: str, secret_key: str) -> HoldingsResult:
+    if not access_key or not secret_key:
+        return HoldingsResult(False, "키가 비어 있습니다")
+    client = UpbitClient(
+        access_key=access_key, secret_key=secret_key,
+        max_retries=1, backoff_base=0.0, min_request_interval=0.0,
+    )
+    try:
+        holdings = client.get_holdings(include_krw=True)
+    except UpbitError as e:
+        return HoldingsResult(False, f"보유 코인 조회 실패: {e}")
+    if not holdings:
+        return HoldingsResult(True, "보유 중인 코인이 없습니다", ())
+    rows = []
+    for asset in holdings:
+        current_price: float | None = None
+        if asset.currency != "KRW":
+            try:
+                current_price = client.get_current_price(asset.market)
+            except UpbitError:
+                current_price = None
+        rows.append(_to_holding_row(asset, current_price))
+    return HoldingsResult(True, f"보유 코인 {len(rows)}개", rows)
 
 
 def check_telegram(bot_token: str, chat_id: str, *, send_probe: bool = False) -> CheckResult:
