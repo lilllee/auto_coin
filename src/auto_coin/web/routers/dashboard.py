@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +25,7 @@ from sqlmodel import Session
 
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.store import OrderStore
+from auto_coin.web import audit
 from auto_coin.web.auth import get_box, get_manager, get_session_db, require_auth
 from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
@@ -89,6 +91,8 @@ def _collect_dashboard_context(
     # 최근 주문 (전 종목 통합, 최신순 10건)
     all_orders.sort(key=lambda o: o["placed_at"], reverse=True)
     recent_orders = all_orders[:10]
+    recent_audit_entries = audit.list_entries(db, limit=8)
+    timeline_events = _build_timeline(recent_orders=recent_orders, audit_entries=recent_audit_entries)
 
     return {
         "settings": settings,
@@ -102,6 +106,7 @@ def _collect_dashboard_context(
         "krw_balance": krw_balance,
         "total_daily_pnl": total_daily_pnl,
         "avg_daily_pnl": total_daily_pnl / max(slot_used, 1) if slot_used else 0.0,
+        "timeline_events": timeline_events,
     }
 
 
@@ -136,6 +141,46 @@ def _safe_krw_balance(settings) -> float | None:
             logger.warning("dashboard balance fetch failed: {}", exc)
             return None
     return float(settings.paper_initial_krw)
+
+
+def _build_timeline(
+    *,
+    recent_orders: list[dict[str, Any]],
+    audit_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    events: list[dict[str, Any]] = []
+
+    for order in recent_orders:
+        placed_at = order.get("placed_at", "")
+        events.append({
+            "sort_at": _parse_event_time(placed_at),
+            "at_label": placed_at,
+            "title": f"{str(order['side']).upper()} {order['market']}",
+            "detail": f"{order['status']} · {order['krw_amount']:,.0f} KRW",
+            "kind": "order",
+        })
+
+    for entry in audit_entries:
+        events.append({
+            "sort_at": _parse_event_time(entry["at"]),
+            "at_label": entry["at"].strftime("%Y-%m-%d %H:%M:%S"),
+            "title": entry["label"],
+            "detail": entry["summary"],
+            "kind": "audit",
+        })
+
+    events.sort(key=lambda item: item["sort_at"], reverse=True)
+    return events[:8]
+
+
+def _parse_event_time(value: str | datetime) -> datetime:
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.min.replace(tzinfo=UTC)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 @router.get("/", response_class=HTMLResponse)

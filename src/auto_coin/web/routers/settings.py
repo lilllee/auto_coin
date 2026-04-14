@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, Query, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import SecretStr, ValidationError
@@ -96,6 +96,30 @@ def index(request: Request,
     return templates.TemplateResponse(
         request=request, name="settings/index.html",
         context={"s": s},
+    )
+
+
+@router.get("/audit", response_class=HTMLResponse)
+def audit_get(
+    request: Request,
+    action_prefix: str = Query(default=""),
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_session_db),
+    _uid=Depends(require_auth),
+):
+    entries = audit.list_entries(
+        db,
+        limit=limit,
+        action_prefix=action_prefix or None,
+    )
+    return templates.TemplateResponse(
+        request=request,
+        name="settings/audit.html",
+        context={
+            "entries": entries,
+            "action_prefix": action_prefix,
+            "limit": limit,
+        },
     )
 
 

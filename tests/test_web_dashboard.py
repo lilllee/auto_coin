@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from auto_coin.executor.store import OrderRecord, OrderStore, Position
+from auto_coin.web import audit
 from auto_coin.web import db as web_db
 from auto_coin.web.app import create_app
 from auto_coin.web.crypto import SecretBox
@@ -82,6 +83,7 @@ def test_dashboard_renders_when_logged_in(app_env):
         # 컨트롤 버튼
         assert "Kill-switch" in r.text
         assert "재시작" in r.text
+        assert "이벤트 타임라인" in r.text
 
 
 def test_dashboard_shows_positions_and_pnl(app_env):
@@ -244,3 +246,22 @@ def test_dashboard_includes_live_badge_when_is_live(app_env, mocker):
                         "totp_code": _current_totp_code()}))
         r = client.get("/")
         assert "LIVE" in r.text
+
+
+def test_dashboard_timeline_includes_audit_and_order_events(app_env):
+    _seed_position(app_env, "KRW-BTC", entry=100.0)
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        with Session(web_db.engine()) as db:
+            audit.record(
+                db,
+                "settings.strategy",
+                before={"strategy_k": 0.5},
+                after={"strategy_k": 0.6},
+            )
+        r = client.get("/dashboard/partial")
+        assert r.status_code == 200
+        assert "이벤트 타임라인" in r.text
+        assert "BUY KRW-BTC" in r.text
+        assert "전략 설정 저장" in r.text
