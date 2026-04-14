@@ -10,6 +10,7 @@ from auto_coin.strategy import (
     get_strategy_names,
 )
 from auto_coin.strategy.base import Strategy
+from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
@@ -61,3 +62,36 @@ def test_created_strategy_is_strategy_abc_subclass():
 def test_create_strategy_vb_invalid_k_raises():
     with pytest.raises(ValueError):
         create_strategy("volatility_breakout", {"k": 2.0})
+
+
+# --- SMA200 Regime ---
+
+
+def test_registry_contains_sma200_regime():
+    assert "sma200_regime" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["sma200_regime"] is Sma200RegimeStrategy
+
+
+def test_create_strategy_sma200_default_params():
+    s = create_strategy("sma200_regime")
+    assert isinstance(s, Sma200RegimeStrategy)
+    assert s.ma_window == 200
+    assert s.buffer_pct == 0.0
+    assert s.allow_sell_signal is False
+
+
+def test_create_strategy_sma200_custom_params():
+    s = create_strategy("sma200_regime", {"ma_window": 50, "buffer_pct": 0.01})
+    assert isinstance(s, Sma200RegimeStrategy)
+    assert s.ma_window == 50
+    assert s.buffer_pct == 0.01
+
+
+def test_create_strategy_sma200_is_strategy_subclass():
+    s = create_strategy("sma200_regime")
+    assert isinstance(s, Strategy)
+
+
+def test_sma200_in_get_strategy_names():
+    names = get_strategy_names()
+    assert "sma200_regime" in names

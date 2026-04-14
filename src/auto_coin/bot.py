@@ -9,6 +9,9 @@
 
 from __future__ import annotations
 
+import contextlib
+import json
+
 from loguru import logger
 
 from auto_coin.config import Settings
@@ -43,6 +46,11 @@ class TradingBot:
         self._executors = executors
         self._notifier = notifier
         self._tickers = list(stores.keys())  # 진입 우선순위는 dict 삽입 순서
+        self._strategy_name = strategy.name
+        self._strategy_params: dict = {}
+        if settings.strategy_params_json:
+            with contextlib.suppress(json.JSONDecodeError, TypeError):
+                self._strategy_params = json.loads(settings.strategy_params_json)
 
     # ----- main loop steps -----
 
@@ -69,12 +77,19 @@ class TradingBot:
             store = self._stores[ticker]
             executor = self._executors[ticker]
             try:
+                sma_window = (
+                    self._strategy_params.get("ma_window", 200)
+                    if self._strategy_name == "sma200_regime"
+                    else 0
+                )
                 df = fetch_daily(
                     self._client,
                     ticker,
-                    count=max(self._s.ma_filter_window + 50, 60),
+                    count=max(self._s.ma_filter_window + 50, 60, sma_window + 50),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
+                    strategy_name=self._strategy_name,
+                    strategy_params=self._strategy_params,
                 )
                 price = self._client.get_current_price(ticker)
             except UpbitError as exc:
@@ -177,12 +192,19 @@ class TradingBot:
         lines: list[str] = []
         for ticker in tickers:
             try:
+                sma_window = (
+                    self._strategy_params.get("ma_window", 200)
+                    if self._strategy_name == "sma200_regime"
+                    else 0
+                )
                 df = fetch_daily(
                     self._client,
                     ticker,
-                    count=max(self._s.ma_filter_window + 50, 60),
+                    count=max(self._s.ma_filter_window + 50, 60, sma_window + 50),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
+                    strategy_name=self._strategy_name,
+                    strategy_params=self._strategy_params,
                 )
                 price = self._client.get_current_price(ticker)
             except UpbitError as exc:

@@ -7,11 +7,13 @@
 from __future__ import annotations
 
 from auto_coin.strategy.base import Strategy
+from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 # Registry: name → class
 STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "volatility_breakout": VolatilityBreakout,
+    "sma200_regime": Sma200RegimeStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -45,11 +47,40 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "MA 필터 비활성화 시 돌파만으로 진입",
         },
     ],
+    "sma200_regime": [
+        {
+            "name": "ma_window",
+            "label": "SMA 기간 (일)",
+            "type": "number",
+            "min": "2",
+            "max": "500",
+            "default": 200,
+            "hint": "기본 200일. 종가의 N일 단순이동평균",
+        },
+        {
+            "name": "buffer_pct",
+            "label": "진입 완충 (%)",
+            "type": "number",
+            "step": "0.001",
+            "min": "0",
+            "max": "0.1",
+            "default": 0.0,
+            "hint": "SMA 위 N% 이상일 때만 진입. 0이면 비활성",
+        },
+        {
+            "name": "allow_sell_signal",
+            "label": "SMA 하향 이탈 시 SELL",
+            "type": "checkbox",
+            "default": False,
+            "hint": "활성화하면 보유 중 SMA 아래로 내려갈 때 매도 시그널 생성",
+        },
+    ],
 }
 
 # Human-readable names
 STRATEGY_LABELS: dict[str, str] = {
     "volatility_breakout": "변동성 돌파 (Larry Williams)",
+    "sma200_regime": "SMA200 추세 필터",
 }
 
 

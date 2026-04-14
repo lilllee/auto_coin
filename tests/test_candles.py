@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from auto_coin.data.candles import enrich_daily, fetch_daily
+from auto_coin.data.candles import enrich_daily, enrich_for_strategy, enrich_sma, fetch_daily
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 
 
@@ -74,3 +74,81 @@ def test_fetch_daily_empty_raises(mocker):
                          backoff_base=0.0, min_request_interval=0.0)
     with pytest.raises(UpbitError):
         fetch_daily(client, "KRW-BTC")
+
+
+# --- enrich_sma tests ---
+
+
+def test_enrich_sma_adds_column():
+    df = _sample_df(250)
+    out = enrich_sma(df, window=200)
+    assert "sma200" in out.columns
+    # rolling(200) first non-NaN at index 199; shift(1) moves it to index 200
+    assert pd.isna(out["sma200"].iloc[199])
+    assert not pd.isna(out["sma200"].iloc[200])
+
+
+def test_enrich_sma_shift():
+    """Verify shift(1) is applied — sma at index i uses closes up to i-1."""
+    df = _sample_df(210)
+    out = enrich_sma(df, window=200)
+    # rolling(200) at index 199 = mean(close[0:200]), shift(1) puts it at index 200
+    expected = df["close"].iloc[0:200].mean()
+    assert abs(out["sma200"].iloc[200] - expected) < 1e-10
+
+
+def test_enrich_sma_missing_columns():
+    df = pd.DataFrame({"open": [1.0], "high": [2.0]})
+    with pytest.raises(ValueError, match="missing required columns"):
+        enrich_sma(df, window=200)
+
+
+def test_enrich_sma_invalid_window():
+    df = _sample_df()
+    with pytest.raises(ValueError, match="window must be >= 2"):
+        enrich_sma(df, window=1)
+
+
+def test_enrich_sma_does_not_overwrite_existing():
+    """If sma column already exists, enrich_sma should not overwrite it."""
+    df = _sample_df(10)
+    df["sma200"] = 999.0
+    out = enrich_sma(df, window=200)
+    assert (out["sma200"] == 999.0).all()
+
+
+# --- enrich_for_strategy tests ---
+
+
+def test_enrich_for_strategy_vb():
+    df = _sample_df(10)
+    out = enrich_for_strategy(df, "volatility_breakout", {}, ma_window=5, k=0.5)
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "ma5" in out.columns
+
+
+def test_enrich_for_strategy_sma200():
+    df = _sample_df(250)
+    out = enrich_for_strategy(
+        df, "sma200_regime", {"ma_window": 200}, ma_window=5, k=0.5
+    )
+    # Should have both VB columns and sma column
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "sma200" in out.columns
+
+
+def test_enrich_for_strategy_sma200_custom_window():
+    df = _sample_df(100)
+    out = enrich_for_strategy(
+        df, "sma200_regime", {"ma_window": 50}, ma_window=5, k=0.5
+    )
+    assert "sma50" in out.columns
+
+
+def test_enrich_for_strategy_unknown_defaults_to_vb():
+    df = _sample_df(10)
+    out = enrich_for_strategy(df, "unknown_strategy", {}, ma_window=5, k=0.5)
+    assert "target" in out.columns
+    assert "range" in out.columns
