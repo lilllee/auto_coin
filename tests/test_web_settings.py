@@ -89,6 +89,7 @@ def test_strategy_get_renders_form(app_env):
         _login(client)
         r = client.get("/settings/strategy")
         assert r.status_code == 200
+        assert 'name="strategy_name"' in r.text
         assert 'name="strategy_k"' in r.text
 
 
@@ -98,9 +99,12 @@ def test_strategy_post_updates_db_and_reloads(app_env, mocker):
         _login(client)
         reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/strategy",
-                        data=csrf_data(client, {"strategy_k": "0.7",
-                              "ma_filter_window": "10",
-                              "watch_interval_minutes": "30"}),
+                        data=csrf_data(client, {
+                            "strategy_name": "volatility_breakout",
+                            "strategy_k": "0.7",
+                            "ma_filter_window": "10",
+                            "watch_interval_minutes": "30",
+                        }),
                         follow_redirects=False)
         assert r.status_code == 303
         reload_spy.assert_called_once()
@@ -108,6 +112,7 @@ def test_strategy_post_updates_db_and_reloads(app_env, mocker):
     assert row.strategy_k == 0.7
     assert row.ma_filter_window == 10
     assert row.watch_interval_minutes == 30
+    assert row.strategy_name == "volatility_breakout"
 
 
 def test_strategy_post_rejects_invalid(app_env, mocker):
@@ -116,13 +121,53 @@ def test_strategy_post_rejects_invalid(app_env, mocker):
         _login(client)
         reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/strategy",
-                        data=csrf_data(client, {"strategy_k": "2.5",  # 1.0 초과
-                              "ma_filter_window": "5",
-                              "watch_interval_minutes": "15"}))
+                        data=csrf_data(client, {
+                            "strategy_name": "volatility_breakout",
+                            "strategy_k": "2.5",  # 1.0 초과
+                            "ma_filter_window": "5",
+                            "watch_interval_minutes": "15",
+                        }))
         assert r.status_code == 400
         reload_spy.assert_not_called()
     row = _current_row()
     assert row.strategy_k == 0.5  # 기본값 유지
+
+
+def test_strategy_post_unknown_strategy_rejected(app_env, mocker):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "nonexistent",
+                            "strategy_k": "0.5",
+                            "ma_filter_window": "5",
+                            "watch_interval_minutes": "15",
+                        }))
+        assert r.status_code == 400
+        reload_spy.assert_not_called()
+
+
+def test_strategy_post_saves_strategy_params_json(app_env, mocker):
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "volatility_breakout",
+                            "strategy_k": "0.6",
+                            "ma_filter_window": "7",
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    params = json.loads(row.strategy_params_json)
+    assert params["k"] == 0.6
+    assert params["ma_window"] == 7
 
 
 # ----- risk --------
@@ -463,8 +508,12 @@ def test_settings_change_records_audit_log(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/strategy",
-                    data=csrf_data(client, {"strategy_k": "0.6", "ma_filter_window": "5",
-                          "watch_interval_minutes": "15"}))
+                    data=csrf_data(client, {
+                        "strategy_name": "volatility_breakout",
+                        "strategy_k": "0.6",
+                        "ma_filter_window": "5",
+                        "watch_interval_minutes": "15",
+                    }))
     with Session(web_db.engine()) as db:
         logs = db.exec(select(AuditLog)).all()
     assert len(logs) >= 1

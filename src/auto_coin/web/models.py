@@ -39,6 +39,8 @@ class AppSettings(SQLModel, table=True):
     watch_interval_minutes: int = 15
 
     # 전략
+    strategy_name: str = Field(default="volatility_breakout")
+    strategy_params_json: str = Field(default="")  # JSON for strategy-specific params
     strategy_k: float = 0.5
     ma_filter_window: int = 5
 

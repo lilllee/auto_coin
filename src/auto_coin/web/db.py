@@ -77,3 +77,22 @@ def _ensure_schema(engine) -> None:
                     "ADD COLUMN recovery_codes_enc TEXT NOT NULL DEFAULT ''",
                 ),
             )
+
+    # AppSettings: strategy_name / strategy_params_json (multi-strategy support)
+    if "appsettings" in inspector.get_table_names():
+        app_columns = {c["name"] for c in inspector.get_columns("appsettings")}
+        with engine.begin() as conn:
+            if "strategy_name" not in app_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE appsettings "
+                        "ADD COLUMN strategy_name TEXT DEFAULT 'volatility_breakout'",
+                    ),
+                )
+            if "strategy_params_json" not in app_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE appsettings "
+                        "ADD COLUMN strategy_params_json TEXT DEFAULT ''",
+                    ),
+                )

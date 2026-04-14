@@ -148,3 +148,25 @@ def test_max_concurrent_positions_validation():
         Settings(_env_file=None, max_concurrent_positions=0)
     with pytest.raises(ValueError):
         Settings(_env_file=None, max_concurrent_positions=21)
+
+
+# ---- strategy_name / strategy_params_json ----
+
+def test_strategy_name_default():
+    s = Settings(_env_file=None)
+    assert s.strategy_name == "volatility_breakout"
+
+
+def test_strategy_params_json_default():
+    s = Settings(_env_file=None)
+    assert s.strategy_params_json == ""
+
+
+def test_strategy_name_custom():
+    s = Settings(_env_file=None, strategy_name="my_custom")
+    assert s.strategy_name == "my_custom"
+
+
+def test_strategy_params_json_custom():
+    s = Settings(_env_file=None, strategy_params_json='{"k": 0.7}')
+    assert s.strategy_params_json == '{"k": 0.7}'

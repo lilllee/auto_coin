@@ -20,8 +20,7 @@ from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.reporter import build_daily_report
 from auto_coin.risk.manager import Action, Decision, RiskContext, RiskManager
-from auto_coin.strategy.base import MarketSnapshot
-from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+from auto_coin.strategy.base import MarketSnapshot, Strategy
 
 
 class TradingBot:
@@ -30,7 +29,7 @@ class TradingBot:
         *,
         settings: Settings,
         client: UpbitClient,
-        strategy: VolatilityBreakout,
+        strategy: Strategy,
         risk_manager: RiskManager,
         stores: dict[str, OrderStore],
         executors: dict[str, OrderExecutor],

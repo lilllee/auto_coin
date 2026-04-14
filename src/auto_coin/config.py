@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     watch_tickers: str = ""
     watch_interval_minutes: int = Field(15, ge=1, le=1440)
 
+    strategy_name: str = Field(default="volatility_breakout")
+    strategy_params_json: str = ""  # JSON string for strategy-specific params
+
     strategy_k: float = Field(0.5, ge=0.1, le=1.0)
     ma_filter_window: int = Field(5, ge=1)
 

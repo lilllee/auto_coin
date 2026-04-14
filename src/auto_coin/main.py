@@ -26,7 +26,7 @@ from auto_coin.logging_setup import setup_logging
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
 from auto_coin.runtime_guard import RuntimeGuardError, acquire_runtime_guard
-from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+from auto_coin.strategy import create_strategy
 
 
 def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
@@ -51,7 +51,14 @@ def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
             fill_poll_timeout=settings.fill_poll_timeout_seconds,
         )
 
-    strategy = VolatilityBreakout(k=settings.strategy_k, ma_window=settings.ma_filter_window)
+    import json as _json
+    strategy_params: dict = {}
+    if settings.strategy_params_json:
+        strategy_params = _json.loads(settings.strategy_params_json)
+    # Backward compat: if no params_json, use legacy fields for VB
+    if not strategy_params and settings.strategy_name == "volatility_breakout":
+        strategy_params = {"k": settings.strategy_k, "ma_window": settings.ma_filter_window}
+    strategy = create_strategy(settings.strategy_name, strategy_params)
     risk_manager = RiskManager(settings)
     notifier = TelegramNotifier(
         bot_token=settings.telegram_bot_token.get_secret_value(),

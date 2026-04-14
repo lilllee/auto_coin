@@ -27,6 +27,7 @@ _SCALAR_FIELDS = (
     "mode", "live_trading", "kill_switch",
     "ticker", "tickers", "max_concurrent_positions",
     "watch_tickers", "watch_interval_minutes",
+    "strategy_name", "strategy_params_json",
     "strategy_k", "ma_filter_window",
     "max_position_ratio", "daily_loss_limit", "stop_loss_ratio",
     "min_order_krw", "api_max_retries",

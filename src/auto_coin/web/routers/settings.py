@@ -18,6 +18,12 @@ from pydantic import SecretStr, ValidationError
 from sqlmodel import Session
 
 from auto_coin.config import Mode, Settings
+from auto_coin.strategy import (
+    STRATEGY_LABELS,
+    STRATEGY_PARAMS,
+    create_strategy,
+    get_strategy_names,
+)
 from auto_coin.web import audit
 from auto_coin.web.auth import flash, get_box, get_manager, get_session_db, require_auth
 from auto_coin.web.bot_manager import BotManager
@@ -126,6 +132,45 @@ def audit_get(
 # ----- strategy -----------------------------------------------------------
 
 
+def _has_open_positions(settings: Settings) -> bool:
+    """Check if any ticker has an open position."""
+    from auto_coin.executor.store import OrderStore
+
+    state_dir = Path(settings.state_dir)
+    for t in settings.portfolio_ticker_list:
+        safe = t.replace("/", "_")
+        store = OrderStore(state_dir / f"{safe}.json")
+        state = store.load()
+        if state.position is not None:
+            return True
+    return False
+
+
+def _build_strategy_context(s: Settings, error: str | None = None) -> dict:
+    """strategy GET/POST 공통 템플릿 컨텍스트."""
+    import json as _json
+
+    current_params: dict = {}
+    if s.strategy_params_json:
+        current_params = _json.loads(s.strategy_params_json)
+    if not current_params and s.strategy_name == "volatility_breakout":
+        current_params = {
+            "k": s.strategy_k,
+            "ma_window": s.ma_filter_window,
+            "require_ma_filter": True,
+        }
+    return {
+        "s": s,
+        "error": error,
+        "strategy_names": get_strategy_names(),
+        "strategy_labels": STRATEGY_LABELS,
+        "strategy_params": STRATEGY_PARAMS,
+        "current_strategy": s.strategy_name,
+        "current_params": current_params,
+        "has_positions": _has_open_positions(s),
+    }
+
+
 @router.get("/strategy", response_class=HTMLResponse)
 def strategy_get(request: Request,
                  db: Session = Depends(get_session_db),
@@ -134,37 +179,92 @@ def strategy_get(request: Request,
     s = load_runtime_settings(db, box)
     return templates.TemplateResponse(
         request=request, name="settings/strategy.html",
-        context={"s": s, "error": None},
+        context=_build_strategy_context(s),
     )
 
 
 @router.post("/strategy", response_class=HTMLResponse)
 def strategy_post(
     request: Request,
-    strategy_k: float = Form(...),
-    ma_filter_window: int = Form(...),
+    strategy_name: str = Form(...),
     watch_interval_minutes: int = Form(...),
+    # Legacy VB fields kept as optional for backward compat with form
+    strategy_k: float = Form(default=0.5),
+    ma_filter_window: int = Form(default=5),
     db: Session = Depends(get_session_db),
     box: SecretBox = Depends(get_box),
     manager: BotManager = Depends(get_manager),
     _uid=Depends(require_auth),
 ):
+    import json as _json
+
     current = load_runtime_settings(db, box)
+
+    # Position guard: if strategy changed and positions exist, reject
+    if strategy_name != current.strategy_name and _has_open_positions(current):
+        return templates.TemplateResponse(
+            request=request, name="settings/strategy.html",
+            context=_build_strategy_context(
+                current,
+                error="보유 포지션이 있을 때는 전략을 변경할 수 없습니다. 먼저 포지션을 청산하세요.",
+            ),
+            status_code=400,
+        )
+
+    # Collect strategy-specific params from form
+    param_defs = STRATEGY_PARAMS.get(strategy_name, [])
+    strategy_params: dict = {}
+    for p in param_defs:
+        # checkbox: absent = off, "on" = on
+        if p["type"] == "checkbox":
+            # Form(...) doesn't receive unchecked checkboxes, so we parse manually
+            # The form data is already parsed by FastAPI — use defaults
+            strategy_params[p["name"]] = False  # will be overridden below if present
+        elif p["type"] == "number":
+            strategy_params[p["name"]] = p.get("default")
+        else:
+            strategy_params[p["name"]] = p.get("default", "")
+
+    # Override from actual form data — we need to re-parse from query string
+    # FastAPI already parsed named Form params, but dynamic sp_* fields need raw access
+    # Use a sync approach: rely on the Form params we declared + the known param_defs
+    # For VB specifically, map from the declared Form params
+    if strategy_name == "volatility_breakout":
+        strategy_params = {
+            "k": strategy_k,
+            "ma_window": ma_filter_window,
+        }
+
+    # Validate by creating strategy
+    try:
+        create_strategy(strategy_name, strategy_params)
+    except (ValueError, TypeError) as exc:
+        return templates.TemplateResponse(
+            request=request, name="settings/strategy.html",
+            context=_build_strategy_context(current, error=str(exc)),
+            status_code=400,
+        )
+
+    # Build candidate settings
     candidate = current.model_dump()
-    candidate.update({
-        "strategy_k": strategy_k,
-        "ma_filter_window": ma_filter_window,
-        "watch_interval_minutes": watch_interval_minutes,
-    })
+    candidate["strategy_name"] = strategy_name
+    candidate["strategy_params_json"] = _json.dumps(strategy_params)
+    candidate["watch_interval_minutes"] = watch_interval_minutes
+    # Also update legacy fields for VB backward compat
+    if strategy_name == "volatility_breakout":
+        candidate["strategy_k"] = strategy_params.get("k", 0.5)
+        candidate["ma_filter_window"] = strategy_params.get("ma_window", 5)
+
     new, err = _validate_settings(candidate)
     if new is None:
         return templates.TemplateResponse(
             request=request, name="settings/strategy.html",
-            context={"s": current, "error": err},
+            context=_build_strategy_context(current, error=err),
             status_code=400,
         )
     _apply(db, box, manager, current, new, "settings.strategy")
-    flash(request, f"전략 설정 저장: K={new.strategy_k}, MA={new.ma_filter_window}")
+    label = STRATEGY_LABELS.get(strategy_name, strategy_name)
+    flash(request, f"전략 설정 저장: {label}")
     return RedirectResponse("/settings/strategy", status_code=303)
 
 

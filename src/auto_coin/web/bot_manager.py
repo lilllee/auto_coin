@@ -26,7 +26,7 @@ from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderStore
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
-from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+from auto_coin.strategy import create_strategy
 from auto_coin.web import db as web_db
 from auto_coin.web.crypto import SecretBox
 from auto_coin.web.settings_service import load_runtime_settings
@@ -141,9 +141,16 @@ class BotManager:
             bot_token=settings.telegram_bot_token.get_secret_value(),
             chat_id=settings.telegram_chat_id,
         )
+        import json as _json
+        strategy_params: dict = {}
+        if settings.strategy_params_json:
+            strategy_params = _json.loads(settings.strategy_params_json)
+        # Backward compat: if no params_json, use legacy fields for VB
+        if not strategy_params and settings.strategy_name == "volatility_breakout":
+            strategy_params = {"k": settings.strategy_k, "ma_window": settings.ma_filter_window}
         self._bot = TradingBot(
             settings=settings, client=client,
-            strategy=VolatilityBreakout(k=settings.strategy_k, ma_window=settings.ma_filter_window),
+            strategy=create_strategy(settings.strategy_name, strategy_params),
             risk_manager=RiskManager(settings),
             stores=stores, executors=executors,
             notifier=notifier,
