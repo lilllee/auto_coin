@@ -1,0 +1,79 @@
+{# 5초 polling 대상 — 대시보드 본문.
+   주의: 여기는 외부에서 include되거나 단독 partial로 렌더됨. base.html {% raw %}{% raw %}{% raw %}{% raw %}{%{% endraw %}{% endraw %}{% endraw %}{% endraw %} extends 하지 않는다. #}
+{% from "partials/_format.html" import money, sign_pct with context %}
+
+{# 요약 지표 3개 #}
+<div class="grid grid-cols-3 gap-2 mb-3 text-sm">
+  <div class="bg-white border border-slate-200 rounded p-2">
+    <div class="text-xs text-slate-500">슬롯 사용</div>
+    <div class="text-lg font-semibold">{{ slot_used }}/{{ slot_max }}</div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded p-2">
+    <div class="text-xs text-slate-500">일일 PnL (합산)</div>
+    <div class="text-lg font-semibold {% if total_daily_pnl > 0 %}text-emerald-600{% elif total_daily_pnl < 0 %}text-red-600{% endif %}">
+      {{ sign_pct(total_daily_pnl) }}
+    </div>
+  </div>
+  <div class="bg-white border border-slate-200 rounded p-2">
+    <div class="text-xs text-slate-500">{% if settings.is_live %}KRW 잔고{% else %}가상 자본{% endif %}</div>
+    <div class="text-lg font-semibold">
+      {% if krw_balance is not none %}{{ money(krw_balance) }}{% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+{# 포지션 그리드 #}
+<h2 class="text-sm font-semibold text-slate-600 mb-2">포지션</h2>
+{% if positions %}
+  <div class="space-y-2 mb-4">
+    {% for p in positions %}
+      <div class="bg-white border border-slate-200 rounded p-3 text-sm">
+        <div class="flex items-center justify-between">
+          <div class="font-mono font-medium">{{ p.ticker }}</div>
+          {% if p.has_position %}
+            <div class="{% if p.pnl_ratio is not none and p.pnl_ratio > 0 %}text-emerald-600{% elif p.pnl_ratio is not none and p.pnl_ratio < 0 %}text-red-600{% else %}text-slate-500{% endif %} font-semibold">
+              {% if p.pnl_ratio is not none %}{{ sign_pct(p.pnl_ratio) }}{% else %}—{% endif %}
+            </div>
+          {% else %}
+            <div class="text-xs text-slate-400">flat</div>
+          {% endif %}
+        </div>
+        {% if p.has_position %}
+          <div class="text-xs text-slate-500 mt-1 grid grid-cols-3 gap-1">
+            <div>vol {{ "%.6f"|format(p.volume) }}</div>
+            <div>entry {% if p.entry_price %}{{ money(p.entry_price) }}{% endif %}</div>
+            <div>now {% if p.current_price %}{{ money(p.current_price) }}{% else %}—{% endif %}</div>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="text-sm text-slate-500 mb-4">매매 대상이 설정되어 있지 않습니다.</p>
+{% endif %}
+
+{# 최근 주문 #}
+<h2 class="text-sm font-semibold text-slate-600 mb-2">최근 주문</h2>
+{% if recent_orders %}
+  <ul class="space-y-1">
+    {% for o in recent_orders %}
+      <li class="bg-white border border-slate-200 rounded px-3 py-2 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="{% if o.side == 'buy' %}text-emerald-600{% else %}text-red-600{% endif %} font-semibold">
+            {{ o.side | upper }}
+          </span>
+          <span class="font-mono">{{ o.market }}</span>
+          {% if o.status == 'paper' %}<span class="text-slate-400">paper</span>{% endif %}
+        </div>
+        <div class="text-right">
+          <div>{% if o.price %}{{ money(o.price) }}{% endif %}</div>
+          <div class="text-slate-400">{{ o.placed_at }}</div>
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-sm text-slate-500">기록된 주문이 없습니다.</p>
+{% endif %}
+
+<p class="text-[10px] text-slate-300 mt-3 text-right">5초마다 자동 갱신</p>

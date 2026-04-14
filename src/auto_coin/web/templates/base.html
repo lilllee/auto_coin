@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>{% block title %}auto_coin{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+<style>
+  body { -webkit-tap-highlight-color: transparent; }
+  .btn { min-height: 44px; }
+  .tab { min-height: 52px; }
+  /* iOS safe-area */
+  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col">
+{% set path = request.url.path if request else "" %}
+{% set authed = request and request.session.get("user_id") %}
+
+<header class="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+  <a href="/" class="font-semibold tracking-tight">auto_coin</a>
+  {% if authed %}
+    <form method="post" action="/logout" class="m-0">
+      <button class="text-sm text-slate-500 hover:text-slate-900" type="submit">로그아웃</button>
+    </form>
+  {% endif %}
+</header>
+
+<main class="max-w-xl w-full mx-auto px-4 py-6 flex-1 {% if authed %}pb-24{% endif %}">
+  {% set messages = request.session.pop("flash", []) if request else [] %}
+  {% if messages %}
+    <div class="mb-4 space-y-2">
+      {% for m in messages %}
+        {% if m.level == "error" %}
+          {% set cls = "bg-red-50 text-red-700" %}
+        {% elif m.level == "warn" %}
+          {% set cls = "bg-amber-50 text-amber-800" %}
+        {% else %}
+          {% set cls = "bg-emerald-50 text-emerald-800" %}
+        {% endif %}
+        <div class="px-3 py-2 rounded text-sm {{ cls }}">{{ m.text }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% block body %}{% endblock %}
+</main>
+
+{% if authed %}
+<nav class="bg-white border-t border-slate-200 fixed bottom-0 inset-x-0 safe-bottom z-10">
+  <div class="max-w-xl mx-auto grid grid-cols-5">
+    {% set tabs = [
+      ("/", "📊", "대시"),
+      ("/charts", "📈", "차트"),
+      ("/reports", "📄", "리포트"),
+      ("/logs", "📜", "로그"),
+      ("/settings", "⚙️", "설정"),
+    ] %}
+    {% for href, icon, label in tabs %}
+      {% set active = (href == "/" and path == "/") or (href != "/" and path.startswith(href)) %}
+      <a href="{{ href }}"
+         class="tab flex flex-col items-center justify-center text-xs {{ 'text-slate-900 font-semibold' if active else 'text-slate-500' }}">
+        <span class="text-lg leading-none">{{ icon }}</span>
+        <span class="mt-0.5">{{ label }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</nav>
+{% endif %}
+
+</body>
+</html>

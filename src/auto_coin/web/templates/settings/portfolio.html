@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "settings/_form_macros.html" import submit, error_box, back_link %}
+{% block title %}포트폴리오 — auto_coin{% endblock %}
+{% block body %}
+{{ back_link() }}
+<h1 class="text-xl font-semibold my-3">포트폴리오</h1>
+{{ error_box(error) }}
+
+<form method="post" action="/settings/portfolio" class="space-y-3">
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">매매 대상 (TICKERS · 콤마)</span>
+    <textarea name="tickers" rows="3" required
+              class="w-full border border-slate-300 rounded px-3 py-2 text-base font-mono text-sm"
+              placeholder="KRW-BTC,KRW-ETH,KRW-XRP">{{ s.tickers if s.tickers else s.ticker }}</textarea>
+    <span class="block text-xs text-slate-400 mt-1">나열 순서가 진입 우선순위. 슬롯 소진 시 뒤 종목은 HOLD.</span>
+  </label>
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">관측 전용 (WATCH_TICKERS · 콤마)</span>
+    <textarea name="watch_tickers" rows="2"
+              class="w-full border border-slate-300 rounded px-3 py-2 text-base font-mono text-sm"
+              placeholder="KRW-DOGE,KRW-SOL">{{ s.watch_tickers }}</textarea>
+    <span class="block text-xs text-slate-400 mt-1">주문은 안 나가고 관측만 — 매매 대상과 중복 제거됨.</span>
+  </label>
+  {{ submit() }}
+</form>
+
+<h2 class="text-sm font-semibold text-slate-600 mt-8 mb-2">📈 거래대금 상위 추천 (업비트 KRW)</h2>
+{% if fetch_error %}
+  <div class="text-xs text-amber-700 bg-amber-50 px-2 py-1 rounded">{{ fetch_error }}</div>
+{% elif suggestions %}
+  <ul class="space-y-1 text-sm">
+    {% for t in suggestions %}
+      <li class="flex justify-between items-center bg-white border border-slate-200 rounded px-3 py-2">
+        <div class="font-mono">{{ t.market }}</div>
+        <div class="text-xs text-slate-500 text-right">
+          {{ "{:,.0f}".format(t.price) }} KRW
+          · <span class="{{ 'text-emerald-600' if t.change_rate >= 0 else 'text-red-600' }}">
+            {{ "{:+.2f}%".format(t.change_rate * 100) }}
+          </span>
+          · {{ "{:,.1f}B".format(t.volume_24h_krw / 1e9) }}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+  <p class="text-xs text-slate-400 mt-2">현재 매매/관측 대상은 제외. 위 티커를 TICKERS에 추가하려면 콤마로 연결.</p>
+{% else %}
+  <p class="text-sm text-slate-400">추천 불러오는 중…</p>
+{% endif %}
+{% endblock %}

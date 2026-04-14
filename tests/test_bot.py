@@ -1,0 +1,211 @@
+from __future__ import annotations
+
+import numpy as np
+import pandas as pd
+import pytest
+
+from auto_coin.bot import TradingBot
+from auto_coin.config import Settings
+from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.executor.order import OrderExecutor
+from auto_coin.executor.store import OrderStore, Position
+from auto_coin.notifier.telegram import TelegramNotifier
+from auto_coin.risk.manager import RiskManager
+from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+
+
+def _settings(**overrides) -> Settings:
+    base = {
+        "ticker": "KRW-BTC",
+        "strategy_k": 0.5,
+        "ma_filter_window": 1,
+        "max_position_ratio": 0.20,
+        "min_order_krw": 5000,
+        "paper_initial_krw": 1_000_000.0,
+        "max_concurrent_positions": 1,  # 단일 종목 테스트의 슬롯
+    }
+    base.update(overrides)
+    return Settings(_env_file=None, **base)
+
+
+def _enriched_df(target_reachable: bool, ma_window: int = 1) -> pd.DataFrame:
+    n = 5
+    idx = pd.date_range("2026-01-01", periods=n, freq="D")
+    df = pd.DataFrame(
+        {
+            "open":   np.full(n, 100.0),
+            "high":   np.full(n, 110.0),
+            "low":    np.full(n, 90.0),
+            "close":  np.full(n, 105.0),
+            "volume": np.ones(n),
+            "range":  np.full(n, 20.0),
+            "target": np.full(n, 110.0 if target_reachable else 200.0),
+            f"ma{ma_window}": np.full(n, 100.0),
+        },
+        index=idx,
+    )
+    return df
+
+
+@pytest.fixture
+def store(tmp_path):
+    return OrderStore(tmp_path / "KRW-BTC.json")
+
+
+def _make_bot(store, settings, mocker, *, fetch_df=None, current_price=120.0):
+    client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
+                        min_request_interval=0.0)
+    if fetch_df is not None:
+        mocker.patch("auto_coin.bot.fetch_daily", return_value=fetch_df)
+    mocker.patch.object(client, "get_current_price", return_value=current_price)
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    ticker = settings.ticker
+    executor = OrderExecutor(client, store, ticker, live=False)
+    bot = TradingBot(
+        settings=settings, client=client,
+        strategy=VolatilityBreakout(k=settings.strategy_k, ma_window=settings.ma_filter_window),
+        risk_manager=RiskManager(settings),
+        stores={ticker: store}, executors={ticker: executor},
+        notifier=notifier,
+    )
+    return bot, client
+
+
+def test_tick_buys_when_strategy_signals_and_risk_approves(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+    state = store.load()
+    assert state.position is not None
+    assert state.position.avg_entry_price == 120.0
+
+
+def test_tick_holds_when_no_breakout(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=120.0)
+    assert bot.tick() == []
+    assert store.load().position is None
+
+
+def test_tick_swallows_market_data_error(store, mocker):
+    s = _settings()
+    client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
+                        min_request_interval=0.0)
+    mocker.patch("auto_coin.bot.fetch_daily", side_effect=UpbitError("network"))
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    executor = OrderExecutor(client, store, s.ticker, live=False)
+    bot = TradingBot(
+        settings=s, client=client,
+        strategy=VolatilityBreakout(k=s.strategy_k, ma_window=s.ma_filter_window),
+        risk_manager=RiskManager(s),
+        stores={s.ticker: store}, executors={s.ticker: executor},
+        notifier=notifier,
+    )
+    assert bot.tick() == []
+
+
+def test_tick_uses_paper_balance_when_unauth(store, mocker):
+    s = _settings(paper_initial_krw=100_000.0, max_position_ratio=0.20)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    recs = bot.tick()
+    assert recs[0].krw_amount == pytest.approx(20_000.0)
+
+
+def test_tick_rejected_when_paper_balance_below_min(store, mocker):
+    s = _settings(paper_initial_krw=10_000.0, max_position_ratio=0.20, min_order_krw=5000)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    assert bot.tick() == []
+
+
+def test_daily_reset_clears_pnl(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    state = store.load()
+    state.daily_pnl_ratio = -0.025
+    store.save(state)
+    bot.daily_reset()
+    assert store.load().daily_pnl_ratio == 0.0
+
+
+def test_force_exit_noop_when_flat(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    assert bot.force_exit_if_holding() == []
+
+
+def test_force_exit_sells_when_holding(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot.tick()
+    assert store.load().position is not None
+    recs = bot.force_exit_if_holding()
+    assert len(recs) == 1
+    assert recs[0].side == "sell"
+    assert store.load().position is None
+
+
+def test_stop_loss_overrides_signal_in_tick(store, mocker):
+    s = _settings(stop_loss_ratio=-0.02)
+    bot, client = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot.tick()
+    assert store.load().position is not None
+    mocker.patch.object(client, "get_current_price", return_value=116.0)
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "sell"
+    assert store.load().position is None
+
+
+def test_heartbeat_sends_status(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    send = mocker.patch.object(bot._notifier, "send", return_value=False)
+    bot.heartbeat()
+    send.assert_called_once()
+    sent = send.call_args.args[0]
+    assert "heartbeat" in sent
+    assert "positions 0/1" in sent
+
+
+def test_tick_unexpected_exception_alerts(store, mocker):
+    s = _settings()
+    client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
+                        min_request_interval=0.0)
+    # _tick_impl 자체가 터지도록 내부에 mock 주입
+    mocker.patch.object(TradingBot, "_tick_impl", side_effect=RuntimeError("boom"))
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    send = mocker.patch.object(notifier, "send", return_value=False)
+    executor = OrderExecutor(client, store, s.ticker, live=False)
+    bot = TradingBot(
+        settings=s, client=client,
+        strategy=VolatilityBreakout(k=s.strategy_k, ma_window=s.ma_filter_window),
+        risk_manager=RiskManager(s),
+        stores={s.ticker: store}, executors={s.ticker: executor},
+        notifier=notifier,
+    )
+    assert bot.tick() == []
+    assert any("crashed" in (c.args[0] if c.args else "") for c in send.call_args_list)
+
+
+def test_daily_report_returns_text_and_sends(store, mocker):
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    send = mocker.patch.object(bot._notifier, "send", return_value=False)
+    text = bot.daily_report()
+    assert "Portfolio" in text or "no activity" in text
+    send.assert_called_once()
+
+
+def test_tick_uses_position_from_store(store, mocker):
+    """포지션이 이미 있으면 BUY 차단 (이중 진입 방지)."""
+    s = _settings()
+    state = store.load()
+    state.position = Position(
+        ticker="KRW-BTC", volume=0.001, avg_entry_price=120.0,
+        entry_uuid="prev-uuid", entry_at="2026-04-13T00:00:00+00:00",
+    )
+    store.save(state)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    assert bot.tick() == []

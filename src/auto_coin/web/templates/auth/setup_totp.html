@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}TOTP 등록 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-2">TOTP 등록</h1>
+<p class="text-sm text-slate-600 mb-4">인증 앱(Google Authenticator, 1Password, Authy 등)으로 QR을 스캔한 뒤 표시되는 6자리 코드를 입력하세요.</p>
+
+<div class="flex justify-center mb-4">
+  <img src="data:image/png;base64,{{ qr_png_b64 }}" alt="TOTP QR" class="w-48 h-48 bg-white p-2 rounded shadow">
+</div>
+<details class="mb-4 text-sm">
+  <summary class="cursor-pointer text-slate-600">수동 입력용 시크릿 보기</summary>
+  <code class="block mt-2 p-2 bg-slate-100 rounded break-all">{{ secret }}</code>
+</details>
+
+{% if error %}
+<div class="mb-3 px-3 py-2 rounded bg-red-50 text-red-700 text-sm">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/setup/totp" class="space-y-3">
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">6자리 코드</span>
+    <input type="text" inputmode="numeric" pattern="[0-9]{6}" name="code" maxlength="6" minlength="6" required
+           autocomplete="one-time-code"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-2xl tracking-widest text-center">
+  </label>
+  <button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">확인 및 완료</button>
+</form>
+{% endblock %}

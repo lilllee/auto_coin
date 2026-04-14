@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}대시보드 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">대시보드</h1>
+
+{# 상태 + 컨트롤 — 5초 polling 대상 아님 (버튼 submit 시 전체 새로고침) #}
+<div class="bg-white border border-slate-200 rounded p-3 mb-3 text-sm">
+  <div class="flex items-center justify-between flex-wrap gap-2">
+    <div class="flex flex-wrap gap-1.5">
+      {% if running %}
+        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">running</span>
+      {% else %}
+        <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700">stopped</span>
+      {% endif %}
+      {% if settings.is_live %}
+        <span class="px-2 py-0.5 rounded bg-red-100 text-red-800">LIVE</span>
+      {% else %}
+        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">paper</span>
+      {% endif %}
+      {% if settings.kill_switch %}
+        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800">kill-switch ON</span>
+      {% endif %}
+    </div>
+    <div class="text-xs text-slate-500">
+      {{ settings.portfolio_ticker_list | length }}종목 · 슬롯 {{ slot_max }}
+    </div>
+  </div>
+</div>
+
+{# 컨트롤 버튼 — 2열 그리드 #}
+<div class="grid grid-cols-2 gap-2 mb-4 text-sm">
+  <form method="post" action="/control/kill-switch" class="m-0"
+        onsubmit="return confirm('{% if settings.kill_switch %}Kill-switch를 해제할까요?{% else %}신규 진입을 전면 차단합니다. 계속할까요?{% endif %}');">
+    <button type="submit" class="btn w-full rounded {% if settings.kill_switch %}bg-emerald-600 text-white{% else %}bg-amber-500 text-white{% endif %}">
+      {% if settings.kill_switch %}Kill-switch 해제{% else %}Kill-switch 켜기{% endif %}
+    </button>
+  </form>
+  <form method="post" action="/control/restart" class="m-0">
+    <button type="submit" class="btn w-full rounded border border-slate-300 bg-white">재시작(reload)</button>
+  </form>
+  {% if running %}
+    <form method="post" action="/control/stop" class="m-0 col-span-2"
+          onsubmit="this.confirm_input.value = confirm('봇을 정지할까요? (포지션은 그대로 유지)') ? 'yes' : ''">
+      <input type="hidden" name="confirm" value="" />
+      <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 정지</button>
+    </form>
+  {% else %}
+    <form method="post" action="/control/start" class="m-0 col-span-2">
+      <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 시작</button>
+    </form>
+  {% endif %}
+</div>
+
+{# 본문 — 5초 polling으로 부분 갱신 #}
+<div id="dashboard-body"
+     hx-get="/dashboard/partial"
+     hx-trigger="every 5s"
+     hx-swap="innerHTML">
+  {% include "partials/dashboard_body.html" %}
+</div>
+{% endblock %}

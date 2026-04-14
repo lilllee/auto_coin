@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}로그 — auto_coin{% endblock %}
+{% block body %}
+<div class="flex items-center justify-between mb-3">
+  <h1 class="text-xl font-semibold">로그</h1>
+  <div class="text-xs">
+    <label class="mr-2 text-slate-500">레벨</label>
+    <select id="level-filter" class="border border-slate-300 rounded px-2 py-1">
+      <option value="DEBUG">DEBUG↑</option>
+      <option value="INFO" selected>INFO↑</option>
+      <option value="WARNING">WARNING↑</option>
+      <option value="ERROR">ERROR↑</option>
+    </select>
+  </div>
+</div>
+
+<div class="flex items-center justify-between mb-2 text-xs text-slate-500">
+  <label class="flex items-center gap-1">
+    <input type="checkbox" id="autoscroll" checked> 자동 스크롤
+  </label>
+  <span id="conn-status" class="px-2 py-0.5 rounded bg-slate-100">연결 중…</span>
+</div>
+
+<div id="log-box"
+     class="bg-slate-950 text-slate-100 rounded text-xs font-mono overflow-auto"
+     style="height: calc(100vh - 300px); min-height: 280px;">
+{% for l in initial_lines %}
+<div class="log-line px-2 py-0.5" data-level="{{ l.level }}">
+  <span class="text-slate-500">{{ l.ts[11:19] }}</span>
+  <span class="{% if l.level == 'ERROR' %}text-red-400{% elif l.level == 'WARNING' %}text-amber-300{% elif l.level == 'DEBUG' %}text-slate-500{% else %}text-slate-200{% endif %}">
+    {{ l.level | truncate(4, True, "") }}
+  </span>
+  <span class="text-slate-400">{{ l.name }}</span>
+  <span>{{ l.message }}</span>
+</div>
+{% endfor %}
+</div>
+
+<script>
+  (function() {
+    const box = document.getElementById("log-box");
+    const status = document.getElementById("conn-status");
+    const autoscroll = document.getElementById("autoscroll");
+    const levelFilter = document.getElementById("level-filter");
+    const levelPriority = {DEBUG: 10, INFO: 20, WARNING: 30, ERROR: 40, CRITICAL: 50};
+
+    function applyFilter() {
+      const threshold = levelPriority[levelFilter.value] || 20;
+      for (const el of box.querySelectorAll(".log-line")) {
+        const lvl = levelPriority[el.dataset.level] || 20;
+        el.style.display = lvl >= threshold ? "" : "none";
+      }
+    }
+    levelFilter.addEventListener("change", applyFilter);
+    applyFilter();
+
+    function appendLine(l) {
+      const div = document.createElement("div");
+      div.className = "log-line px-2 py-0.5";
+      div.dataset.level = l.level;
+      const lvlColor = l.level === "ERROR" ? "text-red-400" :
+                       l.level === "WARNING" ? "text-amber-300" :
+                       l.level === "DEBUG" ? "text-slate-500" : "text-slate-200";
+      div.innerHTML = `<span class="text-slate-500">${l.ts.substring(11, 19)}</span> `
+                    + `<span class="${lvlColor}">${l.level.substring(0, 4)}</span> `
+                    + `<span class="text-slate-400">${escapeHtml(l.name)}</span> `
+                    + `<span>${escapeHtml(l.message)}</span>`;
+      box.appendChild(div);
+      // 레벨 필터 반영
+      const threshold = levelPriority[levelFilter.value] || 20;
+      const lvl = levelPriority[l.level] || 20;
+      if (lvl < threshold) div.style.display = "none";
+      // 버퍼 크기 제한 (1000줄)
+      while (box.children.length > 1000) box.removeChild(box.firstChild);
+      if (autoscroll.checked) box.scrollTop = box.scrollHeight;
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;",
+      }[c]));
+    }
+
+    if (autoscroll.checked) box.scrollTop = box.scrollHeight;
+
+    const es = new EventSource("/logs/stream");
+    es.onopen = () => status.textContent = "연결됨";
+    es.onerror = () => status.textContent = "재연결 중…";
+    es.onmessage = (e) => {
+      try {
+        const line = JSON.parse(e.data);
+        appendLine(line);
+      } catch (_) { /* keep-alive */ }
+    };
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,40 @@
+# env / secrets
+.env
+.env.*
+!.env.example
+
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# test / lint
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# ide
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# runtime
+logs/
+*.log
+data/cache/
+state/
+*.sqlite
+*.sqlite3
+*.db
+.bot.pid

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "settings/_form_macros.html" import field, checkbox, submit, error_box, back_link %}
+{% block title %}스케줄 / 모드 — auto_coin{% endblock %}
+{% block body %}
+{{ back_link() }}
+<h1 class="text-xl font-semibold my-3">스케줄 / 모드</h1>
+{{ error_box(error) }}
+
+{% if s.is_live %}
+<div class="mb-4 px-3 py-2 rounded bg-red-50 text-red-800 text-sm">
+  ⚠️ 실거래 모드 활성 상태입니다. 주문은 업비트로 실제 전송됩니다.
+</div>
+{% endif %}
+
+<form method="post" action="/settings/schedule" class="space-y-3">
+  <label class="block mb-3">
+    <span class="block text-sm text-slate-600 mb-1">모드</span>
+    <select name="mode" class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+      <option value="paper" {% if s.mode.value == "paper" %}selected{% endif %}>paper (가상 매매)</option>
+      <option value="live" {% if s.mode.value == "live" %}selected{% endif %}>live (실거래 — 주의)</option>
+    </select>
+  </label>
+  {{ checkbox("live_trading", "실거래 허용 스위치 (mode=live일 때만 효력)",
+              s.live_trading,
+              hint="mode + 이 스위치 + kill-switch OFF가 모두 true일 때만 실주문 전송") }}
+
+  {{ field("check_interval_seconds", "tick 주기 (초)",
+           s.check_interval_seconds, type="number", min="5", max="3600",
+           hint="시그널 체크 빈도. 기본 60") }}
+  {{ field("heartbeat_interval_hours", "heartbeat 주기 (시간, 0=비활성)",
+           s.heartbeat_interval_hours, type="number", min="0", max="24") }}
+  {{ field("exit_hour_kst", "청산 시각 — 시 (KST)",
+           s.exit_hour_kst, type="number", min="0", max="23",
+           hint="보통 8 (08:55 청산, 08:58 리포트, 09:00 리셋)") }}
+  {{ field("exit_minute_kst", "청산 시각 — 분",
+           s.exit_minute_kst, type="number", min="0", max="59") }}
+  {{ field("daily_reset_hour_kst", "일일 리셋 시각 — 시 (KST)",
+           s.daily_reset_hour_kst, type="number", min="0", max="23") }}
+  {{ submit() }}
+</form>
+{% endblock %}

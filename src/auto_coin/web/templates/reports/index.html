@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}리포트 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">리포트</h1>
+{% if items %}
+  <ul class="space-y-2">
+    {% for item in items %}
+      <li>
+        <a href="/reports/{{ item.name }}"
+           class="block bg-white border border-slate-200 rounded px-4 py-3 hover:bg-slate-50">
+          <div class="font-medium">{{ item.title }}</div>
+          <div class="text-xs text-slate-500 mt-1 flex gap-3">
+            <span class="font-mono">{{ item.name }}</span>
+            <span>{{ item.size_kb }} KB</span>
+            <span>{{ item.mtime }}</span>
+          </div>
+        </a>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="text-sm text-slate-500">
+    아직 리포트가 없습니다. <code class="text-xs bg-slate-100 px-1 rounded">{{ reports_dir }}</code> 에 `.md` 파일을 두면 여기에 표시됩니다.
+  </p>
+{% endif %}
+{% endblock %}

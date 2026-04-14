@@ -1,0 +1,36 @@
+{% macro field(name, label, value, type="text", step=None, min=None, max=None, hint=None, required=True) -%}
+<label class="block mb-3">
+  <span class="block text-sm text-slate-600 mb-1">{{ label }}</span>
+  <input type="{{ type }}" name="{{ name }}" value="{{ value }}"
+         {% if step is not none %}step="{{ step }}"{% endif %}
+         {% if min is not none %}min="{{ min }}"{% endif %}
+         {% if max is not none %}max="{{ max }}"{% endif %}
+         {% if required %}required{% endif %}
+         class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+  {% if hint %}<span class="block text-xs text-slate-400 mt-1">{{ hint }}</span>{% endif %}
+</label>
+{%- endmacro %}
+
+{% macro checkbox(name, label, checked, hint=None) -%}
+<label class="flex items-start gap-2 mb-3">
+  <input type="checkbox" name="{{ name }}" {% if checked %}checked{% endif %} class="mt-1">
+  <span>
+    <span class="block text-sm">{{ label }}</span>
+    {% if hint %}<span class="block text-xs text-slate-400">{{ hint }}</span>{% endif %}
+  </span>
+</label>
+{%- endmacro %}
+
+{% macro submit(text="저장") -%}
+<button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">{{ text }}</button>
+{%- endmacro %}
+
+{% macro error_box(error) -%}
+{% if error %}
+<div class="mb-3 px-3 py-2 rounded bg-red-50 text-red-700 text-sm">{{ error }}</div>
+{% endif %}
+{%- endmacro %}
+
+{% macro back_link() -%}
+<a href="/settings" class="text-sm text-slate-500 hover:text-slate-900">← 설정 목록</a>
+{%- endmacro %}

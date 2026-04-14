@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}차트 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">차트</h1>
+
+{% if not choices %}
+  <p class="text-sm text-slate-500">표시할 종목이 없습니다. <a href="/settings/portfolio" class="underline">포트폴리오 설정</a>에서 추가하세요.</p>
+{% else %}
+  <form method="get" class="mb-3">
+    <label class="block">
+      <span class="block text-sm text-slate-600 mb-1">종목</span>
+      <select name="ticker" onchange="this.form.submit()"
+              class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+        {% for t in choices %}
+          <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </form>
+
+  <div class="bg-white border border-slate-200 rounded p-3">
+    <canvas id="price-chart" height="260"></canvas>
+    <div id="chart-status" class="text-xs text-slate-400 mt-2">불러오는 중…</div>
+  </div>
+
+  <div class="mt-3 text-xs text-slate-500">
+    파란선 = 종가 · 회색선 = MA({{ s.ma_filter_window }}) · 주황 점선 = 오늘 target
+    <span id="chart-entry-note"></span>
+  </div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+  (async function() {
+    const selected = {{ selected | tojson }};
+    if (!selected) return;
+    const status = document.getElementById("chart-status");
+    const entryNote = document.getElementById("chart-entry-note");
+    try {
+      const resp = await fetch(`/charts/data/${encodeURIComponent(selected)}?days=60`, {headers: {accept: "application/json"}});
+      if (!resp.ok) {
+        status.textContent = `데이터 로드 실패 (${resp.status})`;
+        return;
+      }
+      const d = await resp.json();
+      status.textContent = `${d.labels.length}일 · K=${d.k} · MA${d.ma_window}`;
+
+      if (d.has_position && d.entry_price) {
+        entryNote.textContent = ` · 진입가 ${d.entry_price.toLocaleString("ko-KR")}`;
+      }
+
+      const ctx = document.getElementById("price-chart").getContext("2d");
+      const datasets = [
+        {label: "종가", data: d.close, borderColor: "#2563eb", backgroundColor: "#2563eb", tension: 0.15, pointRadius: 0, borderWidth: 2},
+      ];
+      if (d.ma && d.ma.length) {
+        datasets.push({label: `MA${d.ma_window}`, data: d.ma, borderColor: "#94a3b8", tension: 0.15, pointRadius: 0, borderWidth: 1.5, borderDash: [2,2]});
+      }
+      if (d.target && d.target.length) {
+        datasets.push({label: "target", data: d.target, borderColor: "#f59e0b", tension: 0, pointRadius: 0, borderWidth: 1, borderDash: [4,3]});
+      }
+      if (d.has_position && d.entry_price) {
+        const entryLine = new Array(d.labels.length).fill(d.entry_price);
+        datasets.push({label: "진입가", data: entryLine, borderColor: "#10b981", tension: 0, pointRadius: 0, borderWidth: 1});
+      }
+
+      new Chart(ctx, {
+        type: "line",
+        data: {labels: d.labels, datasets},
+        options: {
+          responsive: true,
+          interaction: {mode: "index", intersect: false},
+          scales: {
+            x: {ticks: {maxRotation: 0, autoSkip: true, maxTicksLimit: 8}},
+            y: {beginAtZero: false, ticks: {callback: v => v.toLocaleString("ko-KR")}},
+          },
+          plugins: {
+            legend: {position: "bottom", labels: {boxWidth: 14, font: {size: 11}}},
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${Number(ctx.raw).toLocaleString("ko-KR")}`,
+              },
+            },
+          },
+        },
+      });
+    } catch (e) {
+      status.textContent = `오류: ${e.message}`;
+    }
+  })();
+</script>
+{% endblock %}

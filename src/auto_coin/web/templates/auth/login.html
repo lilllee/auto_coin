@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}로그인 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-4">로그인</h1>
+{% if error %}
+<div class="mb-3 px-3 py-2 rounded bg-red-50 text-red-700 text-sm">{{ error }}</div>
+{% endif %}
+{% if locked_seconds %}
+<div class="mb-3 px-3 py-2 rounded bg-amber-50 text-amber-800 text-sm">
+  잠시 후 다시 시도하세요. ({{ locked_seconds }}초 남음)
+</div>
+{% endif %}
+<form method="post" action="/login" class="space-y-3">
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">패스워드</span>
+    <input type="password" name="password" required autocomplete="current-password"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+  </label>
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">TOTP 6자리</span>
+    <input type="text" inputmode="numeric" pattern="[0-9]{6}" name="code"
+           maxlength="6" minlength="6" required autocomplete="one-time-code"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-2xl tracking-widest text-center">
+  </label>
+  <button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">로그인</button>
+</form>
+{% endblock %}

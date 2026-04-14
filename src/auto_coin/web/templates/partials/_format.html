@@ -1,0 +1,20 @@
+{# 템플릿 공용 포매터. bot의 formatting.format_price와 동일한 철학:
+   값의 크기에 맞게 소수점 자릿수를 자동 조정한다. #}
+
+{% macro money(v) -%}
+  {%- if v is none -%}—
+  {%- elif v == 0 -%}0
+  {%- elif v|abs >= 100 -%}{{ "{:,.0f}".format(v) }}
+  {%- elif v|abs >= 10 -%}{{ "{:,.1f}".format(v) }}
+  {%- elif v|abs >= 1 -%}{{ "{:,.2f}".format(v) }}
+  {%- elif v|abs >= 0.01 -%}{{ "{:.4f}".format(v) }}
+  {%- elif v|abs >= 0.0001 -%}{{ "{:.6f}".format(v) }}
+  {%- else -%}{{ "{:.8f}".format(v) }}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro sign_pct(ratio, digits=2) -%}
+  {%- if ratio is none -%}—
+  {%- else -%}{{ "{:+.{}f}%".format(ratio * 100, digits) }}
+  {%- endif -%}
+{%- endmacro %}

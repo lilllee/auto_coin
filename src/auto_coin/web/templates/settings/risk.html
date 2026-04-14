@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "settings/_form_macros.html" import field, checkbox, submit, error_box, back_link %}
+{% block title %}리스크 — auto_coin{% endblock %}
+{% block body %}
+{{ back_link() }}
+<h1 class="text-xl font-semibold my-3">리스크</h1>
+{{ error_box(error) }}
+<form method="post" action="/settings/risk">
+  {{ field("max_position_ratio", "1슬롯 투입 비율 (0–1)",
+           s.max_position_ratio, type="number", step="0.01", min="0.01", max="1",
+           hint="각 종목 매수액 = 이 값 × paper_initial_krw (또는 실거래 잔고)") }}
+  {{ field("max_concurrent_positions", "동시 보유 상한",
+           s.max_concurrent_positions, type="number", min="1", max="20",
+           hint="포트폴리오에서 동시에 들고 갈 수 있는 최대 종목 수") }}
+  {{ field("daily_loss_limit", "일일 손실 한도 (음수)",
+           s.daily_loss_limit, type="number", step="0.001", max="-0.0001",
+           hint="포트폴리오 합산 기준. 예: -0.03 = -3%") }}
+  {{ field("stop_loss_ratio", "개별 손절선 (음수)",
+           s.stop_loss_ratio, type="number", step="0.001", max="-0.0001",
+           hint="종목별 진입가 대비. 도달 즉시 강제 청산") }}
+  {{ field("min_order_krw", "최소 주문 (KRW)",
+           s.min_order_krw, type="number", min="5000",
+           hint="업비트 최소 주문은 5,000 KRW") }}
+  {{ field("paper_initial_krw", "페이퍼 가상 자본 (KRW)",
+           s.paper_initial_krw | int, type="number", min="1",
+           hint="paper 모드에서 슬롯 크기 계산 기준") }}
+  {{ checkbox("kill_switch", "Kill-switch 활성화",
+              s.kill_switch,
+              hint="신규 진입 전면 차단. 보유 포지션 청산은 계속 동작") }}
+  {{ submit() }}
+</form>
+{% endblock %}
