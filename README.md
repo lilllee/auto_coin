@@ -90,15 +90,12 @@ Kill-switch OFF 3중 조건 충족 시에만 주문이 나갑니다.
 - **5회 실패 → 10분 lockout** (올바른 값도 거부)
 
 ### 3.3 TOTP 기기를 잃었을 때
-V2.x 현재 셀프 리커버리 UI는 없습니다. 임시 조치:
-```bash
-# HOME의 3개 파일을 전부 삭제하면 완전 초기화 (설정도 날아감)
-rm ~/.auto_coin.db ~/.auto_coin_master.key ~/.auto_coin_session.key
-```
-또는 SQLite를 직접 열어 `user` 테이블만 비우면 TOTP만 재설정 가능:
-```bash
-sqlite3 ~/.auto_coin.db "DELETE FROM user;"
-```
+- `/login` 아래의 **복구 코드로 재설정** 링크로 이동
+- TOTP 등록 때 받은 **복구 코드 8개 중 1개**를 입력
+- 새 QR/TOTP 시크릿을 인증 앱에 등록
+- 새 TOTP 6자리를 한 번 더 확인하면 재설정 완료
+
+> 복구 코드는 **1회용**이며, 재설정이 끝나면 새 코드 세트가 다시 발급됩니다.
 
 ---
 
@@ -237,6 +234,7 @@ cp my-analysis.md reports/2026-04-14-manual.md
 - `~/Library/LaunchAgents/com.sj9608.auto_coin.plist` 설치
 - `RunAtLoad` + `KeepAlive` → 부팅 시 자동 기동 + 프로세스 크래시 시 10초 후 재시작
 - stdout/stderr → `logs/launchd.*.log`
+- V2 웹이 실행 중이면 V1 CLI는 시작을 거부하고, 반대도 동일
 
 ### 관리
 ```bash
@@ -293,6 +291,18 @@ tail -50 logs/launchd.err.log
   launchctl kickstart -k gui/$(id -u)/com.sj9608.auto_coin
   ```
 
+### `another auto_coin runtime is already active` 오류가 뜸
+V1 CLI와 V2 웹은 `.env`와 `state/*.json`를 공유하므로 동시에 실행할 수 없습니다.
+
+- V2를 쓰는 중이면 기존 `python -m auto_coin.main` / `nohup` 프로세스를 먼저 종료
+- V1을 쓰려면 launchd 또는 웹 프로세스를 먼저 종료
+
+예시:
+```bash
+pkill -f auto_coin.main
+launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+```
+
 ### SSE 로그가 계속 "재연결 중"
 - Tailscale DERP 릴레이 경로가 느릴 수 있음
 - 맥 방화벽에서 Python 프로세스 허용 확인
@@ -321,7 +331,7 @@ python -m auto_coin.main --live     # 실거래 강제 (주의)
 
 자세한 CLI 운영법은 **[docs/v1/USER_GUIDE.md](docs/v1/USER_GUIDE.md)**.
 
-**주의**: V1 CLI와 V2 웹을 **동시에 실행하지 마세요** — 같은 `state/*.json`을 경쟁해 주문이 중복될 수 있습니다.
+**주의**: V1 CLI와 V2 웹은 **동시에 실행되지 않도록 런타임 가드가 걸려 있습니다**. 같은 `state/*.json`을 공유하기 때문입니다.
 
 ---
 

@@ -9,6 +9,23 @@ auto_coin의 버전/마일스톤별 주요 변경 이력.
 
 ## [Unreleased — v2 branch]
 
+### Phase 1 trade-safety fixes + Phase 2 security completion (2026-04-14)
+
+**추가**
+- `web/csrf.py` — 세션 기반 CSRF 토큰 생성/검증, form field + `X-CSRF-Token` 지원
+- `templates/auth/recovery.html` + `/recovery` — 복구 코드 기반 TOTP 재설정 UI
+- `runtime_guard.py` — V1 CLI / V2 web 동시 실행 방지 lock
+
+**변경**
+- `routers/auth.py` — 로그인/초기 설정 완료 시 세션 재생성, 복구 코드 플로우 추가
+- `routers/settings.py` — `paper -> live` 전환 시 현재 TOTP 재확인 필수
+- `models.py` / `db.py` — recovery code 저장 컬럼 + 경량 SQLite schema 보정
+- 최신 운영 문서와 핸드오프 반영
+
+**테스트**
+- `pytest` 340 passed
+- `ruff check src tests` 통과
+
 ### V2.8 — launchd 서비스 + Tailscale 가이드 (2026-04-14)
 
 **추가**

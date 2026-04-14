@@ -310,10 +310,11 @@ class AuditLog(SQLModel, table=True):
 - [x] 로그인 실패 rate limit (5회 → 10분 lockout, 성공 시 리셋) (V2.1)
 - [~] Tailscale 외부 접근 제한 — `--host 0.0.0.0`이지만 Tailscale + macOS 방화벽 조합으로 방어 (V2.8)
   - 더 엄격히 가두려면 launchd plist의 `--host`를 Tailscale IP로 고정 가능 (docs 참고)
-- [~] `--live` 활성화 UI 가드 — mode=live + live_trading + Kill-switch OFF 3중 조건 (V2.3)
-  - 추가 TOTP 재확인은 **TODO** (아래 #16 참고)
-- [ ] CSRF 토큰 검증 — 미구현. SameSite=lax 쿠키 + Tailscale 사설망 가정으로 대체 중. **향후 강화 예정**
-- [ ] 세션 고정 공격 방지 (로그인 성공 시 세션 재생성) — 미구현. **향후 강화 예정**
+- [x] `--live` 활성화 UI 가드 — mode=live + live_trading + Kill-switch OFF 3중 조건 (V2.3)
+  - paper→live 전환 시 추가 TOTP 재확인 구현 완료
+- [x] CSRF 토큰 검증 — 세션 기반 토큰 + form field + `X-CSRF-Token` 헤더
+- [x] 세션 고정 공격 방지 — 로그인/초기 설정 완료 후 세션 재생성
+- [x] 복구 코드 기반 TOTP 재설정 UI
 
 ---
 
@@ -339,8 +340,10 @@ class AuditLog(SQLModel, table=True):
 - [ ] **#13 다크 모드** — Tailwind dark: 변형 + 시스템 프리퍼런스 자동 감지
 - [ ] **#14 설정 변경 이력 UI** — AuditLog는 V2.3부터 기록만 하고, 조회 UI는 추후
 - [ ] **#15 긴급 전량 청산 버튼** — 모든 보유 포지션 시장가 매도, 2단계 TOTP 확인
-- [ ] **#16 CSRF 토큰 + 세션 재생성** — V2.4 보안 체크리스트 미충족분 보강
-- [ ] **#17 live 전환 TOTP 재확인** — mode=live 전환 POST 시 6자리 재입력 요구
+- [x] **#16 CSRF 토큰 + 세션 재생성** — 완료
+- [x] **#17 live 전환 TOTP 재확인** — mode=live 전환 POST 시 6자리 재입력 요구
+- [x] **#18 복구 코드 기반 TOTP 재설정**
+- [ ] **#19 V1/V2 동시 실행 방지** — 런타임 lock으로 CLI/web 상호 배타 실행
 
 ---
 

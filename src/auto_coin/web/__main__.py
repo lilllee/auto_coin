@@ -16,6 +16,8 @@ import sys
 
 import uvicorn
 
+from auto_coin.runtime_guard import RuntimeGuardError, acquire_runtime_guard
+
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="auto_coin.web")
@@ -24,14 +26,23 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--reload", action="store_true", help="dev용 auto-reload")
     args = p.parse_args(argv)
 
-    uvicorn.run(
-        "auto_coin.web.app:create_app",
-        factory=True,
-        host=args.host,
-        port=args.port,
-        reload=args.reload,
-    )
-    return 0
+    try:
+        guard = acquire_runtime_guard("web")
+    except RuntimeGuardError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
+
+    try:
+        uvicorn.run(
+            "auto_coin.web.app:create_app",
+            factory=True,
+            host=args.host,
+            port=args.port,
+            reload=args.reload,
+        )
+        return 0
+    finally:
+        guard.release()
 
 
 if __name__ == "__main__":

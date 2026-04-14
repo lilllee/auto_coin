@@ -3,7 +3,9 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from auto_coin.runtime_guard import RuntimeGuardError
 from auto_coin.web import db as web_db
+from auto_coin.web.__main__ import main as web_main
 from auto_coin.web.app import create_app
 
 
@@ -36,3 +38,14 @@ def test_health_endpoint_running(app_env):
         assert data["running"] is True
         assert data["mode"] == "paper"
         assert "KRW-BTC" in data["tickers"]
+
+
+def test_web_main_exits_when_cli_runtime_is_active(mocker):
+    mocker.patch(
+        "auto_coin.web.__main__.acquire_runtime_guard",
+        side_effect=RuntimeGuardError("another auto_coin runtime is already active"),
+    )
+    run = mocker.patch("auto_coin.web.__main__.uvicorn.run")
+
+    assert web_main([]) == 1
+    run.assert_not_called()

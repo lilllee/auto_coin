@@ -9,8 +9,10 @@ from auto_coin.config import Settings
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderStore, Position
+from auto_coin.main import main
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
+from auto_coin.runtime_guard import RuntimeGuardError
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
@@ -259,3 +261,13 @@ def test_tick_uses_position_from_store(store, mocker):
     store.save(state)
     bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
     assert bot.tick() == []
+
+
+def test_main_exits_when_other_runtime_is_active(mocker):
+    mocker.patch("auto_coin.main.load_settings", return_value=_settings())
+    mocker.patch(
+        "auto_coin.main.acquire_runtime_guard",
+        side_effect=RuntimeGuardError("another auto_coin runtime is already active"),
+    )
+
+    assert main([]) == 1

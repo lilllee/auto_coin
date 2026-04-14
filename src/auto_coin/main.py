@@ -25,6 +25,7 @@ from auto_coin.executor.store import OrderStore
 from auto_coin.logging_setup import setup_logging
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
+from auto_coin.runtime_guard import RuntimeGuardError, acquire_runtime_guard
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
@@ -161,14 +162,23 @@ def main(argv: list[str] | None = None) -> int:
     if settings.is_live:
         logger.warning("⚠️  LIVE TRADING MODE — orders will hit the real exchange")
 
-    bot, notifier = build_bot(settings)
+    try:
+        guard = acquire_runtime_guard("cli")
+    except RuntimeGuardError as exc:
+        logger.error(str(exc))
+        return 1
 
-    if args.once:
-        logger.info("--once: running single tick and exiting")
-        bot.tick()
-        return 0
+    try:
+        bot, notifier = build_bot(settings)
 
-    return run_scheduler(bot, settings, notifier)
+        if args.once:
+            logger.info("--once: running single tick and exiting")
+            bot.tick()
+            return 0
+
+        return run_scheduler(bot, settings, notifier)
+    finally:
+        guard.release()
 
 
 if __name__ == "__main__":
