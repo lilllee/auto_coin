@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -14,6 +15,7 @@ from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "volatility_breakout": VolatilityBreakout,
     "sma200_regime": Sma200RegimeStrategy,
+    "atr_channel_breakout": AtrChannelBreakoutStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -75,12 +77,41 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "활성화하면 보유 중 SMA 아래로 내려갈 때 매도 시그널 생성",
         },
     ],
+    "atr_channel_breakout": [
+        {
+            "name": "atr_window",
+            "label": "ATR 기간 (일)",
+            "type": "number",
+            "min": "1",
+            "max": "100",
+            "default": 14,
+            "hint": "Average True Range 계산 기간. 기본 14일",
+        },
+        {
+            "name": "channel_multiplier",
+            "label": "채널 배수",
+            "type": "number",
+            "step": "0.1",
+            "min": "0.1",
+            "max": "5.0",
+            "default": 1.0,
+            "hint": "upper_channel = low + ATR × 배수. 기본 1.0",
+        },
+        {
+            "name": "allow_sell_signal",
+            "label": "하향 채널 이탈 시 SELL",
+            "type": "checkbox",
+            "default": False,
+            "hint": "활성화하면 lower_channel 아래로 내려갈 때 매도 시그널",
+        },
+    ],
 }
 
 # Human-readable names
 STRATEGY_LABELS: dict[str, str] = {
     "volatility_breakout": "변동성 돌파 (Larry Williams)",
     "sma200_regime": "SMA200 추세 필터",
+    "atr_channel_breakout": "ATR 채널 돌파",
 }
 
 

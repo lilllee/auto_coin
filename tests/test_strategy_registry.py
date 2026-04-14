@@ -9,6 +9,7 @@ from auto_coin.strategy import (
     create_strategy,
     get_strategy_names,
 )
+from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -95,3 +96,40 @@ def test_create_strategy_sma200_is_strategy_subclass():
 def test_sma200_in_get_strategy_names():
     names = get_strategy_names()
     assert "sma200_regime" in names
+
+
+# --- ATR Channel Breakout ---
+
+
+def test_registry_contains_atr_channel_breakout():
+    assert "atr_channel_breakout" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["atr_channel_breakout"] is AtrChannelBreakoutStrategy
+
+
+def test_create_strategy_atr_channel_default_params():
+    s = create_strategy("atr_channel_breakout")
+    assert isinstance(s, AtrChannelBreakoutStrategy)
+    assert s.atr_window == 14
+    assert s.channel_multiplier == 1.0
+    assert s.allow_sell_signal is False
+
+
+def test_create_strategy_atr_channel_custom_params():
+    s = create_strategy(
+        "atr_channel_breakout",
+        {"atr_window": 20, "channel_multiplier": 2.0, "allow_sell_signal": True},
+    )
+    assert isinstance(s, AtrChannelBreakoutStrategy)
+    assert s.atr_window == 20
+    assert s.channel_multiplier == 2.0
+    assert s.allow_sell_signal is True
+
+
+def test_create_strategy_atr_channel_is_strategy_subclass():
+    s = create_strategy("atr_channel_breakout")
+    assert isinstance(s, Strategy)
+
+
+def test_atr_channel_in_get_strategy_names():
+    names = get_strategy_names()
+    assert "atr_channel_breakout" in names

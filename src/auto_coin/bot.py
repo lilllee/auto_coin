@@ -82,10 +82,20 @@ class TradingBot:
                     if self._strategy_name == "sma200_regime"
                     else 0
                 )
+                atr_window = (
+                    self._strategy_params.get("atr_window", 14)
+                    if self._strategy_name == "atr_channel_breakout"
+                    else 0
+                )
                 df = fetch_daily(
                     self._client,
                     ticker,
-                    count=max(self._s.ma_filter_window + 50, 60, sma_window + 50),
+                    count=max(
+                        self._s.ma_filter_window + 50,
+                        60,
+                        sma_window + 50,
+                        atr_window + 50,
+                    ),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
                     strategy_name=self._strategy_name,
@@ -197,10 +207,20 @@ class TradingBot:
                     if self._strategy_name == "sma200_regime"
                     else 0
                 )
+                atr_window = (
+                    self._strategy_params.get("atr_window", 14)
+                    if self._strategy_name == "atr_channel_breakout"
+                    else 0
+                )
                 df = fetch_daily(
                     self._client,
                     ticker,
-                    count=max(self._s.ma_filter_window + 50, 60, sma_window + 50),
+                    count=max(
+                        self._s.ma_filter_window + 50,
+                        60,
+                        sma_window + 50,
+                        atr_window + 50,
+                    ),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
                     strategy_name=self._strategy_name,

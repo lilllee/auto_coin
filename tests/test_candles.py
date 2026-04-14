@@ -4,7 +4,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from auto_coin.data.candles import enrich_daily, enrich_for_strategy, enrich_sma, fetch_daily
+from auto_coin.data.candles import (
+    enrich_atr_channel,
+    enrich_daily,
+    enrich_for_strategy,
+    enrich_sma,
+    fetch_daily,
+)
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 
 
@@ -152,3 +158,60 @@ def test_enrich_for_strategy_unknown_defaults_to_vb():
     out = enrich_for_strategy(df, "unknown_strategy", {}, ma_window=5, k=0.5)
     assert "target" in out.columns
     assert "range" in out.columns
+
+
+# --- enrich_atr_channel tests ---
+
+
+def test_enrich_atr_channel_adds_columns():
+    df = _sample_df(30)
+    out = enrich_atr_channel(df, atr_window=14, channel_multiplier=1.0)
+    assert "atr14" in out.columns
+    assert "upper_channel" in out.columns
+    assert "lower_channel" in out.columns
+
+
+def test_enrich_atr_channel_shift():
+    """Verify shift(1) is applied — ATR at index i uses data up to i-1."""
+    df = _sample_df(30)
+    out = enrich_atr_channel(df, atr_window=14, channel_multiplier=1.0)
+    # TR at index 0 = max(high-low, NaN, NaN) = 20.0 (high-low dominates)
+    # rolling(14) first non-NaN at index 13; shift(1) moves atr to index 14
+    assert pd.isna(out["atr14"].iloc[13])
+    assert not pd.isna(out["atr14"].iloc[14])
+    # upper_channel = (low + atr*mult).shift(1)
+    # atr14 at index 14 valid; upper_channel at 14 uses low[13]+atr14[13]=NaN
+    # upper_channel first non-NaN at index 15
+    assert pd.isna(out["upper_channel"].iloc[14])
+    assert not pd.isna(out["upper_channel"].iloc[15])
+
+
+def test_enrich_atr_channel_missing_columns():
+    df = pd.DataFrame({"open": [1.0], "high": [2.0]})
+    with pytest.raises(ValueError, match="missing required columns"):
+        enrich_atr_channel(df)
+
+
+def test_enrich_atr_channel_invalid_params():
+    df = _sample_df()
+    with pytest.raises(ValueError, match="atr_window must be >= 1"):
+        enrich_atr_channel(df, atr_window=0)
+    with pytest.raises(ValueError, match="channel_multiplier must be > 0"):
+        enrich_atr_channel(df, channel_multiplier=0)
+
+
+def test_enrich_for_strategy_atr_channel():
+    df = _sample_df(30)
+    out = enrich_for_strategy(
+        df,
+        "atr_channel_breakout",
+        {"atr_window": 14, "channel_multiplier": 1.5},
+        ma_window=5,
+        k=0.5,
+    )
+    # Should have both VB columns and ATR channel columns
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "atr14" in out.columns
+    assert "upper_channel" in out.columns
+    assert "lower_channel" in out.columns

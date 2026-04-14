@@ -45,6 +45,49 @@ def enrich_sma(df: pd.DataFrame, window: int = 200) -> pd.DataFrame:
     return out
 
 
+def enrich_atr_channel(
+    df: pd.DataFrame,
+    atr_window: int = 14,
+    channel_multiplier: float = 1.0,
+) -> pd.DataFrame:
+    """ATR 채널 컬럼 추가.
+
+    Added columns:
+        - atr{window}: Average True Range
+        - upper_channel: low + atr * multiplier (상향 돌파 진입선)
+        - lower_channel: high - atr * multiplier (하향 되밀림 청산선)
+
+    shift(1)로 확정 봉 기준.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if channel_multiplier <= 0:
+        raise ValueError("channel_multiplier must be > 0")
+
+    out = df.copy()
+    # True Range
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    atr_col = f"atr{atr_window}"
+    out[atr_col] = tr.rolling(window=atr_window).mean().shift(1)
+    out["upper_channel"] = (out["low"] + out[atr_col] * channel_multiplier).shift(1)
+    out["lower_channel"] = (out["high"] - out[atr_col] * channel_multiplier).shift(1)
+    return out
+
+
 def enrich_for_strategy(
     df: pd.DataFrame,
     strategy_name: str,
@@ -60,6 +103,13 @@ def enrich_for_strategy(
         sma_window = strategy_params.get("ma_window", 200)
         enriched = enrich_daily(df, ma_window=ma_window, k=k)  # keep VB columns for backward compat
         return enrich_sma(enriched, window=sma_window)
+    elif strategy_name == "atr_channel_breakout":
+        atr_window = strategy_params.get("atr_window", 14)
+        channel_multiplier = strategy_params.get("channel_multiplier", 1.0)
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_atr_channel(
+            enriched, atr_window=atr_window, channel_multiplier=channel_multiplier
+        )
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)
