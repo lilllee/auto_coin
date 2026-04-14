@@ -33,6 +33,8 @@ class VolatilityBreakout(Strategy):
     def generate_signal(self, snap: MarketSnapshot) -> Signal:
         if snap.has_position:
             return Signal.HOLD
+        if snap.current_price <= 0:
+            return Signal.HOLD
         df = snap.df
         if df.empty:
             return Signal.HOLD

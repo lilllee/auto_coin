@@ -31,7 +31,14 @@ def _recent_orders(orders: list[OrderRecord], *, hours: int, now: datetime) -> l
     return out
 
 
-def build_daily_report(state: State, *, hours: int = 24, now: datetime | None = None) -> str:
+def build_daily_report(
+    state: State,
+    *,
+    hours: int = 24,
+    now: datetime | None = None,
+    avg_daily_pnl: float | None = None,
+    n_tickers: int = 1,
+) -> str:
     now = now or datetime.now(UTC)
     recent = _recent_orders(state.orders, hours=hours, now=now)
     n_buy = sum(1 for o in recent if o.side == "buy")
@@ -54,6 +61,10 @@ def build_daily_report(state: State, *, hours: int = 24, now: datetime | None = 
         f"- closed cycles: {len(cycle_rets)}  wins={wins}  win_rate={win_rate*100:.1f}%",
         f"- daily_pnl: {state.daily_pnl_ratio*100:+.2f}%  (date={state.daily_pnl_date or '-'})",
     ]
+    if avg_daily_pnl is not None and n_tickers > 1:
+        lines.append(
+            f"- daily_pnl_avg: {avg_daily_pnl*100:+.2f}% (평균, {n_tickers}종목 합산 {state.daily_pnl_ratio*100:+.2f}%)"
+        )
     if cycle_rets:
         best = max(cycle_rets)
         worst = min(cycle_rets)

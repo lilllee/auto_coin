@@ -117,3 +117,23 @@ def test_get_holdings_can_include_krw_and_zero_balances(mocker, client):
     )
     holdings = client.get_holdings(include_zero=True, include_krw=True)
     assert [holding.market for holding in holdings] == ["KRW", "KRW-XRP"]
+
+
+def test_get_order_success(mocker, client):
+    order_data = {
+        "uuid": "order-uuid-1",
+        "side": "bid",
+        "state": "done",
+        "executed_volume": "0.005",
+        "avg_price": "95000000",
+    }
+    mocker.patch.object(client._upbit, "get_order", return_value=order_data)
+    result = client.get_order("order-uuid-1")
+    assert result == order_data
+    client._upbit.get_order.assert_called_once_with("order-uuid-1")
+
+
+def test_get_order_unexpected_response_raises(mocker, client):
+    mocker.patch.object(client._upbit, "get_order", return_value="not-a-dict")
+    with pytest.raises(UpbitError):
+        client.get_order("bad-uuid")

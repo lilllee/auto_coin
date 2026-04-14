@@ -76,6 +76,7 @@ class User(SQLModel, table=True):
     username: str = Field(default="admin", unique=True, index=True)
     password_hash: str
     totp_secret_enc: str                # Fernet-encrypted base32 seed
+    recovery_codes_enc: str = ""        # Fernet-encrypted JSON array of one-time recovery codes
     totp_confirmed: bool = False        # setup flow에서 6자리 확인 전엔 False
     failed_attempts: int = 0
     locked_until: datetime | None = None

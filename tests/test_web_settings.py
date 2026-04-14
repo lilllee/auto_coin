@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pyotp
 import pytest
+from csrf_helpers import csrf_data, csrf_headers
 from fastapi.testclient import TestClient
 from sqlmodel import Session, select
 
@@ -42,6 +43,13 @@ def _login(client: TestClient) -> None:
         user = get_user(db)
         secret = SecretBox().decrypt(user.totp_secret_enc)
     client.post("/setup/totp", data={"code": pyotp.TOTP(secret).now()})
+
+
+def _totp_code() -> str:
+    with Session(web_db.engine()) as db:
+        user = get_user(db)
+        secret = SecretBox().decrypt(user.totp_secret_enc)
+    return pyotp.TOTP(secret).now()
 
 
 def _current_row():
@@ -90,9 +98,9 @@ def test_strategy_post_updates_db_and_reloads(app_env, mocker):
         _login(client)
         reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/strategy",
-                        data={"strategy_k": "0.7",
+                        data=csrf_data(client, {"strategy_k": "0.7",
                               "ma_filter_window": "10",
-                              "watch_interval_minutes": "30"},
+                              "watch_interval_minutes": "30"}),
                         follow_redirects=False)
         assert r.status_code == 303
         reload_spy.assert_called_once()
@@ -108,9 +116,9 @@ def test_strategy_post_rejects_invalid(app_env, mocker):
         _login(client)
         reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/strategy",
-                        data={"strategy_k": "2.5",  # 1.0 초과
+                        data=csrf_data(client, {"strategy_k": "2.5",  # 1.0 초과
                               "ma_filter_window": "5",
-                              "watch_interval_minutes": "15"})
+                              "watch_interval_minutes": "15"}))
         assert r.status_code == 400
         reload_spy.assert_not_called()
     row = _current_row()
@@ -126,13 +134,13 @@ def test_risk_post_applies(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/risk",
-                        data={"max_position_ratio": "0.15",
+                        data=csrf_data(client, {"max_position_ratio": "0.15",
                               "daily_loss_limit": "-0.05",
                               "stop_loss_ratio": "-0.03",
                               "min_order_krw": "10000",
                               "max_concurrent_positions": "5",
                               "paper_initial_krw": "2000000",
-                              "kill_switch": "on"},
+                              "kill_switch": "on"}),
                         follow_redirects=False)
         assert r.status_code == 303
     row = _current_row()
@@ -147,12 +155,12 @@ def test_risk_post_rejects_bad_min_order(app_env):
     with TestClient(app) as client:
         _login(client)
         r = client.post("/settings/risk",
-                        data={"max_position_ratio": "0.2",
+                        data=csrf_data(client, {"max_position_ratio": "0.2",
                               "daily_loss_limit": "-0.03",
                               "stop_loss_ratio": "-0.02",
                               "min_order_krw": "1000",    # < 5000
                               "max_concurrent_positions": "3",
-                              "paper_initial_krw": "1000000"})
+                              "paper_initial_krw": "1000000"}))
         assert r.status_code == 400
 
 
@@ -167,7 +175,7 @@ def test_portfolio_post_validates_listing(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/portfolio",
-                        data={"tickers": "KRW-BTC,KRW-FAKE", "watch_tickers": ""})
+                        data=csrf_data(client, {"tickers": "KRW-BTC,KRW-FAKE", "watch_tickers": ""}))
         assert r.status_code == 400
         assert "KRW-FAKE" in r.text
 
@@ -180,8 +188,8 @@ def test_portfolio_post_saves_when_all_listed(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/portfolio",
-                        data={"tickers": "krw-btc, KRW-ETH",
-                              "watch_tickers": "KRW-XRP"},
+                        data=csrf_data(client, {"tickers": "krw-btc, KRW-ETH",
+                              "watch_tickers": "KRW-XRP"}),
                         follow_redirects=False)
         assert r.status_code == 303
     row = _current_row()
@@ -223,10 +231,10 @@ def test_api_keys_get_shows_mask(app_env, mocker):
         # 저장된 키가 있는 상황을 만든 뒤
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "ACCESSKEY123456",
+                    data=csrf_data(client, {"upbit_access_key": "ACCESSKEY123456",
                           "upbit_secret_key": "SECRETKEY123456",
                           "telegram_bot_token": "BOTTOKEN123456",
-                          "telegram_chat_id": "9999"})
+                          "telegram_chat_id": "9999"}))
         r = client.get("/settings/api-keys")
         assert r.status_code == 200
         # 마지막 4자리만 노출
@@ -242,12 +250,12 @@ def test_api_keys_post_empty_preserves_existing(app_env, mocker):
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         # 먼저 저장
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "AK1", "upbit_secret_key": "SK1",
-                          "telegram_bot_token": "", "telegram_chat_id": ""})
+                    data=csrf_data(client, {"upbit_access_key": "AK1", "upbit_secret_key": "SK1",
+                          "telegram_bot_token": "", "telegram_chat_id": ""}))
         # 빈 값으로 두 번째 POST → 기존 유지
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "", "upbit_secret_key": "",
-                          "telegram_bot_token": "", "telegram_chat_id": ""})
+                    data=csrf_data(client, {"upbit_access_key": "", "upbit_secret_key": "",
+                          "telegram_bot_token": "", "telegram_chat_id": ""}))
     # 복호화하여 확인
     from auto_coin.web.settings_service import load_runtime_settings
     with Session(web_db.engine()) as db:
@@ -262,11 +270,11 @@ def test_api_keys_test_upbit_success(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "AK", "upbit_secret_key": "SK",
-                          "telegram_bot_token": "", "telegram_chat_id": ""})
+                    data=csrf_data(client, {"upbit_access_key": "AK", "upbit_secret_key": "SK",
+                          "telegram_bot_token": "", "telegram_chat_id": ""}))
         mocker.patch("auto_coin.web.services.credentials_check.UpbitClient.get_krw_balance",
                      return_value=1000.0)
-        r = client.post("/settings/api-keys/test-upbit")
+        r = client.post("/settings/api-keys/test-upbit", headers=csrf_headers(client))
         assert r.status_code == 200
         assert "✅" in r.text
         assert "1,000" in r.text
@@ -280,8 +288,8 @@ def test_api_keys_upbit_holdings_renders_saved_assets(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "AK", "upbit_secret_key": "SK",
-                          "telegram_bot_token": "", "telegram_chat_id": ""})
+                    data=csrf_data(client, {"upbit_access_key": "AK", "upbit_secret_key": "SK",
+                          "telegram_bot_token": "", "telegram_chat_id": ""}))
         mocker.patch(
             "auto_coin.web.routers.settings.fetch_upbit_holdings",
             return_value=__import__("auto_coin.web.services.credentials_check",
@@ -294,7 +302,7 @@ def test_api_keys_upbit_holdings_renders_saved_assets(app_env, mocker):
                 ),
             ),
         )
-        r = client.post("/settings/api-keys/upbit-holdings")
+        r = client.post("/settings/api-keys/upbit-holdings", headers=csrf_headers(client))
         assert r.status_code == 200
         assert "KRW-BTC" in r.text
         assert "KRW-ETH" in r.text
@@ -320,7 +328,7 @@ def test_api_keys_upbit_holding_falls_back_to_env_when_db_blank(app_env, mocker)
                 ok=True, detail="보유 코인 0개", holdings=()
             ),
         )
-        r = client.post("/settings/api-keys/upbit-holdings")
+        r = client.post("/settings/api-keys/upbit-holdings", headers=csrf_headers(client))
         assert r.status_code == 200
         fetch.assert_called_once_with("ENV_AK", "ENV_SK")
 
@@ -331,9 +339,9 @@ def test_api_keys_test_telegram_failure(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "", "upbit_secret_key": "",
-                          "telegram_bot_token": "", "telegram_chat_id": ""})
-        r = client.post("/settings/api-keys/test-telegram")
+                    data=csrf_data(client, {"upbit_access_key": "", "upbit_secret_key": "",
+                          "telegram_bot_token": "", "telegram_chat_id": ""}))
+        r = client.post("/settings/api-keys/test-telegram", headers=csrf_headers(client))
         assert r.status_code == 200
         assert "❌" in r.text
 
@@ -347,18 +355,103 @@ def test_schedule_post_applies(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         r = client.post("/settings/schedule",
-                        data={"check_interval_seconds": "120",
+                        data=csrf_data(client, {"check_interval_seconds": "120",
                               "heartbeat_interval_hours": "12",
                               "exit_hour_kst": "8",
                               "exit_minute_kst": "55",
                               "daily_reset_hour_kst": "9",
-                              "mode": "paper"},
+                              "mode": "paper"}),
                         follow_redirects=False)
         assert r.status_code == 303
     row = _current_row()
     assert row.check_interval_seconds == 120
     assert row.heartbeat_interval_hours == 12
     assert row.live_trading is False
+
+
+def test_schedule_live_mode_requires_totp(app_env, mocker):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post(
+            "/settings/schedule",
+            data=csrf_data(
+                client,
+                {
+                    "check_interval_seconds": "60",
+                    "heartbeat_interval_hours": "0",
+                    "exit_hour_kst": "8",
+                    "exit_minute_kst": "55",
+                    "daily_reset_hour_kst": "9",
+                    "mode": "live",
+                    "live_trading": "on",
+                    "totp_code": "",
+                },
+            ),
+        )
+        assert r.status_code == 400
+        assert "TOTP" in r.text
+        reload_spy.assert_not_called()
+    row = _current_row()
+    assert row.mode == "paper"
+
+
+def test_schedule_live_mode_rejects_wrong_totp_and_records_audit(app_env, mocker):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post(
+            "/settings/schedule",
+            data=csrf_data(
+                client,
+                {
+                    "check_interval_seconds": "60",
+                    "heartbeat_interval_hours": "0",
+                    "exit_hour_kst": "8",
+                    "exit_minute_kst": "55",
+                    "daily_reset_hour_kst": "9",
+                    "mode": "live",
+                    "live_trading": "on",
+                    "totp_code": "000000",
+                },
+            ),
+        )
+        assert r.status_code == 400
+        reload_spy.assert_not_called()
+    with Session(web_db.engine()) as db:
+        audit_logs = db.exec(select(AuditLog).where(AuditLog.action == "settings.schedule.live_totp_rejected")).all()
+    assert audit_logs
+
+
+def test_schedule_live_mode_accepts_valid_totp(app_env, mocker):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post(
+            "/settings/schedule",
+            data=csrf_data(
+                client,
+                {
+                    "check_interval_seconds": "60",
+                    "heartbeat_interval_hours": "0",
+                    "exit_hour_kst": "8",
+                    "exit_minute_kst": "55",
+                    "daily_reset_hour_kst": "9",
+                    "mode": "live",
+                    "live_trading": "on",
+                    "totp_code": _totp_code(),
+                },
+            ),
+            follow_redirects=False,
+        )
+        assert r.status_code == 303
+        reload_spy.assert_called_once()
+    row = _current_row()
+    assert row.mode == "live"
+    assert row.live_trading is True
 
 
 # ----- audit log --------
@@ -370,8 +463,8 @@ def test_settings_change_records_audit_log(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/strategy",
-                    data={"strategy_k": "0.6", "ma_filter_window": "5",
-                          "watch_interval_minutes": "15"})
+                    data=csrf_data(client, {"strategy_k": "0.6", "ma_filter_window": "5",
+                          "watch_interval_minutes": "15"}))
     with Session(web_db.engine()) as db:
         logs = db.exec(select(AuditLog)).all()
     assert len(logs) >= 1
@@ -384,9 +477,9 @@ def test_audit_log_masks_api_keys(app_env, mocker):
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/api-keys",
-                    data={"upbit_access_key": "SUPERSECRETKEY999",
+                    data=csrf_data(client, {"upbit_access_key": "SUPERSECRETKEY999",
                           "upbit_secret_key": "SK", "telegram_bot_token": "",
-                          "telegram_chat_id": ""})
+                          "telegram_chat_id": ""}))
     with Session(web_db.engine()) as db:
         logs = db.exec(select(AuditLog).where(AuditLog.action == "settings.api_keys")).all()
     assert logs

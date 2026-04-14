@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}복구 코드 / TOTP 재설정 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-2">복구 코드 / TOTP 재설정</h1>
+
+{% if error %}
+<div class="mb-3 px-3 py-2 rounded bg-red-50 text-red-700 text-sm">{{ error }}</div>
+{% endif %}
+
+{% if preview_only %}
+  <div class="mb-4 px-3 py-2 rounded bg-amber-50 text-amber-800 text-sm">
+    아래 복구 코드는 각 1회만 사용할 수 있습니다. 안전한 곳에 저장하세요.
+  </div>
+{% elif needs_totp_confirmation %}
+  <p class="text-sm text-slate-600 mb-4">
+    복구 코드가 확인되었습니다. 새 인증 앱에 아래 QR 또는 시크릿을 등록하고 6자리 코드를 입력해 마무리하세요.
+  </p>
+{% else %}
+  <p class="text-sm text-slate-600 mb-4">
+    저장해 둔 복구 코드 1개를 입력하면 TOTP를 새로 발급할 수 있습니다.
+  </p>
+{% endif %}
+
+{% if secret %}
+<div class="flex justify-center mb-4">
+  <img src="data:image/png;base64,{{ qr_png_b64 }}" alt="TOTP QR" class="w-48 h-48 bg-white p-2 rounded shadow">
+</div>
+<details class="mb-4 text-sm">
+  <summary class="cursor-pointer text-slate-600">수동 입력용 시크릿 보기</summary>
+  <code class="block mt-2 p-2 bg-slate-100 rounded break-all">{{ secret }}</code>
+</details>
+{% endif %}
+
+{% if recovery_codes %}
+<div class="mb-4 rounded border border-slate-200 bg-white p-3">
+  <h2 class="text-sm font-semibold mb-2">복구 코드</h2>
+  <ul class="grid grid-cols-2 gap-2 text-sm font-mono">
+    {% for code in recovery_codes %}
+      <li class="rounded bg-slate-100 px-3 py-2 text-center">{{ code }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+{% if needs_totp_confirmation %}
+<form method="post" action="/recovery" class="space-y-3">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">새 TOTP 6자리</span>
+    <input type="text" inputmode="numeric" pattern="[0-9]{6}" name="totp_code"
+           maxlength="6" minlength="6" required autocomplete="one-time-code"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-2xl tracking-widest text-center">
+  </label>
+  <button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">재설정 완료</button>
+</form>
+{% elif preview_only %}
+<a href="/" class="btn block w-full rounded bg-slate-900 py-3 text-center text-white">대시보드로 돌아가기</a>
+{% else %}
+<form method="post" action="/recovery" class="space-y-3">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">복구 코드</span>
+    <input type="text" name="recovery_code" required autocomplete="one-time-code"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-base font-mono uppercase"
+           placeholder="ABCD-EF12">
+  </label>
+  <button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">새 TOTP 발급</button>
+</form>
+{% endif %}
+{% endblock %}

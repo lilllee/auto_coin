@@ -198,6 +198,56 @@ def test_daily_report_returns_text_and_sends(store, mocker):
     send.assert_called_once()
 
 
+def test_cooldown_blocks_reentry_after_exit(store, mocker):
+    """강제 청산 후 쿨다운 기간 내에 재진입이 차단된다."""
+    s = _settings(cooldown_minutes=30)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    # 1) 매수
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+    # 2) 강제 청산 — last_exit_at이 기록됨
+    exit_recs = bot.force_exit_if_holding()
+    assert len(exit_recs) == 1
+    assert exit_recs[0].side == "sell"
+    state = store.load()
+    assert state.last_exit_at != ""
+    # 3) 즉시 다음 tick — 쿨다운으로 차단되어야 함
+    recs2 = bot.tick()
+    assert recs2 == []
+    assert store.load().position is None
+
+
+def test_daily_reset_clears_cooldown(store, mocker):
+    """daily_reset이 last_exit_at을 초기화하여 쿨다운을 해제한다."""
+    s = _settings(cooldown_minutes=30)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    # 매수 후 강제 청산
+    bot.tick()
+    bot.force_exit_if_holding()
+    assert store.load().last_exit_at != ""
+    # daily_reset 실행
+    bot.daily_reset()
+    assert store.load().last_exit_at == ""
+    # 리셋 후 재진입 가능
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+
+
+def test_cooldown_zero_disabled(store, mocker):
+    """cooldown_minutes=0이면 쿨다운이 비활성이므로 즉시 재진입 가능."""
+    s = _settings(cooldown_minutes=0)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot.tick()
+    bot.force_exit_if_holding()
+    assert store.load().last_exit_at != ""
+    # 쿨다운 비활성이므로 즉시 재진입
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+
+
 def test_tick_uses_position_from_store(store, mocker):
     """포지션이 이미 있으면 BUY 차단 (이중 진입 방지)."""
     s = _settings()

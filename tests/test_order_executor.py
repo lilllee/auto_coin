@@ -76,7 +76,12 @@ def test_live_buy_calls_client_and_records(mocker, auth_client, store):
         auth_client._upbit, "buy_market_order",
         return_value={"uuid": "exchange-uuid-1", "side": "bid"},
     )
-    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True)
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={"state": "wait"},
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.01)
     rec = ex.execute(
         Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
         current_price=100.0,
@@ -92,7 +97,12 @@ def test_live_sell_calls_client(mocker, auth_client, store):
         auth_client._upbit, "sell_market_order",
         return_value={"uuid": "exchange-uuid-2", "side": "ask"},
     )
-    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True)
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={"state": "wait"},
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.01)
     rec = ex.execute(
         Decision(Action.SELL, reason="exit", volume=0.001),
         current_price=100.0,
@@ -136,3 +146,189 @@ def test_full_paper_cycle_buy_then_sell(unauth_client, store):
     assert state_final.orders[1].side == "sell"
     assert state_final.daily_pnl_ratio == pytest.approx(0.02)
     assert sell_rec.uuid != buy_rec.uuid
+
+
+def test_live_buy_stores_estimated_volume(mocker, auth_client, store):
+    """라이브 BUY 시 폴링 타임아웃이면 추정 volume(>0)이 기록되어야 한다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "exchange-uuid-live-buy", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={"state": "wait"},
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.01)
+    ex.execute(
+        Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
+        current_price=100.0,
+    )
+    state = store.load()
+    assert state.position is not None
+    # 추정 volume: 10_000 / 100.0 = 100.0
+    assert state.position.volume == pytest.approx(100.0)
+    assert state.position.volume > 0
+
+
+def test_sell_sets_last_exit_at(unauth_client, store):
+    """매도 후 state.last_exit_at에 ISO 타임스탬프가 기록된다."""
+    ex = OrderExecutor(unauth_client, store, "KRW-BTC", live=False)
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+    assert store.load().last_exit_at == ""
+    ex.execute(Decision(Action.SELL, reason="exit", volume=100.0), current_price=110.0)
+    state = store.load()
+    assert state.position is None
+    assert state.last_exit_at != ""
+    # ISO8601 형식 확인
+    from datetime import datetime
+    datetime.fromisoformat(state.last_exit_at)
+
+
+def test_sell_zero_volume_fallback(mocker, auth_client, store):
+    """SELL decision.volume=0.0 일 때 store position.volume으로 폴백해 ValueError 없이 처리한다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "exchange-buy-uuid", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "sell_market_order",
+        return_value={"uuid": "exchange-sell-uuid", "side": "ask"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={"state": "wait"},
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.01)
+    # 먼저 라이브 BUY → store에 추정 volume 저장
+    ex.execute(
+        Decision(Action.BUY, reason="entry", krw_amount=10_000),
+        current_price=100.0,
+    )
+    state_after_buy = store.load()
+    assert state_after_buy.position is not None
+    assert state_after_buy.position.volume > 0
+
+    # volume=0.0인 SELL 결정 — ValueError 없이 폴백 실행
+    sell_rec = ex.execute(
+        Decision(Action.SELL, reason="force_exit", volume=0.0),
+        current_price=110.0,
+    )
+    assert sell_rec is not None
+    assert sell_rec.side == "sell"
+    # 폴백 volume(100.0)으로 거래소 API 호출 확인
+    auth_client._upbit.sell_market_order.assert_called_once_with("KRW-BTC", pytest.approx(100.0))
+    # 포지션 청산 확인
+    assert store.load().position is None
+
+
+# ----- fill polling tests -----
+
+
+def test_live_buy_polls_fill_and_updates_volume(mocker, auth_client, store):
+    """체결 폴링 성공 시 실제 executed_volume/avg_price로 포지션이 갱신된다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "fill-uuid-1", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={
+            "uuid": "fill-uuid-1",
+            "state": "done",
+            "executed_volume": "0.00123",
+            "avg_price": "95000000",
+        },
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=1.0)
+    rec = ex.execute(
+        Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
+        current_price=100_000_000.0,
+    )
+    assert rec is not None
+    assert rec.status == "filled"
+    assert "filled" in rec.note
+    # 포지션이 실제 체결 데이터로 기록됨
+    state = store.load()
+    assert state.position is not None
+    assert state.position.volume == pytest.approx(0.00123)
+    assert state.position.avg_entry_price == pytest.approx(95_000_000.0)
+
+
+def test_live_buy_poll_timeout_uses_estimate(mocker, auth_client, store):
+    """폴링 타임아웃 시 추정 volume/price가 사용된다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "timeout-uuid-1", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={"state": "wait"},  # 계속 wait → 타임아웃
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.02)
+    rec = ex.execute(
+        Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
+        current_price=100.0,
+    )
+    assert rec is not None
+    assert rec.status == "placed"  # 체결 미확인이므로 placed 유지
+    state = store.load()
+    assert state.position is not None
+    # 추정치 사용: 10_000 / 100.0 = 100.0
+    assert state.position.volume == pytest.approx(100.0)
+    assert state.position.avg_entry_price == pytest.approx(100.0)
+
+
+def test_live_sell_polls_fill(mocker, auth_client, store):
+    """매도 체결 폴링 성공 시 status가 filled로 기록된다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "buy-for-sell-test", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "sell_market_order",
+        return_value={"uuid": "sell-fill-uuid", "side": "ask"},
+    )
+    # get_order: buy는 wait(타임아웃), sell은 done
+    call_count = {"n": 0}
+    def fake_get_order(uuid):
+        call_count["n"] += 1
+        if uuid == "sell-fill-uuid":
+            return {"uuid": "sell-fill-uuid", "state": "done", "executed_volume": "100.0"}
+        return {"state": "wait"}
+    mocker.patch.object(auth_client._upbit, "get_order", side_effect=fake_get_order)
+
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=0.05)
+    # BUY first (poll times out, that's fine)
+    ex.execute(
+        Decision(Action.BUY, reason="entry", krw_amount=10_000),
+        current_price=100.0,
+    )
+    assert store.load().position is not None
+
+    # SELL with fill confirmation
+    sell_rec = ex.execute(
+        Decision(Action.SELL, reason="exit", volume=100.0),
+        current_price=110.0,
+    )
+    assert sell_rec is not None
+    assert sell_rec.status == "filled"
+    assert "filled" in sell_rec.note
+    assert store.load().position is None
+
+
+def test_paper_mode_skips_fill_polling(unauth_client, store):
+    """페이퍼 모드에서는 _poll_fill이 호출되지 않는다."""
+    ex = OrderExecutor(unauth_client, store, "KRW-BTC", live=False)
+    rec = ex.execute(
+        Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
+        current_price=100.0,
+    )
+    assert rec is not None
+    assert rec.status == "paper"
+    # poll_fill returns None for non-live, so no fill polling occurs
+    assert store.load().position.volume == pytest.approx(100.0)

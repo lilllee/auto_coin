@@ -47,3 +47,13 @@ def test_save_is_atomic_no_temp_files_left(tmp_path):
     store.save(State())
     leftover = list(tmp_path.glob(".state-*"))
     assert leftover == []
+
+
+def test_state_last_exit_at_roundtrip(tmp_path):
+    """last_exit_at 필드가 save/load 라운드트립에서 보존된다."""
+    store = OrderStore(tmp_path / "state.json")
+    ts = "2026-04-14T08:55:00+00:00"
+    state = State(last_exit_at=ts)
+    store.save(state)
+    loaded = store.load()
+    assert loaded.last_exit_at == ts

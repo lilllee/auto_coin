@@ -17,6 +17,7 @@
 {% endif %}
 
 <form method="post" action="/setup/totp" class="space-y-3">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <label class="block">
     <span class="block text-sm text-slate-600 mb-1">6자리 코드</span>
     <input type="text" inputmode="numeric" pattern="[0-9]{6}" name="code" maxlength="6" minlength="6" required

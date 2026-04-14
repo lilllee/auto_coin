@@ -80,3 +80,28 @@ def test_daily_pnl_rendered():
     text = build_daily_report(state)
     assert "-1.23%" in text
     assert "2026-04-13" in text
+
+
+def test_multi_ticker_report_shows_sum_and_average():
+    """When avg_daily_pnl and n_tickers > 1, report includes both values."""
+    # 3 tickers each +2% → sum +6%, avg +2%
+    state = State(daily_pnl_ratio=0.06, daily_pnl_date="2026-04-14")
+    text = build_daily_report(state, avg_daily_pnl=0.02, n_tickers=3)
+    assert "daily_pnl_avg" in text
+    assert "+2.00%" in text   # average
+    assert "+6.00%" in text   # sum
+    assert "3종목" in text
+
+
+def test_single_ticker_report_omits_average():
+    """When n_tickers == 1, the avg line should not appear."""
+    state = State(daily_pnl_ratio=0.02, daily_pnl_date="2026-04-14")
+    text = build_daily_report(state, avg_daily_pnl=0.02, n_tickers=1)
+    assert "daily_pnl_avg" not in text
+
+
+def test_no_avg_kwarg_omits_average():
+    """When avg_daily_pnl is not provided, the avg line should not appear."""
+    state = State(daily_pnl_ratio=0.06)
+    text = build_daily_report(state)
+    assert "daily_pnl_avg" not in text

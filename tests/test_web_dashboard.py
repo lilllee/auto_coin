@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pyotp
 import pytest
+from csrf_helpers import csrf_data
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
@@ -43,6 +44,13 @@ def _login(client: TestClient) -> None:
         user = get_user(db)
         secret = SecretBox().decrypt(user.totp_secret_enc)
     client.post("/setup/totp", data={"code": pyotp.TOTP(secret).now()})
+
+
+def _current_totp_code() -> str:
+    with Session(web_db.engine()) as db:
+        user = get_user(db)
+        secret = SecretBox().decrypt(user.totp_secret_enc)
+    return pyotp.TOTP(secret).now()
 
 
 def _seed_position(tmp_path, ticker: str, *, entry: float = 100.0, volume: float = 0.5):
@@ -88,6 +96,39 @@ def test_dashboard_shows_positions_and_pnl(app_env):
         assert "BUY" in r.text
 
 
+def test_dashboard_context_contains_avg_and_total_pnl(app_env, mocker):
+    """_collect_dashboard_context must expose both total_daily_pnl and avg_daily_pnl."""
+    from auto_coin.web.crypto import SecretBox
+    from auto_coin.web.routers.dashboard import _collect_dashboard_context
+
+    # seed two positions so slot_used = 2
+    _seed_position(app_env, "KRW-BTC", entry=100.0)
+    _seed_position(app_env, "KRW-ETH", entry=200.0)
+
+    # manually set daily_pnl_ratio on each state file
+    from auto_coin.executor.store import OrderStore
+    for ticker, pnl in [("KRW-BTC", 0.02), ("KRW-ETH", 0.02)]:
+        safe = ticker.replace("/", "_")
+        store = OrderStore(app_env / "state" / f"{safe}.json")
+        state = store.load()
+        state.daily_pnl_ratio = pnl
+        store.save(state)
+
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        with Session(web_db.engine()) as db:
+            box = SecretBox()
+            manager = app.state.bot_manager  # type: ignore[attr-defined]
+            ctx = _collect_dashboard_context(db, box, manager)
+
+    assert "total_daily_pnl" in ctx
+    assert "avg_daily_pnl" in ctx
+    # total = 0.02 + 0.02 = 0.04; avg = 0.04 / 2 = 0.02
+    assert abs(ctx["total_daily_pnl"] - 0.04) < 1e-9
+    assert abs(ctx["avg_daily_pnl"] - 0.02) < 1e-9
+
+
 def test_dashboard_partial_returns_body_only(app_env):
     app = create_app()
     with TestClient(app) as client:
@@ -108,13 +149,13 @@ def test_kill_switch_toggle_persists(app_env, mocker):
         with Session(web_db.engine()) as db:
             s = load_runtime_settings(db, SecretBox())
             assert s.kill_switch is False
-        r = client.post("/control/kill-switch", follow_redirects=False)
+        r = client.post("/control/kill-switch", data=csrf_data(client), follow_redirects=False)
         assert r.status_code == 303
         with Session(web_db.engine()) as db:
             s = load_runtime_settings(db, SecretBox())
             assert s.kill_switch is True
         # 다시 토글 → OFF
-        client.post("/control/kill-switch")
+        client.post("/control/kill-switch", data=csrf_data(client))
         with Session(web_db.engine()) as db:
             s = load_runtime_settings(db, SecretBox())
             assert s.kill_switch is False
@@ -125,7 +166,7 @@ def test_restart_calls_reload(app_env, mocker):
     with TestClient(app) as client:
         _login(client)
         reload_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
-        r = client.post("/control/restart", follow_redirects=False)
+        r = client.post("/control/restart", data=csrf_data(client), follow_redirects=False)
         assert r.status_code == 303
         reload_spy.assert_called_once()
 
@@ -135,7 +176,7 @@ def test_stop_requires_confirmation(app_env, mocker):
     with TestClient(app) as client:
         _login(client)
         stop_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.stop")
-        r = client.post("/control/stop", data={"confirm": ""}, follow_redirects=False)
+        r = client.post("/control/stop", data=csrf_data(client, {"confirm": ""}), follow_redirects=False)
         assert r.status_code == 303
         stop_spy.assert_not_called()
 
@@ -146,7 +187,7 @@ def test_stop_with_confirmation_stops(app_env, mocker):
         _login(client)
         stop_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.stop")
         # running 상태로 만들기 위해 default는 start되어 있음
-        r = client.post("/control/stop", data={"confirm": "yes"}, follow_redirects=False)
+        r = client.post("/control/stop", data=csrf_data(client, {"confirm": "yes"}), follow_redirects=False)
         assert r.status_code == 303
         stop_spy.assert_called_once()
 
@@ -157,12 +198,12 @@ def test_start_when_stopped(app_env, mocker):
         _login(client)
         # 먼저 stop
         mocker.patch("auto_coin.web.bot_manager.BotManager.stop")
-        client.post("/control/stop", data={"confirm": "yes"})
+        client.post("/control/stop", data=csrf_data(client, {"confirm": "yes"}))
         # running=False 상태 simulate
         mocker.patch("auto_coin.web.bot_manager.BotManager.running",
                      new_callable=mocker.PropertyMock, return_value=False)
         start_spy = mocker.patch("auto_coin.web.bot_manager.BotManager.start")
-        r = client.post("/control/start", follow_redirects=False)
+        r = client.post("/control/start", data=csrf_data(client), follow_redirects=False)
         assert r.status_code == 303
         start_spy.assert_called_once()
 
@@ -170,10 +211,10 @@ def test_start_when_stopped(app_env, mocker):
 def test_control_requires_auth(app_env):
     app = create_app()
     with TestClient(app) as client:
+        # 미인증 POST는 현재 설치 상태에 따라 setup 또는 login으로 보낸다.
         r = client.post("/control/kill-switch", follow_redirects=False)
         assert r.status_code == 303
-        # 미인증 → /setup 또는 /login
-        assert r.headers["location"] in ("/setup", "/login")
+        assert r.headers["location"] in {"/setup", "/login"}
 
 
 def test_kill_switch_flash_shows_on_next_load(app_env, mocker):
@@ -181,7 +222,7 @@ def test_kill_switch_flash_shows_on_next_load(app_env, mocker):
     with TestClient(app) as client:
         _login(client)
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
-        client.post("/control/kill-switch", follow_redirects=False)
+        client.post("/control/kill-switch", data=csrf_data(client), follow_redirects=False)
         # 다음 GET 시 flash 메시지 렌더
         r = client.get("/")
         assert "Kill-switch 켜짐" in r.text
@@ -194,10 +235,12 @@ def test_dashboard_includes_live_badge_when_is_live(app_env, mocker):
         # settings 수정 → live
         mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
         client.post("/settings/schedule",
-                    data={"check_interval_seconds": "60",
-                          "heartbeat_interval_hours": "0",
-                          "exit_hour_kst": "8", "exit_minute_kst": "55",
-                          "daily_reset_hour_kst": "9",
-                          "mode": "live", "live_trading": "on"})
+                    data=csrf_data(client, {
+                        "check_interval_seconds": "60",
+                        "heartbeat_interval_hours": "0",
+                        "exit_hour_kst": "8", "exit_minute_kst": "55",
+                        "daily_reset_hour_kst": "9",
+                        "mode": "live", "live_trading": "on",
+                        "totp_code": _current_totp_code()}))
         r = client.get("/")
         assert "LIVE" in r.text

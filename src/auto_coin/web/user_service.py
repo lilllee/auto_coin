@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import json
+import secrets
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -22,6 +24,7 @@ from auto_coin.web.models import User, _now
 
 LOCKOUT_THRESHOLD = 5
 LOCKOUT_DURATION = timedelta(minutes=10)
+RECOVERY_CODE_COUNT = 8
 
 
 @dataclass(frozen=True)
@@ -36,6 +39,21 @@ class LoginSuccess:
 
 
 LoginResult = LoginSuccess | LoginFailure
+
+
+@dataclass(frozen=True)
+class RecoveryFailure:
+    reason: str  # "no_user" | "invalid_code"
+
+
+@dataclass(frozen=True)
+class RecoverySuccess:
+    user_id: int
+    secret: str
+    recovery_codes: tuple[str, ...]
+
+
+RecoveryResult = RecoverySuccess | RecoveryFailure
 
 
 # ----- 순수 유틸 -----------------------------------------------------------
@@ -61,6 +79,19 @@ def generate_totp_secret() -> str:
     return pyotp.random_base32()
 
 
+def generate_recovery_codes(count: int = RECOVERY_CODE_COUNT) -> tuple[str, ...]:
+    codes: list[str] = []
+    seen: set[str] = set()
+    while len(codes) < count:
+        raw = secrets.token_hex(4).upper()
+        code = f"{raw[:4]}-{raw[4:]}"
+        if code in seen:
+            continue
+        seen.add(code)
+        codes.append(code)
+    return tuple(codes)
+
+
 def verify_totp(secret: str, code: str) -> bool:
     if not code or not code.isdigit() or len(code) != 6:
         return False
@@ -70,6 +101,20 @@ def verify_totp(secret: str, code: str) -> bool:
 def totp_provisioning_uri(secret: str, *, username: str, issuer: str = "auto_coin") -> str:
     """QR 코드로 인코딩할 otpauth:// URI."""
     return pyotp.TOTP(secret).provisioning_uri(name=username, issuer_name=issuer)
+
+
+def decrypt_recovery_codes(box: SecretBox, encrypted_codes: str) -> tuple[str, ...]:
+    if not encrypted_codes:
+        return ()
+    return tuple(json.loads(box.decrypt(encrypted_codes)))
+
+
+def _encrypt_recovery_codes(box: SecretBox, codes: tuple[str, ...]) -> str:
+    return box.encrypt(json.dumps(list(codes)))
+
+
+def _normalize_recovery_code(code: str) -> str:
+    return "".join(char for char in code.upper() if char.isalnum())
 
 
 # ----- DB 헬퍼 -------------------------------------------------------------
@@ -99,6 +144,7 @@ def create_user(
         username=username,
         password_hash=hash_password(password),
         totp_secret_enc=box.encrypt(totp_secret),
+        recovery_codes_enc="",
         totp_confirmed=False,
     )
     session.add(user)
@@ -117,6 +163,18 @@ def confirm_totp(session: Session, box: SecretBox, *, user: User, code: str) -> 
     session.commit()
     session.refresh(user)
     return True
+
+
+def ensure_recovery_codes(session: Session, box: SecretBox, *, user: User) -> tuple[str, ...]:
+    codes = decrypt_recovery_codes(box, user.recovery_codes_enc)
+    if codes:
+        return codes
+    codes = generate_recovery_codes()
+    user.recovery_codes_enc = _encrypt_recovery_codes(box, codes)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return codes
 
 
 def attempt_login(
@@ -155,6 +213,35 @@ def attempt_login(
     session.add(user)
     session.commit()
     return LoginSuccess(user_id=user.id)
+
+
+def reset_totp_with_recovery_code(
+    session: Session,
+    box: SecretBox,
+    *,
+    code: str,
+    username: str = "admin",
+) -> RecoveryResult:
+    user = get_user(session, username)
+    if user is None:
+        return RecoveryFailure("no_user")
+
+    submitted = _normalize_recovery_code(code)
+    recovery_codes = decrypt_recovery_codes(box, user.recovery_codes_enc)
+    if not submitted or submitted not in {_normalize_recovery_code(item) for item in recovery_codes}:
+        return RecoveryFailure("invalid_code")
+
+    new_secret = generate_totp_secret()
+    new_codes = generate_recovery_codes()
+    user.totp_secret_enc = box.encrypt(new_secret)
+    user.recovery_codes_enc = _encrypt_recovery_codes(box, new_codes)
+    user.totp_confirmed = False
+    user.failed_attempts = 0
+    user.locked_until = None
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return RecoverySuccess(user_id=user.id, secret=new_secret, recovery_codes=new_codes)
 
 
 def _record_failure(session: Session, user: User) -> None:

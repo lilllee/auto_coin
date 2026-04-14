@@ -43,6 +43,7 @@ class RiskContext:
     # 포트폴리오 제약 (멀티 종목). 단일 종목이면 기본값 그대로 쓰면 된다.
     portfolio_open_positions: int = 0  # 지금 보유 중인 종목 수 (자신 제외 X, 포함해서 센다)
     portfolio_max_positions: int = 1   # 동시 보유 상한
+    cooldown_active: bool = False  # True면 해당 종목이 쿨다운 기간 중
 
 
 class RiskManager:
@@ -53,8 +54,19 @@ class RiskManager:
         s = self._s
         has_position = ctx.coin_balance > 0
 
+        # 0) 가격 데이터 무효 — 어떤 판단도 하지 않음
+        if ctx.current_price <= 0:
+            return Decision(Action.HOLD, reason="invalid price (<=0)")
+
         # 1) 보유 중 손절은 모든 다른 판단보다 우선 — 즉시 청산
-        if has_position and ctx.avg_entry_price is not None and ctx.avg_entry_price > 0:
+        if has_position and ctx.avg_entry_price is not None:
+            if ctx.avg_entry_price <= 0:
+                # avg_entry_price가 0 이하이면 P&L 계산 불가 — 안전을 위해 강제 청산
+                return Decision(
+                    action=Action.SELL,
+                    reason="avg_entry_price invalid (<=0), forced exit for safety",
+                    volume=ctx.coin_balance,
+                )
             unrealized = (ctx.current_price - ctx.avg_entry_price) / ctx.avg_entry_price
             if unrealized <= s.stop_loss_ratio:
                 return Decision(
@@ -66,6 +78,10 @@ class RiskManager:
         # 2) Kill-switch는 신규 진입(BUY)만 차단 — 기존 포지션 청산은 막지 않는다
         if s.kill_switch and signal is Signal.BUY:
             return Decision(Action.HOLD, reason="kill_switch active")
+
+        # 2.5) 쿨다운 기간 중 신규 진입 차단
+        if signal is Signal.BUY and ctx.cooldown_active:
+            return Decision(Action.HOLD, reason="cooldown active (recent exit)")
 
         # 3) 일일 손실 한도 도달 시 신규 진입 차단
         if signal is Signal.BUY and ctx.daily_pnl_ratio <= s.daily_loss_limit:

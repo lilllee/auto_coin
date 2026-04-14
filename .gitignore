@@ -38,3 +38,6 @@ state/
 *.sqlite3
 *.db
 .bot.pid
+.omx/
+.omc/project-memory.json
+.omc/sessions/

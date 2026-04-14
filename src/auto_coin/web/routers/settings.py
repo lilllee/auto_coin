@@ -29,6 +29,7 @@ from auto_coin.web.services.credentials_check import (
     fetch_upbit_holdings,
 )
 from auto_coin.web.settings_service import load_runtime_settings, save_runtime_settings
+from auto_coin.web.user_service import get_user, verify_totp
 
 router = APIRouter(prefix="/settings")
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
@@ -421,6 +422,7 @@ def schedule_post(
     daily_reset_hour_kst: int = Form(...),
     mode: str = Form(...),
     live_trading: str = Form(default=""),
+    totp_code: str = Form(default=""),
     db: Session = Depends(get_session_db),
     box: SecretBox = Depends(get_box),
     manager: BotManager = Depends(get_manager),
@@ -444,6 +446,24 @@ def schedule_post(
             context={"s": current, "error": err},
             status_code=400,
         )
+
+    if current.mode != Mode.LIVE and new.mode == Mode.LIVE:
+        user = get_user(db)
+        secret = box.decrypt(user.totp_secret_enc) if user is not None else ""
+        if not verify_totp(secret, totp_code):
+            audit.record(
+                db,
+                "settings.schedule.live_totp_rejected",
+                before=_summary_for_audit(current),
+                after={"requested_mode": new.mode.value, "reason": "bad_totp"},
+            )
+            return templates.TemplateResponse(
+                request=request,
+                name="settings/schedule.html",
+                context={"s": current, "error": "실거래 전환에는 현재 TOTP 6자리 인증이 필요합니다."},
+                status_code=400,
+            )
+
     _apply(db, box, manager, current, new, "settings.schedule")
     flash(request, f"스케줄 저장됨 — mode={new.mode.value}, live={new.is_live}")
     return RedirectResponse("/settings/schedule", status_code=303)

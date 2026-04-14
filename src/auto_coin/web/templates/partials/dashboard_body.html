@@ -9,10 +9,15 @@
     <div class="text-lg font-semibold">{{ slot_used }}/{{ slot_max }}</div>
   </div>
   <div class="bg-white border border-slate-200 rounded p-2">
-    <div class="text-xs text-slate-500">일일 PnL (합산)</div>
-    <div class="text-lg font-semibold {% if total_daily_pnl > 0 %}text-emerald-600{% elif total_daily_pnl < 0 %}text-red-600{% endif %}">
-      {{ sign_pct(total_daily_pnl) }}
+    <div class="text-xs text-slate-500">일일 수익</div>
+    <div class="text-lg font-semibold {% if avg_daily_pnl > 0 %}text-emerald-600{% elif avg_daily_pnl < 0 %}text-red-600{% endif %}">
+      {{ sign_pct(avg_daily_pnl) }} <span class="text-xs font-normal text-slate-400">평균</span>
     </div>
+    {% if slot_used > 1 %}
+    <div class="text-xs text-slate-400 mt-0.5">
+      합산 {{ sign_pct(total_daily_pnl) }} ({{ slot_used }}종목)
+    </div>
+    {% endif %}
   </div>
   <div class="bg-white border border-slate-200 rounded p-2">
     <div class="text-xs text-slate-500">{% if settings.is_live %}KRW 잔고{% else %}가상 자본{% endif %}</div>

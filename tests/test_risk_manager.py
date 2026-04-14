@@ -162,3 +162,69 @@ def test_stop_loss_still_fires_even_when_slots_full(rm):
     d = rm.evaluate(Signal.HOLD, ctx)
     assert d.action is Action.SELL
     assert "stop_loss" in d.reason
+
+
+def test_stop_loss_avg_entry_price_zero_forces_sell(rm):
+    """avg_entry_price=0이면 P&L 계산 불가 — 안전을 위해 강제 SELL."""
+    ctx = RiskContext(krw_balance=0, coin_balance=0.001, current_price=100.0,
+                      avg_entry_price=0)
+    d = rm.evaluate(Signal.HOLD, ctx)
+    assert d.action is Action.SELL
+    assert "avg_entry_price invalid" in d.reason
+    assert "forced exit" in d.reason
+    assert d.volume == pytest.approx(0.001)
+
+
+def test_stop_loss_avg_entry_price_negative_forces_sell(rm):
+    """avg_entry_price가 음수면 동일하게 강제 SELL."""
+    ctx = RiskContext(krw_balance=0, coin_balance=0.001, current_price=100.0,
+                      avg_entry_price=-100)
+    d = rm.evaluate(Signal.HOLD, ctx)
+    assert d.action is Action.SELL
+    assert "avg_entry_price invalid" in d.reason
+    assert "forced exit" in d.reason
+    assert d.volume == pytest.approx(0.001)
+
+
+def test_cooldown_active_blocks_buy(rm):
+    """쿨다운 활성 상태에서 BUY 시그널은 HOLD로 차단된다."""
+    ctx = RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0,
+                      cooldown_active=True)
+    d = rm.evaluate(Signal.BUY, ctx)
+    assert d.action is Action.HOLD
+    assert "cooldown" in d.reason
+
+
+def test_cooldown_inactive_allows_buy(rm):
+    """쿨다운 비활성이면 BUY 시그널이 정상 통과한다."""
+    ctx = RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0,
+                      cooldown_active=False)
+    d = rm.evaluate(Signal.BUY, ctx)
+    assert d.action is Action.BUY
+
+
+def test_cooldown_does_not_block_sell(rm):
+    """쿨다운은 SELL에 영향을 주지 않는다."""
+    ctx = RiskContext(krw_balance=0, coin_balance=0.001, current_price=100.0,
+                      avg_entry_price=100.0, cooldown_active=True)
+    d = rm.evaluate(Signal.SELL, ctx)
+    assert d.action is Action.SELL
+
+
+def test_invalid_price_zero_returns_hold(rm):
+    """current_price=0이면 BUY 시그널도 HOLD로 차단."""
+    ctx = RiskContext(krw_balance=100_000, coin_balance=0, current_price=0)
+    d = rm.evaluate(Signal.BUY, ctx)
+    assert d.action is Action.HOLD
+    assert "invalid price" in d.reason
+
+
+def test_invalid_price_zero_blocks_stop_loss(rm):
+    """current_price=0이면 손절 계산도 하지 않고 HOLD — 가격이 무효."""
+    ctx = RiskContext(
+        krw_balance=0, coin_balance=0.001, current_price=0,
+        avg_entry_price=100.0,  # 포지션 보유 중, 손절 기준이 있지만 가격 무효
+    )
+    d = rm.evaluate(Signal.HOLD, ctx)
+    assert d.action is Action.HOLD
+    assert "invalid price" in d.reason

@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     daily_loss_limit: float = Field(-0.03, lt=0)
     stop_loss_ratio: float = Field(-0.02, lt=0)
     min_order_krw: int = Field(5000, ge=5000)
+    cooldown_minutes: int = Field(30, ge=0, le=1440)  # 0 = 비활성
+    fill_poll_interval_seconds: float = Field(1.0, ge=0.5, le=10.0)
+    fill_poll_timeout_seconds: float = Field(10.0, ge=1.0, le=60.0)
     api_max_retries: int = Field(3, ge=0)
 
     paper_initial_krw: float = Field(1_000_000.0, gt=0)

@@ -125,6 +125,24 @@ def test_watch_ticker_list_includes_full_portfolio():
     assert s.watch_ticker_list == ["KRW-BTC", "KRW-ETH", "KRW-SOL", "KRW-DOGE"]
 
 
+def test_cooldown_minutes_default():
+    s = Settings(_env_file=None)
+    assert s.cooldown_minutes == 30
+
+
+def test_cooldown_minutes_zero_disabled():
+    """cooldown_minutes=0은 비활성을 의미하며 유효한 값이다."""
+    s = Settings(_env_file=None, cooldown_minutes=0)
+    assert s.cooldown_minutes == 0
+
+
+def test_cooldown_minutes_validation():
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, cooldown_minutes=-1)
+    with pytest.raises(ValueError):
+        Settings(_env_file=None, cooldown_minutes=1441)
+
+
 def test_max_concurrent_positions_validation():
     with pytest.raises(ValueError):
         Settings(_env_file=None, max_concurrent_positions=0)

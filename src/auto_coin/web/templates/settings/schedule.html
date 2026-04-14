@@ -13,6 +13,7 @@
 {% endif %}
 
 <form method="post" action="/settings/schedule" class="space-y-3">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <label class="block mb-3">
     <span class="block text-sm text-slate-600 mb-1">모드</span>
     <select name="mode" class="w-full border border-slate-300 rounded px-3 py-2 text-base">
@@ -36,6 +37,16 @@
            s.exit_minute_kst, type="number", min="0", max="59") }}
   {{ field("daily_reset_hour_kst", "일일 리셋 시각 — 시 (KST)",
            s.daily_reset_hour_kst, type="number", min="0", max="23") }}
+  <label class="block">
+    <span class="block text-sm text-slate-600 mb-1">라이브 전환 TOTP 6자리</span>
+    <input type="text" name="totp_code" inputmode="numeric" pattern="[0-9]{6}"
+           maxlength="6" minlength="6" autocomplete="one-time-code"
+           class="w-full border border-slate-300 rounded px-3 py-2 text-base font-mono"
+           placeholder="paper → live 전환 시에만 필요">
+    <span class="block text-xs text-slate-400 mt-1">
+      현재 paper 모드에서 live 모드로 바꿀 때만 검증합니다.
+    </span>
+  </label>
   {{ submit() }}
 </form>
 {% endblock %}

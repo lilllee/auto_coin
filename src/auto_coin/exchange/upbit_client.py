@@ -179,3 +179,14 @@ class UpbitClient:
         if not isinstance(raw, dict) or "uuid" not in raw:
             raise UpbitError(f"unexpected sell response: {raw!r}")
         return OrderResult(uuid=raw["uuid"], side="sell", market=ticker, raw=raw)
+
+    def get_order(self, uuid: str) -> dict:
+        """주문 UUID로 체결 상태 조회."""
+        upbit = self._require_auth()
+        raw = self._call(
+            f"get_order({uuid})",
+            lambda: upbit.get_order(uuid),
+        )
+        if not isinstance(raw, dict):
+            raise UpbitError(f"unexpected order response: {raw!r}")
+        return raw

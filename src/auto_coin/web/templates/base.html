@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>{% block title %}auto_coin{% endblock %}</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<meta name="csrf-token" content="{{ request.session.get('csrf_token', '') }}">
 <script src="https://unpkg.com/htmx.org@1.9.12"></script>
 <style>
   body { -webkit-tap-highlight-color: transparent; }
@@ -22,6 +23,7 @@
   <a href="/" class="font-semibold tracking-tight">auto_coin</a>
   {% if authed %}
     <form method="post" action="/logout" class="m-0">
+      <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <button class="text-sm text-slate-500 hover:text-slate-900" type="submit">로그아웃</button>
     </form>
   {% endif %}
@@ -68,5 +70,11 @@
 </nav>
 {% endif %}
 
+<script>
+document.body.addEventListener('htmx:configRequest', function(event) {
+  var token = document.querySelector('meta[name="csrf-token"]');
+  if (token) { event.detail.headers['X-CSRF-Token'] = token.getAttribute('content'); }
+});
+</script>
 </body>
 </html>

@@ -42,6 +42,7 @@ class State:
     orders: list[OrderRecord] = field(default_factory=list)
     daily_pnl_ratio: float = 0.0
     daily_pnl_date: str = ""  # YYYY-MM-DD (UTC)
+    last_exit_at: str = ""  # ISO8601 — 마지막 청산 시각 (쿨다운 기준)
 
 
 def now_iso() -> str:
@@ -80,6 +81,7 @@ class OrderStore:
             orders=orders,
             daily_pnl_ratio=float(raw.get("daily_pnl_ratio", 0.0)),
             daily_pnl_date=raw.get("daily_pnl_date", ""),
+            last_exit_at=raw.get("last_exit_at", ""),
         )
 
     def save(self, state: State) -> None:
@@ -89,6 +91,7 @@ class OrderStore:
             "orders": [asdict(o) for o in state.orders],
             "daily_pnl_ratio": state.daily_pnl_ratio,
             "daily_pnl_date": state.daily_pnl_date,
+            "last_exit_at": state.last_exit_at,
         }
         # 같은 디렉토리에 임시파일을 만들어 atomic replace
         fd, tmp_path = tempfile.mkstemp(prefix=".state-", dir=str(self._path.parent))

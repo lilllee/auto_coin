@@ -31,21 +31,25 @@
 <div class="grid grid-cols-2 gap-2 mb-4 text-sm">
   <form method="post" action="/control/kill-switch" class="m-0"
         onsubmit="return confirm('{% if settings.kill_switch %}Kill-switch를 해제할까요?{% else %}신규 진입을 전면 차단합니다. 계속할까요?{% endif %}');">
+    <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
     <button type="submit" class="btn w-full rounded {% if settings.kill_switch %}bg-emerald-600 text-white{% else %}bg-amber-500 text-white{% endif %}">
       {% if settings.kill_switch %}Kill-switch 해제{% else %}Kill-switch 켜기{% endif %}
     </button>
   </form>
   <form method="post" action="/control/restart" class="m-0">
+    <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
     <button type="submit" class="btn w-full rounded border border-slate-300 bg-white">재시작(reload)</button>
   </form>
   {% if running %}
     <form method="post" action="/control/stop" class="m-0 col-span-2"
           onsubmit="this.confirm_input.value = confirm('봇을 정지할까요? (포지션은 그대로 유지)') ? 'yes' : ''">
+      <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <input type="hidden" name="confirm" value="" />
       <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 정지</button>
     </form>
   {% else %}
     <form method="post" action="/control/start" class="m-0 col-span-2">
+      <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 시작</button>
     </form>
   {% endif %}

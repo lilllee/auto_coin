@@ -15,7 +15,7 @@ from auto_coin.config import Settings
 from auto_coin.data.candles import fetch_daily
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
-from auto_coin.executor.store import OrderRecord, OrderStore, today_utc
+from auto_coin.executor.store import OrderRecord, OrderStore, State, today_utc
 from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.reporter import build_daily_report
@@ -99,6 +99,7 @@ class TradingBot:
                 daily_pnl_ratio=total_daily_pnl,
                 portfolio_open_positions=open_positions,
                 portfolio_max_positions=self._s.max_concurrent_positions,
+                cooldown_active=self._is_cooldown_active(state),
             )
             decision = self._risk.evaluate(signal, ctx)
             logger.debug("tick {}: signal={} decision={} reason={}",
@@ -140,6 +141,7 @@ class TradingBot:
             state = store.load()
             state.daily_pnl_ratio = 0.0
             state.daily_pnl_date = today_utc()
+            state.last_exit_at = ""
             store.save(state)
         logger.info("daily reset — previous day portfolio pnl was {:+.2%}", prev_total)
         self._notifier.send(f"📊 daily reset — yesterday portfolio pnl: {prev_total*100:+.2f}%")
@@ -289,6 +291,22 @@ class TradingBot:
 
     def _total_daily_pnl_ratio(self) -> float:
         return sum(s.load().daily_pnl_ratio for s in self._stores.values())
+
+    def _is_cooldown_active(self, state: State) -> bool:
+        """최근 청산 이후 쿨다운 기간이 남아 있는지 확인."""
+        if self._s.cooldown_minutes <= 0:
+            return False
+        if not state.last_exit_at:
+            return False
+        from datetime import UTC, datetime, timedelta
+        try:
+            exit_time = datetime.fromisoformat(state.last_exit_at)
+            if exit_time.tzinfo is None:
+                exit_time = exit_time.replace(tzinfo=UTC)
+            cooldown_end = exit_time + timedelta(minutes=self._s.cooldown_minutes)
+            return datetime.now(UTC) < cooldown_end
+        except (ValueError, TypeError):
+            return False
 
     def _krw_slot_budget(self, is_live: bool) -> float:
         """한 종목 진입 시 "사용 가능한 KRW 잔고"로 리포트할 값.

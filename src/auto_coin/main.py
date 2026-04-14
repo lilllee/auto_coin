@@ -44,7 +44,11 @@ def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
     for t in tickers:
         safe = t.replace("/", "_")
         stores[t] = OrderStore(settings.state_dir / f"{safe}.json")
-        executors[t] = OrderExecutor(client, stores[t], t, live=settings.is_live)
+        executors[t] = OrderExecutor(
+            client, stores[t], t, live=settings.is_live,
+            fill_poll_interval=settings.fill_poll_interval_seconds,
+            fill_poll_timeout=settings.fill_poll_timeout_seconds,
+        )
 
     strategy = VolatilityBreakout(k=settings.strategy_k, ma_window=settings.ma_filter_window)
     risk_manager = RiskManager(settings)

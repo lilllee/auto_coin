@@ -11,6 +11,7 @@
 </div>
 
 <form method="post" action="/settings/api-keys" class="space-y-4">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <fieldset class="border border-slate-200 rounded p-3">
     <legend class="text-sm font-semibold px-1">Upbit</legend>
     <label class="block mb-3">

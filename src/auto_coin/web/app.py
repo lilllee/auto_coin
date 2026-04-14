@@ -24,6 +24,7 @@ from auto_coin.logging_setup import setup_logging
 from auto_coin.web import db as web_db
 from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
+from auto_coin.web.csrf import CSRFMiddleware
 from auto_coin.web.routers import auth as auth_router
 from auto_coin.web.routers import charts as charts_router
 from auto_coin.web.routers import control as control_router
@@ -76,6 +77,11 @@ def create_app() -> FastAPI:
 
     # 세션 쿠키 서명 키 — 파일 기반으로 프로세스 간 일관성 유지
     session_secret = load_or_create_session_secret()
+
+    # CSRF 미들웨어 (inner — Session 안에서 동작)
+    app.add_middleware(CSRFMiddleware)
+
+    # SessionMiddleware (outer — CSRF보다 먼저 세션을 세팅)
     app.add_middleware(
         SessionMiddleware,
         secret_key=session_secret,
@@ -118,7 +124,7 @@ def create_app() -> FastAPI:
 
     def _wants_html(request: _Req) -> bool:
         accept = request.headers.get("accept", "")
-        return "text/html" in accept or "*/*" in accept and not request.url.path.startswith("/health")
+        return ("text/html" in accept or "*/*" in accept) and not request.url.path.startswith("/health")
 
     @app.exception_handler(HTTPException)
     async def http_exc_handler(request: _Req, exc: HTTPException):

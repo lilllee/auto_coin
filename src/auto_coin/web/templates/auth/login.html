@@ -11,6 +11,7 @@
 </div>
 {% endif %}
 <form method="post" action="/login" class="space-y-3">
+  <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <label class="block">
     <span class="block text-sm text-slate-600 mb-1">패스워드</span>
     <input type="password" name="password" required autocomplete="current-password"
@@ -24,4 +25,8 @@
   </label>
   <button type="submit" class="btn w-full rounded bg-slate-900 text-white py-3">로그인</button>
 </form>
+<p class="mt-3 text-center text-sm text-slate-500">
+  인증 앱을 잃어버렸다면
+  <a href="/recovery" class="text-slate-900 underline underline-offset-2">복구 코드로 재설정</a>
+</p>
 {% endblock %}

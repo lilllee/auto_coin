@@ -131,7 +131,11 @@ class BotManager:
         for t in tickers:
             safe = t.replace("/", "_")
             stores[t] = OrderStore(state_dir / f"{safe}.json")
-            executors[t] = OrderExecutor(client, stores[t], t, live=settings.is_live)
+            executors[t] = OrderExecutor(
+                client, stores[t], t, live=settings.is_live,
+                fill_poll_interval=settings.fill_poll_interval_seconds,
+                fill_poll_timeout=settings.fill_poll_timeout_seconds,
+            )
 
         notifier = TelegramNotifier(
             bot_token=settings.telegram_bot_token.get_secret_value(),

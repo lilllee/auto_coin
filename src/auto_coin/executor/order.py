@@ -8,12 +8,13 @@
 
 from __future__ import annotations
 
+import time
 import uuid
 from dataclasses import replace
 
 from loguru import logger
 
-from auto_coin.exchange.upbit_client import UpbitClient
+from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.store import OrderRecord, OrderStore, Position, now_iso
 from auto_coin.formatting import format_price
 from auto_coin.risk.manager import Action, Decision
@@ -27,11 +28,15 @@ class OrderExecutor:
         ticker: str,
         *,
         live: bool = False,
+        fill_poll_interval: float = 1.0,
+        fill_poll_timeout: float = 10.0,
     ) -> None:
         self._client = client
         self._store = store
         self._ticker = ticker
         self._live = live
+        self._fill_poll_interval = fill_poll_interval
+        self._fill_poll_timeout = fill_poll_timeout
         if live and not client.authenticated:
             raise ValueError("live mode requires authenticated UpbitClient")
 
@@ -50,6 +55,39 @@ class OrderExecutor:
             return self._do_sell(decision, current_price=current_price)
         raise ValueError(f"unknown action: {decision.action!r}")
 
+    # ----- fill polling -----
+
+    def _poll_fill(self, order_uuid: str, side: str) -> dict | None:
+        """실거래 체결 확인 폴링. 타임아웃 내 체결되면 상세 정보 반환, 아니면 None."""
+        if not self._live:
+            return None
+
+        interval = self._fill_poll_interval
+        timeout = self._fill_poll_timeout
+        deadline = time.monotonic() + timeout
+
+        while time.monotonic() < deadline:
+            try:
+                order = self._client.get_order(order_uuid)
+            except UpbitError as exc:
+                logger.warning("fill poll failed for {}: {}", order_uuid, exc)
+                time.sleep(interval)
+                continue
+
+            state_val = order.get("state", "")
+            # 업비트 주문 상태: wait(대기), watch(예약), done(체결완료), cancel(취소)
+            if state_val == "done":
+                logger.info("order {} filled ({})", order_uuid, side)
+                return order
+            if state_val == "cancel":
+                logger.warning("order {} was cancelled", order_uuid)
+                return order
+
+            time.sleep(interval)
+
+        logger.warning("fill poll timeout for {} after {:.0f}s", order_uuid, timeout)
+        return None
+
     # ----- buy -----
 
     def _do_buy(self, decision: Decision, *, current_price: float) -> OrderRecord:
@@ -67,29 +105,63 @@ class OrderExecutor:
             note = "paper buy"
 
         # 페이퍼 체결 가정: 현재가에 즉시 전량 체결
+        # 실거래는 추정치를 기록 (체결 확인 전이지만 force_exit 등이 volume 0을 보지 않도록)
         volume = decision.krw_amount / current_price if current_price > 0 else 0.0
+
+        # 실거래 체결 확인 폴링 — 체결되면 실제 데이터로 갱신
+        if self._live:
+            fill_info = self._poll_fill(external_uuid, "buy")
+            if fill_info and fill_info.get("state") == "done":
+                executed_volume = float(fill_info.get("executed_volume", 0))
+                avg_price = (
+                    float(fill_info["avg_price"])
+                    if fill_info.get("avg_price")
+                    else current_price
+                )
+                if executed_volume > 0:
+                    volume = executed_volume
+                    current_price = avg_price
+                status = "filled"
+                note = f"client_uuid={client_uuid} | filled"
+
         record = OrderRecord(
             uuid=external_uuid,
             side="buy",
             market=self._ticker,
             krw_amount=decision.krw_amount,
-            volume=volume if not self._live else None,
-            price=current_price if not self._live else None,
+            volume=volume,
+            price=current_price,
             placed_at=now_iso(),
             status=status,
             note=note,
         )
         self._record_and_open_position(record, current_price=current_price, volume=volume)
-        logger.info("BUY {} {:.0f} KRW @ {} (live={}, uuid={})",
+        logger.info("BUY {} {:.0f} KRW @ {} (live={}, uuid={}, status={})",
                     self._ticker, decision.krw_amount,
-                    format_price(current_price), self._live, record.uuid)
+                    format_price(current_price), self._live, record.uuid, status)
         return record
 
     # ----- sell -----
 
     def _do_sell(self, decision: Decision, *, current_price: float) -> OrderRecord:
         if decision.volume is None or decision.volume <= 0:
-            raise ValueError("SELL decision missing volume")
+            # 실거래에서 position.volume이 추정치로 기록된 경우 0.0이 올 수 있다.
+            # store에서 포지션 volume을 폴백으로 사용한다.
+            state = self._store.load()
+            fallback_volume = state.position.volume if state.position is not None else None
+            if fallback_volume and fallback_volume > 0:
+                logger.warning(
+                    "SELL decision.volume={} — falling back to position.volume={:.8f}",
+                    decision.volume, fallback_volume,
+                )
+                decision = Decision(
+                    action=decision.action,
+                    reason=decision.reason,
+                    volume=fallback_volume,
+                    krw_amount=decision.krw_amount,
+                )
+            else:
+                raise ValueError("SELL decision missing volume")
         client_uuid = self._new_uuid()
         if self._live:
             result = self._client.sell_market(self._ticker, decision.volume)
@@ -100,6 +172,13 @@ class OrderExecutor:
             external_uuid = client_uuid
             status = "paper"
             note = "paper sell"
+
+        # 실거래 체결 확인 폴링
+        if self._live:
+            fill_info = self._poll_fill(external_uuid, "sell")
+            if fill_info and fill_info.get("state") == "done":
+                status = "filled"
+                note = f"client_uuid={client_uuid} | filled"
 
         record = OrderRecord(
             uuid=external_uuid,
@@ -113,9 +192,9 @@ class OrderExecutor:
             note=f"{note} | reason={decision.reason}",
         )
         self._record_and_close_position(record, current_price=current_price)
-        logger.info("SELL {} vol={:.8f} @ {} (live={}, uuid={}) — {}",
+        logger.info("SELL {} vol={:.8f} @ {} (live={}, uuid={}, status={}) — {}",
                     self._ticker, decision.volume,
-                    format_price(current_price), self._live, record.uuid,
+                    format_price(current_price), self._live, record.uuid, status,
                     decision.reason)
         return record
 
@@ -129,11 +208,11 @@ class OrderExecutor:
             logger.warning("duplicate order uuid {} — skipping", record.uuid)
             return
         state.orders.append(record)
-        # 페이퍼는 즉시 체결 가정 → 포지션 생성. 실거래는 체결 확인 전이라도 임시로 보유 표시
-        # (M6에서 체결 폴링 추가 예정)
+        # 페이퍼는 즉시 체결 가정 → 포지션 생성.
+        # 실거래는 체결 확인 후 실제 volume/price로 기록 (폴링 타임아웃 시 추정치 사용).
         state.position = Position(
             ticker=self._ticker,
-            volume=volume if not self._live else 0.0,
+            volume=volume,
             avg_entry_price=current_price,
             entry_uuid=record.uuid,
             entry_at=record.placed_at,
@@ -150,6 +229,7 @@ class OrderExecutor:
         if state.position is not None and not self._live and state.position.avg_entry_price > 0:
             ret = (current_price - state.position.avg_entry_price) / state.position.avg_entry_price
             state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret)
+        state.last_exit_at = now_iso()
         state.position = None
         self._store.save(state)
 

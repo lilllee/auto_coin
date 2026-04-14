@@ -107,6 +107,20 @@ def test_invalid_params():
         VolatilityBreakout(ma_window=0)
 
 
+def test_hold_when_current_price_zero():
+    df = _enriched()
+    s = VolatilityBreakout(k=0.5, ma_window=5)
+    snap = MarketSnapshot(df=df, current_price=0, has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_hold_when_current_price_negative():
+    df = _enriched()
+    s = VolatilityBreakout(k=0.5, ma_window=5)
+    snap = MarketSnapshot(df=df, current_price=-1, has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
 def test_strategy_is_pure_no_side_effects():
     """동일 입력은 동일 출력 — 호출이 df나 snapshot을 변형하지 않는다."""
     df = _enriched()

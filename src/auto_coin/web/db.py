@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from pathlib import Path
 
+from sqlalchemy import inspect, text
 from sqlmodel import Session, SQLModel, create_engine
 
 from auto_coin.web.models import default_db_path
@@ -29,6 +30,7 @@ def init_engine(db_path: Path | None = None) -> None:
         echo=False,
     )
     SQLModel.metadata.create_all(_engine)
+    _ensure_schema(_engine)
 
 
 def reset_engine() -> None:
@@ -54,3 +56,24 @@ def db_path() -> Path:
     if _db_path is None:
         raise RuntimeError("db not initialized")
     return _db_path
+
+
+def _ensure_schema(engine) -> None:
+    """가벼운 in-place schema 보정.
+
+    SQLModel의 create_all()은 기존 테이블에 새 컬럼을 추가하지 않으므로, 로컬 SQLite
+    사용 환경에서 필요한 컬럼만 최소한으로 보정한다.
+    """
+    inspector = inspect(engine)
+    if "user" not in inspector.get_table_names():
+        return
+
+    user_columns = {column["name"] for column in inspector.get_columns("user")}
+    if "recovery_codes_enc" not in user_columns:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE user "
+                    "ADD COLUMN recovery_codes_enc TEXT NOT NULL DEFAULT ''",
+                ),
+            )
