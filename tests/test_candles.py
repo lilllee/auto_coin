@@ -7,6 +7,7 @@ import pytest
 from auto_coin.data.candles import (
     enrich_atr_channel,
     enrich_daily,
+    enrich_donchian,
     enrich_ema_adx,
     enrich_for_strategy,
     enrich_sma,
@@ -258,3 +259,60 @@ def test_enrich_for_strategy_ema_adx():
     assert "ema27" in out.columns
     assert "ema125" in out.columns
     assert "adx90" in out.columns
+
+
+# --- enrich_donchian tests ---
+
+
+def test_enrich_donchian_adds_columns():
+    df = _sample_df(30)
+    out = enrich_donchian(df, entry_window=20, exit_window=10)
+    assert "donchian_high_20" in out.columns
+    assert "donchian_low_10" in out.columns
+
+
+def test_enrich_donchian_shift():
+    """Verify shift(1) is applied — donchian at index i uses data up to i-1."""
+    df = _sample_df(30)
+    out = enrich_donchian(df, entry_window=20, exit_window=10)
+    # rolling(20).max() first non-NaN at index 19; shift(1) moves to index 20
+    assert pd.isna(out["donchian_high_20"].iloc[19])
+    assert not pd.isna(out["donchian_high_20"].iloc[20])
+    # rolling(10).min() first non-NaN at index 9; shift(1) moves to index 10
+    assert pd.isna(out["donchian_low_10"].iloc[9])
+    assert not pd.isna(out["donchian_low_10"].iloc[10])
+    # Value check: donchian_high at index 20 = max(high[0:20]) via shift(1)
+    expected_high = df["high"].iloc[0:20].max()
+    assert out["donchian_high_20"].iloc[20] == expected_high
+    expected_low = df["low"].iloc[0:10].min()
+    assert out["donchian_low_10"].iloc[10] == expected_low
+
+
+def test_enrich_donchian_missing_columns():
+    df = pd.DataFrame({"open": [1.0], "high": [2.0]})
+    with pytest.raises(ValueError, match="missing required columns"):
+        enrich_donchian(df)
+
+
+def test_enrich_donchian_invalid_params():
+    df = _sample_df()
+    with pytest.raises(ValueError, match="entry_window must be >= 2"):
+        enrich_donchian(df, entry_window=1)
+    with pytest.raises(ValueError, match="exit_window must be >= 1"):
+        enrich_donchian(df, exit_window=0)
+
+
+def test_enrich_for_strategy_ad_turtle():
+    df = _sample_df(30)
+    out = enrich_for_strategy(
+        df,
+        "ad_turtle",
+        {"entry_window": 20, "exit_window": 10},
+        ma_window=5,
+        k=0.5,
+    )
+    # Should have both VB columns and Donchian columns
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "donchian_high_20" in out.columns
+    assert "donchian_low_10" in out.columns

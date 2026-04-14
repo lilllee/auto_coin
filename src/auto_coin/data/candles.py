@@ -150,6 +150,33 @@ def enrich_ema_adx(
     return out
 
 
+def enrich_donchian(
+    df: pd.DataFrame,
+    entry_window: int = 20,
+    exit_window: int = 10,
+) -> pd.DataFrame:
+    """Donchian 채널 컬럼 추가.
+
+    Added columns:
+        - donchian_high_{entry_window}: N일 최고가 (진입용)
+        - donchian_low_{exit_window}: N일 최저가 (청산용)
+
+    shift(1)로 확정 봉 기준.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if entry_window < 2:
+        raise ValueError("entry_window must be >= 2")
+    if exit_window < 1:
+        raise ValueError("exit_window must be >= 1")
+
+    out = df.copy()
+    out[f"donchian_high_{entry_window}"] = out["high"].rolling(window=entry_window).max().shift(1)
+    out[f"donchian_low_{exit_window}"] = out["low"].rolling(window=exit_window).min().shift(1)
+    return out
+
+
 def enrich_for_strategy(
     df: pd.DataFrame,
     strategy_name: str,
@@ -178,6 +205,11 @@ def enrich_for_strategy(
         adx_win = strategy_params.get("adx_window", 90)
         enriched = enrich_daily(df, ma_window=ma_window, k=k)
         return enrich_ema_adx(enriched, ema_fast=ema_fast, ema_slow=ema_slow, adx_window=adx_win)
+    elif strategy_name == "ad_turtle":
+        entry_w = strategy_params.get("entry_window", 20)
+        exit_w = strategy_params.get("exit_window", 10)
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_donchian(enriched, entry_window=entry_w, exit_window=exit_w)
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)

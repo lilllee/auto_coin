@@ -317,6 +317,9 @@ class TradingBot:
             ema_slow = self._strategy_params.get("ema_slow_window", 125)
             adx_w = self._strategy_params.get("adx_window", 90)
             return max(ema_slow, adx_w) + 50
+        elif self._strategy_name == "ad_turtle":
+            entry_w = self._strategy_params.get("entry_window", 20)
+            return entry_w + 50
         return 0
 
     def _count_open_positions(self) -> int:

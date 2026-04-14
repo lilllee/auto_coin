@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from auto_coin.strategy.ad_turtle import AdTurtleStrategy
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
@@ -18,6 +19,7 @@ STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "sma200_regime": Sma200RegimeStrategy,
     "atr_channel_breakout": AtrChannelBreakoutStrategy,
     "ema_adx_atr_trend": EmaAdxAtrTrendStrategy,
+    "ad_turtle": AdTurtleStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -153,6 +155,33 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "활성화하면 EMA 단기 < 장기일 때 매도 시그널",
         },
     ],
+    "ad_turtle": [
+        {
+            "name": "entry_window",
+            "label": "진입 채널 기간 (일)",
+            "type": "number",
+            "min": "2",
+            "max": "200",
+            "default": 20,
+            "hint": "Donchian 상단 — N일 최고가 돌파 시 진입. 기본 20일",
+        },
+        {
+            "name": "exit_window",
+            "label": "청산 채널 기간 (일)",
+            "type": "number",
+            "min": "1",
+            "max": "100",
+            "default": 10,
+            "hint": "Donchian 하단 — N일 최저가 이탈 시 청산. 진입보다 짧아야 함",
+        },
+        {
+            "name": "allow_sell_signal",
+            "label": "Donchian 하단 이탈 시 SELL",
+            "type": "checkbox",
+            "default": False,
+            "hint": "활성화하면 exit_window 최저가 이탈 시 매도 시그널",
+        },
+    ],
 }
 
 # Human-readable names
@@ -161,6 +190,7 @@ STRATEGY_LABELS: dict[str, str] = {
     "sma200_regime": "SMA200 추세 필터",
     "atr_channel_breakout": "ATR 채널 돌파",
     "ema_adx_atr_trend": "EMA+ADX 추세추종",
+    "ad_turtle": "AdTurtle (개선형 Turtle)",
 }
 
 

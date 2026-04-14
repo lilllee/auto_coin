@@ -9,6 +9,7 @@ from auto_coin.strategy import (
     create_strategy,
     get_strategy_names,
 )
+from auto_coin.strategy.ad_turtle import AdTurtleStrategy
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
@@ -174,3 +175,40 @@ def test_create_strategy_ema_adx_is_strategy_subclass():
 def test_ema_adx_in_get_strategy_names():
     names = get_strategy_names()
     assert "ema_adx_atr_trend" in names
+
+
+# --- AdTurtle ---
+
+
+def test_registry_contains_ad_turtle():
+    assert "ad_turtle" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["ad_turtle"] is AdTurtleStrategy
+
+
+def test_create_strategy_ad_turtle_default_params():
+    s = create_strategy("ad_turtle")
+    assert isinstance(s, AdTurtleStrategy)
+    assert s.entry_window == 20
+    assert s.exit_window == 10
+    assert s.allow_sell_signal is False
+
+
+def test_create_strategy_ad_turtle_custom_params():
+    s = create_strategy(
+        "ad_turtle",
+        {"entry_window": 30, "exit_window": 15, "allow_sell_signal": True},
+    )
+    assert isinstance(s, AdTurtleStrategy)
+    assert s.entry_window == 30
+    assert s.exit_window == 15
+    assert s.allow_sell_signal is True
+
+
+def test_create_strategy_ad_turtle_is_strategy_subclass():
+    s = create_strategy("ad_turtle")
+    assert isinstance(s, Strategy)
+
+
+def test_ad_turtle_in_get_strategy_names():
+    names = get_strategy_names()
+    assert "ad_turtle" in names
