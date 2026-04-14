@@ -88,6 +88,68 @@ def enrich_atr_channel(
     return out
 
 
+def enrich_ema_adx(
+    df: pd.DataFrame,
+    ema_fast: int = 27,
+    ema_slow: int = 125,
+    adx_window: int = 90,
+) -> pd.DataFrame:
+    """EMA + ADX 컬럼 추가.
+
+    Added columns:
+        - ema{fast}: Exponential Moving Average (fast)
+        - ema{slow}: EMA (slow)
+        - adx{window}: Average Directional Index
+
+    shift(1)로 확정 봉 기준.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+
+    out = df.copy()
+
+    # EMA
+    out[f"ema{ema_fast}"] = out["close"].ewm(span=ema_fast, adjust=False).mean().shift(1)
+    out[f"ema{ema_slow}"] = out["close"].ewm(span=ema_slow, adjust=False).mean().shift(1)
+
+    # ADX calculation
+    high = out["high"]
+    low = out["low"]
+    prev_high = high.shift(1)
+    prev_low = low.shift(1)
+    prev_close = out["close"].shift(1)
+
+    # True Range
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    # +DM, -DM
+    plus_dm = (high - prev_high).clip(lower=0)
+    minus_dm = (prev_low - low).clip(lower=0)
+    # Zero out when the other is larger
+    plus_dm = plus_dm.where(plus_dm > minus_dm, 0)
+    minus_dm = minus_dm.where(minus_dm > plus_dm, 0)
+
+    # Smoothed with EWM (Wilder's smoothing = ewm(alpha=1/window))
+    atr = tr.ewm(alpha=1 / adx_window, adjust=False).mean()
+    plus_di = 100 * (plus_dm.ewm(alpha=1 / adx_window, adjust=False).mean() / atr)
+    minus_di = 100 * (minus_dm.ewm(alpha=1 / adx_window, adjust=False).mean() / atr)
+
+    dx = (plus_di - minus_di).abs() / (plus_di + minus_di) * 100
+    dx = dx.replace([float("inf"), float("-inf")], 0).fillna(0)
+
+    out[f"adx{adx_window}"] = dx.ewm(alpha=1 / adx_window, adjust=False).mean().shift(1)
+
+    return out
+
+
 def enrich_for_strategy(
     df: pd.DataFrame,
     strategy_name: str,
@@ -110,6 +172,12 @@ def enrich_for_strategy(
         return enrich_atr_channel(
             enriched, atr_window=atr_window, channel_multiplier=channel_multiplier
         )
+    elif strategy_name == "ema_adx_atr_trend":
+        ema_fast = strategy_params.get("ema_fast_window", 27)
+        ema_slow = strategy_params.get("ema_slow_window", 125)
+        adx_win = strategy_params.get("adx_window", 90)
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_ema_adx(enriched, ema_fast=ema_fast, ema_slow=ema_slow, adx_window=adx_win)
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)

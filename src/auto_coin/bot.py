@@ -77,24 +77,14 @@ class TradingBot:
             store = self._stores[ticker]
             executor = self._executors[ticker]
             try:
-                sma_window = (
-                    self._strategy_params.get("ma_window", 200)
-                    if self._strategy_name == "sma200_regime"
-                    else 0
-                )
-                atr_window = (
-                    self._strategy_params.get("atr_window", 14)
-                    if self._strategy_name == "atr_channel_breakout"
-                    else 0
-                )
+                extra_count = self._extra_candle_count()
                 df = fetch_daily(
                     self._client,
                     ticker,
                     count=max(
                         self._s.ma_filter_window + 50,
                         60,
-                        sma_window + 50,
-                        atr_window + 50,
+                        extra_count,
                     ),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
@@ -202,24 +192,14 @@ class TradingBot:
         lines: list[str] = []
         for ticker in tickers:
             try:
-                sma_window = (
-                    self._strategy_params.get("ma_window", 200)
-                    if self._strategy_name == "sma200_regime"
-                    else 0
-                )
-                atr_window = (
-                    self._strategy_params.get("atr_window", 14)
-                    if self._strategy_name == "atr_channel_breakout"
-                    else 0
-                )
+                extra_count = self._extra_candle_count()
                 df = fetch_daily(
                     self._client,
                     ticker,
                     count=max(
                         self._s.ma_filter_window + 50,
                         60,
-                        sma_window + 50,
-                        atr_window + 50,
+                        extra_count,
                     ),
                     ma_window=self._s.ma_filter_window,
                     k=self._s.strategy_k,
@@ -326,6 +306,18 @@ class TradingBot:
         return results
 
     # ----- helpers -----
+
+    def _extra_candle_count(self) -> int:
+        """전략별 필요 캔들 수 계산."""
+        if self._strategy_name == "sma200_regime":
+            return self._strategy_params.get("ma_window", 200) + 50
+        elif self._strategy_name == "atr_channel_breakout":
+            return self._strategy_params.get("atr_window", 14) + 50
+        elif self._strategy_name == "ema_adx_atr_trend":
+            ema_slow = self._strategy_params.get("ema_slow_window", 125)
+            adx_w = self._strategy_params.get("adx_window", 90)
+            return max(ema_slow, adx_w) + 50
+        return 0
 
     def _count_open_positions(self) -> int:
         return sum(1 for s in self._stores.values() if s.load().position is not None)

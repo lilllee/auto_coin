@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
+from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
@@ -16,6 +17,7 @@ STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "volatility_breakout": VolatilityBreakout,
     "sma200_regime": Sma200RegimeStrategy,
     "atr_channel_breakout": AtrChannelBreakoutStrategy,
+    "ema_adx_atr_trend": EmaAdxAtrTrendStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -105,6 +107,52 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "활성화하면 lower_channel 아래로 내려갈 때 매도 시그널",
         },
     ],
+    "ema_adx_atr_trend": [
+        {
+            "name": "ema_fast_window",
+            "label": "EMA 단기 (일)",
+            "type": "number",
+            "min": "1",
+            "max": "200",
+            "default": 27,
+            "hint": "단기 지수이동평균 기간. 기본 27일",
+        },
+        {
+            "name": "ema_slow_window",
+            "label": "EMA 장기 (일)",
+            "type": "number",
+            "min": "2",
+            "max": "500",
+            "default": 125,
+            "hint": "장기 지수이동평균 기간. 기본 125일 (단기보다 커야 함)",
+        },
+        {
+            "name": "adx_window",
+            "label": "ADX 기간 (일)",
+            "type": "number",
+            "min": "1",
+            "max": "200",
+            "default": 90,
+            "hint": "추세 강도 지표 기간. 기본 90일",
+        },
+        {
+            "name": "adx_threshold",
+            "label": "ADX 임계값",
+            "type": "number",
+            "step": "0.1",
+            "min": "0",
+            "max": "100",
+            "default": 14.0,
+            "hint": "이 값 이상이면 추세 존재로 판단. 기본 14",
+        },
+        {
+            "name": "allow_sell_signal",
+            "label": "EMA 데드크로스 시 SELL",
+            "type": "checkbox",
+            "default": False,
+            "hint": "활성화하면 EMA 단기 < 장기일 때 매도 시그널",
+        },
+    ],
 }
 
 # Human-readable names
@@ -112,6 +160,7 @@ STRATEGY_LABELS: dict[str, str] = {
     "volatility_breakout": "변동성 돌파 (Larry Williams)",
     "sma200_regime": "SMA200 추세 필터",
     "atr_channel_breakout": "ATR 채널 돌파",
+    "ema_adx_atr_trend": "EMA+ADX 추세추종",
 }
 
 

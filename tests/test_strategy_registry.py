@@ -11,6 +11,7 @@ from auto_coin.strategy import (
 )
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
+from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
@@ -133,3 +134,43 @@ def test_create_strategy_atr_channel_is_strategy_subclass():
 def test_atr_channel_in_get_strategy_names():
     names = get_strategy_names()
     assert "atr_channel_breakout" in names
+
+
+# --- EMA+ADX ATR Trend ---
+
+
+def test_registry_contains_ema_adx_atr_trend():
+    assert "ema_adx_atr_trend" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["ema_adx_atr_trend"] is EmaAdxAtrTrendStrategy
+
+
+def test_create_strategy_ema_adx_default_params():
+    s = create_strategy("ema_adx_atr_trend")
+    assert isinstance(s, EmaAdxAtrTrendStrategy)
+    assert s.ema_fast_window == 27
+    assert s.ema_slow_window == 125
+    assert s.adx_window == 90
+    assert s.adx_threshold == 14.0
+    assert s.allow_sell_signal is False
+
+
+def test_create_strategy_ema_adx_custom_params():
+    s = create_strategy(
+        "ema_adx_atr_trend",
+        {"ema_fast_window": 10, "ema_slow_window": 50, "adx_window": 30, "adx_threshold": 20.0},
+    )
+    assert isinstance(s, EmaAdxAtrTrendStrategy)
+    assert s.ema_fast_window == 10
+    assert s.ema_slow_window == 50
+    assert s.adx_window == 30
+    assert s.adx_threshold == 20.0
+
+
+def test_create_strategy_ema_adx_is_strategy_subclass():
+    s = create_strategy("ema_adx_atr_trend")
+    assert isinstance(s, Strategy)
+
+
+def test_ema_adx_in_get_strategy_names():
+    names = get_strategy_names()
+    assert "ema_adx_atr_trend" in names

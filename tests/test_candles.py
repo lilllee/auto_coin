@@ -7,6 +7,7 @@ import pytest
 from auto_coin.data.candles import (
     enrich_atr_channel,
     enrich_daily,
+    enrich_ema_adx,
     enrich_for_strategy,
     enrich_sma,
     fetch_daily,
@@ -215,3 +216,45 @@ def test_enrich_for_strategy_atr_channel():
     assert "atr14" in out.columns
     assert "upper_channel" in out.columns
     assert "lower_channel" in out.columns
+
+
+# --- enrich_ema_adx tests ---
+
+
+def test_enrich_ema_adx_adds_columns():
+    df = _sample_df(200)
+    out = enrich_ema_adx(df, ema_fast=27, ema_slow=125, adx_window=90)
+    assert "ema27" in out.columns
+    assert "ema125" in out.columns
+    assert "adx90" in out.columns
+    # EMA uses ewm so values appear early; shift(1) means first row is NaN
+    assert pd.isna(out["ema27"].iloc[0])
+    assert pd.isna(out["ema125"].iloc[0])
+    assert pd.isna(out["adx90"].iloc[0])
+    # Later rows should have values
+    assert not pd.isna(out["ema27"].iloc[50])
+    assert not pd.isna(out["ema125"].iloc[150])
+    assert not pd.isna(out["adx90"].iloc[100])
+
+
+def test_enrich_ema_adx_missing_columns():
+    df = pd.DataFrame({"open": [1.0], "high": [2.0]})
+    with pytest.raises(ValueError, match="missing required columns"):
+        enrich_ema_adx(df)
+
+
+def test_enrich_for_strategy_ema_adx():
+    df = _sample_df(200)
+    out = enrich_for_strategy(
+        df,
+        "ema_adx_atr_trend",
+        {"ema_fast_window": 27, "ema_slow_window": 125, "adx_window": 90},
+        ma_window=5,
+        k=0.5,
+    )
+    # Should have both VB columns and EMA/ADX columns
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "ema27" in out.columns
+    assert "ema125" in out.columns
+    assert "adx90" in out.columns
