@@ -13,6 +13,7 @@ from auto_coin.strategy.ad_turtle import AdTurtleStrategy
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
+from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
@@ -212,3 +213,45 @@ def test_create_strategy_ad_turtle_is_strategy_subclass():
 def test_ad_turtle_in_get_strategy_names():
     names = get_strategy_names()
     assert "ad_turtle" in names
+
+
+# --- SMA200 + EMA+ADX Composite ---
+
+
+def test_registry_contains_composite():
+    assert "sma200_ema_adx_composite" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["sma200_ema_adx_composite"] is Sma200EmaAdxCompositeStrategy
+
+
+def test_create_strategy_composite_default_params():
+    s = create_strategy("sma200_ema_adx_composite")
+    assert isinstance(s, Sma200EmaAdxCompositeStrategy)
+    assert s.sma_window == 200
+    assert s.ema_fast_window == 27
+    assert s.ema_slow_window == 125
+    assert s.adx_window == 90
+    assert s.adx_threshold == 14.0
+
+
+def test_create_strategy_composite_custom_params():
+    s = create_strategy(
+        "sma200_ema_adx_composite",
+        {"sma_window": 100, "ema_fast_window": 10, "ema_slow_window": 50,
+         "adx_window": 30, "adx_threshold": 20.0},
+    )
+    assert isinstance(s, Sma200EmaAdxCompositeStrategy)
+    assert s.sma_window == 100
+    assert s.ema_fast_window == 10
+    assert s.ema_slow_window == 50
+    assert s.adx_window == 30
+    assert s.adx_threshold == 20.0
+
+
+def test_create_strategy_composite_is_strategy_subclass():
+    s = create_strategy("sma200_ema_adx_composite")
+    assert isinstance(s, Strategy)
+
+
+def test_composite_in_get_strategy_names():
+    names = get_strategy_names()
+    assert "sma200_ema_adx_composite" in names

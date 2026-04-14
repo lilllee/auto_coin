@@ -320,6 +320,11 @@ class TradingBot:
         elif self._strategy_name == "ad_turtle":
             entry_w = self._strategy_params.get("entry_window", 20)
             return entry_w + 50
+        elif self._strategy_name == "sma200_ema_adx_composite":
+            sma_w = self._strategy_params.get("sma_window", 200)
+            ema_slow = self._strategy_params.get("ema_slow_window", 125)
+            adx_w = self._strategy_params.get("adx_window", 90)
+            return max(sma_w, ema_slow, adx_w) + 50
         return 0
 
     def _count_open_positions(self) -> int:

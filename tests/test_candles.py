@@ -271,6 +271,44 @@ def test_enrich_donchian_adds_columns():
     assert "donchian_low_10" in out.columns
 
 
+# --- enrich_for_strategy composite tests ---
+
+
+def test_enrich_for_strategy_composite():
+    df = _sample_df(300)
+    out = enrich_for_strategy(
+        df,
+        "sma200_ema_adx_composite",
+        {"sma_window": 200, "ema_fast_window": 27, "ema_slow_window": 125, "adx_window": 90},
+        ma_window=5,
+        k=0.5,
+    )
+    # Should have VB base columns
+    assert "target" in out.columns
+    assert "range" in out.columns
+    # Should have SMA column
+    assert "sma200" in out.columns
+    # Should have EMA+ADX columns
+    assert "ema27" in out.columns
+    assert "ema125" in out.columns
+    assert "adx90" in out.columns
+
+
+def test_enrich_for_strategy_composite_custom_windows():
+    df = _sample_df(200)
+    out = enrich_for_strategy(
+        df,
+        "sma200_ema_adx_composite",
+        {"sma_window": 100, "ema_fast_window": 10, "ema_slow_window": 50, "adx_window": 30},
+        ma_window=5,
+        k=0.5,
+    )
+    assert "sma100" in out.columns
+    assert "ema10" in out.columns
+    assert "ema50" in out.columns
+    assert "adx30" in out.columns
+
+
 def test_enrich_donchian_shift():
     """Verify shift(1) is applied — donchian at index i uses data up to i-1."""
     df = _sample_df(30)

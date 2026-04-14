@@ -210,6 +210,14 @@ def enrich_for_strategy(
         exit_w = strategy_params.get("exit_window", 10)
         enriched = enrich_daily(df, ma_window=ma_window, k=k)
         return enrich_donchian(enriched, entry_window=entry_w, exit_window=exit_w)
+    elif strategy_name == "sma200_ema_adx_composite":
+        sma_win = strategy_params.get("sma_window", 200)
+        ema_fast = strategy_params.get("ema_fast_window", 27)
+        ema_slow = strategy_params.get("ema_slow_window", 125)
+        adx_win = strategy_params.get("adx_window", 90)
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        enriched = enrich_sma(enriched, window=sma_win)
+        return enrich_ema_adx(enriched, ema_fast=ema_fast, ema_slow=ema_slow, adx_window=adx_win)
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)
