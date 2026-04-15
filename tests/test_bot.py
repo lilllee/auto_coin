@@ -62,7 +62,7 @@ def _make_bot(store, settings, mocker, *, fetch_df=None, current_price=120.0):
     client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
                         min_request_interval=0.0)
     if fetch_df is not None:
-        mocker.patch("auto_coin.bot.fetch_daily", return_value=fetch_df)
+        mocker.patch("auto_coin.data.candle_cache.fetch_daily", return_value=fetch_df)
     ticker = settings.ticker
     mocker.patch.object(client, "get_current_price", return_value=current_price)
     mocker.patch.object(client, "get_current_prices", return_value={ticker: current_price})
@@ -100,7 +100,7 @@ def test_tick_swallows_market_data_error(store, mocker):
     s = _settings()
     client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
                         min_request_interval=0.0)
-    mocker.patch("auto_coin.bot.fetch_daily", side_effect=UpbitError("network"))
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily", side_effect=UpbitError("network"))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     executor = OrderExecutor(client, store, s.ticker, live=False)
     bot = TradingBot(

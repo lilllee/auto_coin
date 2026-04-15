@@ -61,7 +61,7 @@ def _bot(tmp_path, *, tickers, max_concurrent=3, paper_krw=1_000_000.0,
 def test_multi_ticker_all_buy_when_slots_available(tmp_path, mocker):
     bot, client, stores, _ = _bot(tmp_path, tickers=["KRW-BTC", "KRW-ETH", "KRW-XRP"],
                                   max_concurrent=3)
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     mocker.patch.object(client, "get_current_price", return_value=120.0)
     recs = bot.tick()
@@ -75,7 +75,7 @@ def test_slot_cap_blocks_further_entries_in_same_tick(tmp_path, mocker):
     """max_concurrent=2일 때 앞 2개만 매수, 세번째는 HOLD."""
     bot, client, stores, _ = _bot(tmp_path, tickers=["KRW-BTC", "KRW-ETH", "KRW-XRP"],
                                   max_concurrent=2)
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     mocker.patch.object(client, "get_current_price", return_value=120.0)
     recs = bot.tick()
@@ -90,7 +90,7 @@ def test_entry_size_uses_paper_initial_krw_for_every_slot(tmp_path, mocker):
     bot, client, stores, _ = _bot(tmp_path, tickers=["KRW-BTC", "KRW-ETH"],
                                   max_concurrent=3,
                                   paper_krw=1_000_000.0, max_pos_ratio=0.20)
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     mocker.patch.object(client, "get_current_price", return_value=120.0)
     recs = bot.tick()
@@ -108,7 +108,7 @@ def test_second_tick_respects_existing_positions_as_slot_count(tmp_path, mocker)
         state.position = Position(ticker=t, volume=0.001, avg_entry_price=100.0,
                                   entry_uuid="seed", entry_at="2026-04-13T00:00:00+00:00")
         stores[t].save(state)
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     mocker.patch.object(client, "get_current_price", return_value=120.0)
     recs = bot.tick()
@@ -167,7 +167,7 @@ def test_daily_loss_limit_uses_portfolio_total(tmp_path, mocker):
         st = stores[t].load()
         st.daily_pnl_ratio = pnl
         stores[t].save(st)
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     mocker.patch.object(client, "get_current_price", return_value=120.0)
     recs = bot.tick()

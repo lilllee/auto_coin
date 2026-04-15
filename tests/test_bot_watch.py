@@ -71,7 +71,7 @@ def test_watch_noop_when_empty_list(store, mocker):
 
 def test_watch_single_ticker_sends_one_message(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="")
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
@@ -86,7 +86,7 @@ def test_watch_single_ticker_sends_one_message(store, mocker):
 
 def test_watch_rocket_marker_when_price_above_target(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="")
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
@@ -100,7 +100,7 @@ def test_watch_rocket_marker_when_price_above_target(store, mocker):
 
 def test_watch_dot_marker_when_below_target(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="")
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
@@ -115,7 +115,7 @@ def test_watch_dot_marker_when_below_target(store, mocker):
 
 def test_watch_down_ma_when_below_ma(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="")
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=200.0, ma=150.0))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
@@ -130,7 +130,7 @@ def test_watch_down_ma_when_below_ma(store, mocker):
 def test_watch_target_na_when_target_nan(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="")
     df = _enriched(target=np.nan, ma=100.0)
-    mocker.patch("auto_coin.bot.fetch_daily", return_value=df)
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily", return_value=df)
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
@@ -150,7 +150,7 @@ def test_watch_fetch_failure_row_rendered_and_others_continue(store, mocker):
             raise UpbitError("boom")
         return good_df
 
-    mocker.patch("auto_coin.bot.fetch_daily", side_effect=_fetch_side)
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily", side_effect=_fetch_side)
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
@@ -165,7 +165,7 @@ def test_watch_fetch_failure_row_rendered_and_others_continue(store, mocker):
 
 def test_watch_multiple_tickers_all_in_single_message(store, mocker):
     s = _settings(ticker="KRW-BTC", watch_tickers="KRW-ETH,KRW-XRP")
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=100.0))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")
@@ -183,7 +183,7 @@ def test_watch_multiple_tickers_all_in_single_message(store, mocker):
 def test_watch_ma_column_absent_omits_ma_mark(store, mocker):
     """ma_filter_window에 해당하는 컬럼이 없으면 ↑MA/↓MA 표기 생략."""
     s = _settings(ticker="KRW-BTC", watch_tickers="", ma_filter_window=999)  # ma999 컬럼 없음
-    mocker.patch("auto_coin.bot.fetch_daily",
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily",
                  return_value=_enriched(target=110.0, ma=None, ma_window=999))
     notifier = TelegramNotifier(bot_token="", chat_id="")
     send = mocker.patch.object(notifier, "send")

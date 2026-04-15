@@ -15,7 +15,11 @@ import json
 from loguru import logger
 
 from auto_coin.config import Settings
-from auto_coin.data.candles import fetch_daily, recommended_history_days
+from auto_coin.data.candle_cache import DailyCandleCache
+from auto_coin.data.candles import (  # noqa: F401 — fetch_daily used by test mocks
+    fetch_daily,
+    recommended_history_days,
+)
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderRecord, OrderStore, State, today_utc
@@ -51,6 +55,7 @@ class TradingBot:
         if settings.strategy_params_json:
             with contextlib.suppress(json.JSONDecodeError, TypeError):
                 self._strategy_params = json.loads(settings.strategy_params_json)
+        self._candle_cache = DailyCandleCache()
 
     # ----- main loop steps -----
 
@@ -93,7 +98,7 @@ class TradingBot:
 
             try:
                 extra_count = self._extra_candle_count()
-                df = fetch_daily(
+                df = self._candle_cache.get(
                     self._client,
                     ticker,
                     count=max(
@@ -164,6 +169,7 @@ class TradingBot:
 
     def daily_reset(self) -> None:
         """KST 09:00 — 모든 종목의 일일 손익 누적 초기화."""
+        self._candle_cache.invalidate()
         prev_total = self._total_daily_pnl_ratio()
         for store in self._stores.values():
             state = store.load()
@@ -218,7 +224,7 @@ class TradingBot:
                 continue
             try:
                 extra_count = self._extra_candle_count()
-                df = fetch_daily(
+                df = self._candle_cache.get(
                     self._client,
                     ticker,
                     count=max(
