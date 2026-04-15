@@ -15,7 +15,7 @@ import json
 from loguru import logger
 
 from auto_coin.config import Settings
-from auto_coin.data.candles import fetch_daily
+from auto_coin.data.candles import fetch_daily, recommended_history_days
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderRecord, OrderStore, State, today_utc
@@ -309,23 +309,11 @@ class TradingBot:
 
     def _extra_candle_count(self) -> int:
         """전략별 필요 캔들 수 계산."""
-        if self._strategy_name == "sma200_regime":
-            return self._strategy_params.get("ma_window", 200) + 50
-        elif self._strategy_name == "atr_channel_breakout":
-            return self._strategy_params.get("atr_window", 14) + 50
-        elif self._strategy_name == "ema_adx_atr_trend":
-            ema_slow = self._strategy_params.get("ema_slow_window", 125)
-            adx_w = self._strategy_params.get("adx_window", 90)
-            return max(ema_slow, adx_w) + 50
-        elif self._strategy_name == "ad_turtle":
-            entry_w = self._strategy_params.get("entry_window", 20)
-            return entry_w + 50
-        elif self._strategy_name == "sma200_ema_adx_composite":
-            sma_w = self._strategy_params.get("sma_window", 200)
-            ema_slow = self._strategy_params.get("ema_slow_window", 125)
-            adx_w = self._strategy_params.get("adx_window", 90)
-            return max(sma_w, ema_slow, adx_w) + 50
-        return 0
+        return recommended_history_days(
+            self._strategy_name,
+            self._strategy_params,
+            ma_window=self._s.ma_filter_window,
+        )
 
     def _count_open_positions(self) -> int:
         return sum(1 for s in self._stores.values() if s.load().position is not None)

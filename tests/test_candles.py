@@ -12,6 +12,7 @@ from auto_coin.data.candles import (
     enrich_for_strategy,
     enrich_sma,
     fetch_daily,
+    recommended_history_days,
 )
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 
@@ -68,12 +69,25 @@ def test_enrich_daily_invalid_params():
 
 def test_fetch_daily_uses_pyupbit(mocker):
     df = _sample_df(20)
-    mocker.patch("auto_coin.data.candles.pyupbit.get_ohlcv", return_value=df)
+    get_ohlcv = mocker.patch("auto_coin.data.candles.pyupbit.get_ohlcv", return_value=df)
     client = UpbitClient(access_key="", secret_key="", max_retries=1,
                          backoff_base=0.0, min_request_interval=0.0)
     out = fetch_daily(client, "KRW-BTC", count=20, ma_window=5, k=0.5)
     assert "target" in out.columns
     assert len(out) == 20
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="day", count=20, to=None)
+
+
+def test_fetch_daily_forwards_to_param(mocker):
+    df = _sample_df(20)
+    get_ohlcv = mocker.patch("auto_coin.data.candles.pyupbit.get_ohlcv", return_value=df)
+    client = UpbitClient(access_key="", secret_key="", max_retries=1,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_daily(client, "KRW-BTC", count=20, to="2026-04-15", ma_window=5, k=0.5)
+
+    assert len(out) == 20
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="day", count=20, to="2026-04-15")
 
 
 def test_fetch_daily_empty_raises(mocker):
@@ -82,6 +96,80 @@ def test_fetch_daily_empty_raises(mocker):
                          backoff_base=0.0, min_request_interval=0.0)
     with pytest.raises(UpbitError):
         fetch_daily(client, "KRW-BTC")
+
+
+def test_fetch_daily_retries_when_pyupbit_returns_none_then_succeeds(mocker):
+    df = _sample_df(20)
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[None, df],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=2,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_daily(client, "KRW-BTC", count=20, ma_window=5, k=0.5)
+
+    assert "target" in out.columns
+    assert len(out) == 20
+    assert get_ohlcv.call_count == 2
+
+
+def test_fetch_daily_retry_exhausted_preserves_no_candles_message(mocker):
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[None, None],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=2,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    with pytest.raises(UpbitError, match="no candles returned for KRW-BTC"):
+        fetch_daily(client, "KRW-BTC")
+
+    assert get_ohlcv.call_count == 2
+
+
+def test_fetch_daily_retry_exhausted_on_empty_dataframe(mocker):
+    empty = pd.DataFrame()
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[empty, empty],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=2,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    with pytest.raises(UpbitError, match="no candles returned for KRW-BTC"):
+        fetch_daily(client, "KRW-BTC")
+
+    assert get_ohlcv.call_count == 2
+
+
+def test_recommended_history_days_composite_is_conservative():
+    days = recommended_history_days(
+        "sma200_ema_adx_composite",
+        {
+            "sma_window": 200,
+            "ema_fast_window": 27,
+            "ema_slow_window": 125,
+            "adx_window": 90,
+            "adx_threshold": 14.0,
+        },
+        ma_window=5,
+    )
+    assert days == 250
+
+
+def test_recommended_history_days_volatility_breakout_uses_safe_minimum():
+    days = recommended_history_days(
+        "volatility_breakout",
+        {"k": 0.5, "ma_window": 5, "require_ma_filter": True},
+        ma_window=5,
+    )
+    assert days == 60
+
+
+def test_recommended_history_days_unknown_strategy_falls_back_to_safe_minimum():
+    days = recommended_history_days("unknown_strategy", {}, ma_window=5)
+    assert days == 60
 
 
 # --- enrich_sma tests ---

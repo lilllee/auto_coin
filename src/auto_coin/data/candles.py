@@ -1,11 +1,17 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 import pandas as pd
 import pyupbit
 
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 
 REQUIRED_COLUMNS = ("open", "high", "low", "close", "volume")
+
+
+class _EmptyCandleResponse(UpbitError):
+    """pyupbit가 일시적으로 빈 OHLCV 응답을 돌려줄 때의 내부 재시도용 예외."""
 
 
 def enrich_daily(df: pd.DataFrame, ma_window: int = 5, k: float = 0.5) -> pd.DataFrame:
@@ -223,6 +229,49 @@ def enrich_for_strategy(
         return enrich_daily(df, ma_window=ma_window, k=k)
 
 
+def recommended_history_days(
+    strategy_name: str,
+    strategy_params: dict | None = None,
+    *,
+    ma_window: int = 5,
+) -> int:
+    """전략별 권장 추가 히스토리 길이(일봉 수)를 반환.
+
+    반환값은 "검토 구간 외에 추가로 더 가져올 보수적 warmup 버퍼"다.
+    live bot은 이 값을 그대로 `count` 최소치로 사용할 수 있고,
+    review 기능은 `review_days + recommended_history_days(...) - 1` 형태로
+    총 조회 길이를 만들 수 있다.
+    """
+    params = strategy_params or {}
+    base_window = max(int(ma_window), 1)
+
+    if strategy_name == "volatility_breakout":
+        window = max(int(params.get("ma_window", ma_window)), base_window)
+    elif strategy_name == "sma200_regime":
+        window = max(int(params.get("ma_window", 200)), base_window)
+    elif strategy_name == "atr_channel_breakout":
+        window = max(int(params.get("atr_window", 14)), base_window)
+    elif strategy_name == "ema_adx_atr_trend":
+        window = max(
+            int(params.get("ema_slow_window", 125)),
+            int(params.get("adx_window", 90)),
+            base_window,
+        )
+    elif strategy_name == "ad_turtle":
+        window = max(int(params.get("entry_window", 20)), base_window)
+    elif strategy_name == "sma200_ema_adx_composite":
+        window = max(
+            int(params.get("sma_window", 200)),
+            int(params.get("ema_slow_window", 125)),
+            int(params.get("adx_window", 90)),
+            base_window,
+        )
+    else:
+        window = base_window
+
+    return max(window + 50, 60)
+
+
 def fetch_daily(
     client: UpbitClient,
     ticker: str,
@@ -232,6 +281,7 @@ def fetch_daily(
     k: float = 0.5,
     strategy_name: str = "volatility_breakout",
     strategy_params: dict | None = None,
+    to: datetime | str | None = None,
 ) -> pd.DataFrame:
     """업비트 일봉 조회 → 보조 컬럼 추가된 DataFrame 반환.
 
@@ -239,12 +289,23 @@ def fetch_daily(
     인증 없이도 동작한다.
     """
 
-    def _fetch() -> pd.DataFrame | None:
-        return pyupbit.get_ohlcv(ticker, interval="day", count=count)
+    def _fetch() -> pd.DataFrame:
+        df = pyupbit.get_ohlcv(ticker, interval="day", count=count, to=to)
+        if df is None or df.empty:
+            raise _EmptyCandleResponse(f"no candles returned for {ticker}")
+        return df
 
-    df = client._call(f"get_ohlcv({ticker}, day, {count})", _fetch)
-    if df is None or df.empty:
-        raise UpbitError(f"no candles returned for {ticker}")
+    label = f"get_ohlcv({ticker}, day, {count})"
+    if to is not None:
+        label = f"{label}, to={to}"
+
+    try:
+        df = client._call(label, _fetch)
+    except UpbitError as exc:
+        cause = exc.__cause__
+        if isinstance(cause, _EmptyCandleResponse):
+            raise UpbitError(f"no candles returned for {ticker}") from exc
+        raise
     return enrich_for_strategy(
         df, strategy_name, strategy_params or {},
         ma_window=ma_window, k=k,

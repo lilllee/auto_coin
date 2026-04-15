@@ -96,6 +96,16 @@ class Settings(BaseSettings):
                 merged.append(t)
         return merged
 
+    @property
+    def time_exit_enabled(self) -> bool:
+        """전략별 시간 청산 사용 여부.
+
+        합성 전략(`sma200_ema_adx_composite`)은 추세를 길게 가져가는 설계라
+        전역 08:55 강제 청산을 비활성화한다. 기존 변동성 돌파 계열 전략은
+        현재 동작을 유지한다.
+        """
+        return self.strategy_name != "sma200_ema_adx_composite"
+
 
 def load_settings() -> Settings:
     return Settings()

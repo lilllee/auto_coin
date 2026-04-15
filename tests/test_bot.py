@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
+
 import numpy as np
 import pandas as pd
 import pytest
 
 from auto_coin.bot import TradingBot
 from auto_coin.config import Settings
+from auto_coin.data.candles import recommended_history_days
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderStore, Position
@@ -13,6 +16,7 @@ from auto_coin.main import main
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
 from auto_coin.runtime_guard import RuntimeGuardError
+from auto_coin.strategy import create_strategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
@@ -261,6 +265,43 @@ def test_tick_uses_position_from_store(store, mocker):
     store.save(state)
     bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
     assert bot.tick() == []
+
+
+def test_extra_candle_count_uses_shared_recommended_history_days(tmp_path):
+    settings = _settings(
+        ticker="KRW-BTC",
+        strategy_name="sma200_ema_adx_composite",
+        strategy_params_json=json.dumps(
+            {
+                "sma_window": 200,
+                "ema_fast_window": 27,
+                "ema_slow_window": 125,
+                "adx_window": 90,
+                "adx_threshold": 14.0,
+            }
+        ),
+    )
+    store = OrderStore(tmp_path / "KRW-BTC.json")
+    client = UpbitClient(access_key="", secret_key="", max_retries=1, backoff_base=0.0,
+                         min_request_interval=0.0)
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    executor = OrderExecutor(client, store, settings.ticker, live=False)
+    params = json.loads(settings.strategy_params_json)
+    bot = TradingBot(
+        settings=settings,
+        client=client,
+        strategy=create_strategy(settings.strategy_name, params),
+        risk_manager=RiskManager(settings),
+        stores={settings.ticker: store},
+        executors={settings.ticker: executor},
+        notifier=notifier,
+    )
+
+    assert bot._extra_candle_count() == recommended_history_days(
+        settings.strategy_name,
+        params,
+        ma_window=settings.ma_filter_window,
+    )
 
 
 def test_main_exits_when_other_runtime_is_active(mocker):

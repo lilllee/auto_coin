@@ -167,10 +167,11 @@ class BotManager:
         sch.add_job(bot.daily_reset,
                     CronTrigger(hour=s.daily_reset_hour_kst, minute=0, second=0, timezone=self._tz),
                     id="daily_reset")
-        sch.add_job(bot.force_exit_if_holding,
-                    CronTrigger(hour=s.exit_hour_kst, minute=s.exit_minute_kst, second=0,
-                                timezone=self._tz),
-                    id="force_exit")
+        if s.time_exit_enabled:
+            sch.add_job(bot.force_exit_if_holding,
+                        CronTrigger(hour=s.exit_hour_kst, minute=s.exit_minute_kst, second=0,
+                                    timezone=self._tz),
+                        id="force_exit")
         sch.add_job(bot.daily_report,
                     CronTrigger(hour=s.exit_hour_kst, minute=58, second=0, timezone=self._tz),
                     id="daily_report")

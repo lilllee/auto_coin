@@ -31,6 +31,7 @@ from auto_coin.web.routers import control as control_router
 from auto_coin.web.routers import dashboard as dashboard_router
 from auto_coin.web.routers import logs as logs_router
 from auto_coin.web.routers import reports as reports_router
+from auto_coin.web.routers import review as review_router
 from auto_coin.web.routers import settings as settings_router
 from auto_coin.web.services import log_stream
 from auto_coin.web.session_secret import load_or_create_session_secret
@@ -97,6 +98,7 @@ def create_app() -> FastAPI:
     app.include_router(control_router.router)
     app.include_router(settings_router.router)
     app.include_router(charts_router.router)
+    app.include_router(review_router.router)
     app.include_router(reports_router.router)
     app.include_router(logs_router.router)
 

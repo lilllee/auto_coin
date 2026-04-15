@@ -1,0 +1,485 @@
+{% extends "base.html" %}
+{% block title %}전략 검토 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">전략 검토</h1>
+
+<div class="mb-4 rounded border border-slate-200 bg-white p-3 text-sm">
+  <div><span class="font-medium">현재 전략:</span> {{ strategy_label }}</div>
+  <div class="mt-1 text-slate-500"><span class="font-medium">전략 ID:</span> {{ strategy_name }}</div>
+  <pre class="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs">{{ strategy_params | tojson(indent=2) }}</pre>
+</div>
+
+{% if not choices %}
+  <div class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
+    검토할 종목이 없습니다. 포트폴리오/관측 종목을 먼저 설정하세요.
+  </div>
+{% else %}
+  <form id="review-form" class="space-y-3 rounded border border-slate-200 bg-white p-3">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+      <label class="block">
+        <span class="block text-sm text-slate-600 mb-1">종목</span>
+        <select id="review-ticker" name="ticker" class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+          {% for t in choices %}
+            <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="block">
+        <span class="block text-sm text-slate-600 mb-1">Start Date</span>
+        <input id="review-start-date" type="date" name="start_date" value="{{ start_date }}"
+               class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+      </label>
+      <label class="block">
+        <span class="block text-sm text-slate-600 mb-1">End Date</span>
+        <input id="review-end-date" type="date" name="end_date" value="{{ end_date }}"
+               class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+      </label>
+    </div>
+    <div class="flex items-center justify-between gap-3">
+      <div class="text-xs text-slate-500">
+        최대 90일 · 일봉 기준 · 전략 동작 검토용 인터랙티브 리플레이
+      </div>
+      <button id="review-run-button" type="submit" class="btn rounded bg-slate-900 px-4 py-2 text-white">실행</button>
+    </div>
+  </form>
+
+  <div id="review-loading" class="mt-4 hidden rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+    불러오는 중...
+  </div>
+
+  <div id="review-error" class="mt-4 hidden rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></div>
+
+  <div id="review-empty" class="mt-4 hidden rounded border border-slate-200 bg-white px-3 py-4 text-sm text-slate-500">
+    표시할 검토 결과가 없습니다.
+  </div>
+
+  <section id="review-results" class="mt-4 hidden space-y-4">
+    <div id="review-summary" class="grid grid-cols-2 gap-3 md:grid-cols-4"></div>
+
+    <div class="rounded border border-slate-200 bg-white p-3">
+      <div class="flex items-center justify-between gap-3 mb-3">
+        <div>
+          <div class="text-sm font-medium">가격 / 이벤트 리플레이</div>
+          <div id="review-step-label" class="text-xs text-slate-500">-</div>
+        </div>
+        <div class="text-xs text-slate-500">클릭: 이벤트 행 / 상태 행 / 차트 포인트</div>
+      </div>
+      <div id="review-chart-container" class="rounded border border-slate-100 bg-slate-50 p-2">
+        <canvas id="review-chart" height="220"></canvas>
+      </div>
+      <div class="mt-3 flex items-center gap-2">
+        <button id="review-prev" type="button" class="btn rounded border border-slate-300 px-3 py-2 text-sm">이전</button>
+        <input id="review-step-slider" type="range" min="0" max="0" value="0" class="w-full">
+        <button id="review-next" type="button" class="btn rounded border border-slate-300 px-3 py-2 text-sm">다음</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <section class="rounded border border-slate-200 bg-white p-3">
+        <div class="mb-2 text-sm font-medium">현재 시점 상세</div>
+        <div id="review-detail" class="space-y-3 text-sm"></div>
+      </section>
+
+      <section class="rounded border border-slate-200 bg-white p-3">
+        <div class="mb-2 text-sm font-medium">이벤트</div>
+        <div id="review-events" class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead class="text-left text-slate-500">
+              <tr>
+                <th class="px-2 py-2">일자</th>
+                <th class="px-2 py-2">신호</th>
+                <th class="px-2 py-2 text-right">가격</th>
+                <th class="px-2 py-2">이유</th>
+              </tr>
+            </thead>
+            <tbody id="review-events-body"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <section class="rounded border border-slate-200 bg-white p-3">
+      <div class="mb-2 text-sm font-medium">일자별 상태</div>
+      <div id="review-rows" class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-slate-500">
+            <tr>
+              <th class="px-2 py-2">일자</th>
+              <th class="px-2 py-2">신호</th>
+              <th class="px-2 py-2 text-right">가격</th>
+              <th class="px-2 py-2">포지션</th>
+              <th class="px-2 py-2">이유</th>
+            </tr>
+          </thead>
+          <tbody id="review-rows-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+{% endif %}
+
+{% if choices %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function() {
+  const state = {
+    payload: null,
+    selectedIndex: 0,
+    chart: null,
+  };
+
+  const els = {
+    form: document.getElementById("review-form"),
+    ticker: document.getElementById("review-ticker"),
+    startDate: document.getElementById("review-start-date"),
+    endDate: document.getElementById("review-end-date"),
+    loading: document.getElementById("review-loading"),
+    error: document.getElementById("review-error"),
+    empty: document.getElementById("review-empty"),
+    results: document.getElementById("review-results"),
+    summary: document.getElementById("review-summary"),
+    chart: document.getElementById("review-chart"),
+    slider: document.getElementById("review-step-slider"),
+    prev: document.getElementById("review-prev"),
+    next: document.getElementById("review-next"),
+    stepLabel: document.getElementById("review-step-label"),
+    detail: document.getElementById("review-detail"),
+    eventsBody: document.getElementById("review-events-body"),
+    rowsBody: document.getElementById("review-rows-body"),
+  };
+
+  function numberText(value, digits = 0) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+    return Number(value).toLocaleString("ko-KR", { maximumFractionDigits: digits, minimumFractionDigits: digits });
+  }
+
+  function ratioText(value) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+    const ratio = Number(value) * 100;
+    const sign = ratio > 0 ? "+" : "";
+    return sign + ratio.toFixed(2) + "%";
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+  }
+
+  function validateRange(startValue, endValue) {
+    if (!startValue || !endValue) return "start_date와 end_date를 모두 선택해주세요.";
+    const start = new Date(startValue + "T00:00:00");
+    const end = new Date(endValue + "T00:00:00");
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return "날짜 형식이 올바르지 않습니다.";
+    if (end < start) return "end_date는 start_date보다 빠를 수 없습니다.";
+    const diffDays = Math.floor((end - start) / 86400000) + 1;
+    if (diffDays > 90) return "날짜 범위는 최대 90일까지 가능합니다.";
+    return "";
+  }
+
+  function showLoading() {
+    els.loading.classList.remove("hidden");
+    els.error.classList.add("hidden");
+    els.empty.classList.add("hidden");
+  }
+
+  function showError(message) {
+    els.loading.classList.add("hidden");
+    els.results.classList.add("hidden");
+    els.empty.classList.add("hidden");
+    els.error.textContent = message || "오류가 발생했습니다.";
+    els.error.classList.remove("hidden");
+  }
+
+  function showEmpty(message) {
+    els.loading.classList.add("hidden");
+    els.results.classList.add("hidden");
+    els.error.classList.add("hidden");
+    els.empty.textContent = message || "표시할 결과가 없습니다.";
+    els.empty.classList.remove("hidden");
+  }
+
+  function hideTransient() {
+    els.loading.classList.add("hidden");
+    els.error.classList.add("hidden");
+    els.empty.classList.add("hidden");
+  }
+
+  function eventIndexMap(payload) {
+    const map = new Map();
+    payload.rows.forEach((row, index) => map.set(row.date, index));
+    return map;
+  }
+
+  function eventForRow(payload, row) {
+    return payload.events.find((event) => event.date === row.date);
+  }
+
+  function renderSummary(payload) {
+    const cards = [
+      ["전략", payload.strategy?.name || "-"],
+      ["기간", `${payload.range?.start_date || "-"} ~ ${payload.range?.end_date || "-"}`],
+      ["BUY", numberText(payload.summary?.buy_count)],
+      ["SELL", numberText(payload.summary?.sell_count)],
+      ["이벤트", numberText(payload.summary?.event_count)],
+      ["실현 손익", ratioText(payload.summary?.realized_pnl_ratio)],
+      ["미실현 손익", ratioText(payload.summary?.unrealized_pnl_ratio)],
+      ["총 손익", ratioText(payload.summary?.total_pnl_ratio)],
+      ["마지막 포지션", payload.summary?.last_position?.state || "-"],
+    ];
+
+    els.summary.innerHTML = cards.map(([label, value]) => `
+      <div class="rounded border border-slate-200 bg-white p-3">
+        <div class="text-xs text-slate-500">${escapeHtml(label)}</div>
+        <div class="mt-1 text-sm font-medium">${escapeHtml(value)}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderChart(payload) {
+    const labels = payload.rows.map((row) => row.date);
+    const prices = payload.rows.map((row) => row.price);
+    const eventMap = new Map(payload.events.map((event) => [event.date, event]));
+    const buys = payload.rows.map((row) => {
+      const event = eventMap.get(row.date);
+      return event && event.signal === "buy" ? row.price : null;
+    });
+    const sells = payload.rows.map((row) => {
+      const event = eventMap.get(row.date);
+      return event && event.signal === "sell" ? row.price : null;
+    });
+    const current = payload.rows.map((row, index) => index === state.selectedIndex ? row.price : null);
+
+    if (state.chart) state.chart.destroy();
+
+    state.chart = new Chart(els.chart.getContext("2d"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [
+          {
+            label: "가격",
+            data: prices,
+            borderColor: "#2563eb",
+            backgroundColor: "#2563eb",
+            tension: 0.2,
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+          },
+          {
+            type: "scatter",
+            label: "BUY",
+            data: buys,
+            borderColor: "#16a34a",
+            backgroundColor: "#16a34a",
+            pointRadius: 6,
+            pointHoverRadius: 7,
+          },
+          {
+            type: "scatter",
+            label: "SELL",
+            data: sells,
+            borderColor: "#dc2626",
+            backgroundColor: "#dc2626",
+            pointRadius: 6,
+            pointHoverRadius: 7,
+          },
+          {
+            type: "scatter",
+            label: "선택 일자",
+            data: current,
+            borderColor: "#f59e0b",
+            backgroundColor: "#f59e0b",
+            pointRadius: 8,
+            pointHoverRadius: 9,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: "nearest", intersect: false },
+        onClick: function(event) {
+          const points = state.chart.getElementsAtEventForMode(event, "nearest", { intersect: false }, true);
+          if (points.length) setSelectedIndex(points[0].index);
+        },
+        plugins: {
+          legend: { position: "bottom", labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) {
+                if (ctx.raw === null || ctx.raw === undefined) return "";
+                return `${ctx.dataset.label}: ${numberText(ctx.raw)}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: { ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+          y: { ticks: { callback: (value) => numberText(value) } },
+        },
+      },
+    });
+  }
+
+  function renderDetail(payload) {
+    const row = payload.rows[state.selectedIndex];
+    const event = eventForRow(payload, row);
+    const indicators = row.indicators || {};
+    const indicatorHtml = Object.keys(indicators).length
+      ? `<dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">${Object.entries(indicators).map(([key, value]) => `
+          <div class="contents">
+            <dt class="text-slate-500">${escapeHtml(key)}</dt>
+            <dd class="font-mono text-right">${escapeHtml(value === null ? "-" : numberText(value, 4))}</dd>
+          </div>
+        `).join("")}</dl>`
+      : '<div class="text-xs text-slate-500">표시할 indicator가 없습니다.</div>';
+
+    els.stepLabel.textContent = `${row.date} · step ${state.selectedIndex + 1}/${payload.rows.length}`;
+    els.detail.innerHTML = `
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded bg-slate-50 p-3">
+          <div class="text-xs text-slate-500">signal</div>
+          <div class="mt-1 text-sm font-semibold uppercase">${escapeHtml(row.signal)}</div>
+        </div>
+        <div class="rounded bg-slate-50 p-3">
+          <div class="text-xs text-slate-500">position</div>
+          <div class="mt-1 text-sm font-semibold">${escapeHtml(row.position_state || "-")}</div>
+        </div>
+        <div class="rounded bg-slate-50 p-3">
+          <div class="text-xs text-slate-500">price</div>
+          <div class="mt-1 text-sm font-semibold">${escapeHtml(numberText(row.price))}</div>
+        </div>
+        <div class="rounded bg-slate-50 p-3">
+          <div class="text-xs text-slate-500">trade pnl</div>
+          <div class="mt-1 text-sm font-semibold">${escapeHtml(event ? ratioText(event.trade_pnl_ratio) : "-")}</div>
+        </div>
+      </div>
+      <div class="rounded border border-slate-200 p-3">
+        <div class="text-xs text-slate-500">reason</div>
+        <div class="mt-1 text-sm">${escapeHtml(row.reason || "-")}</div>
+      </div>
+      <div class="rounded border border-slate-200 p-3">
+        <div class="mb-2 text-xs text-slate-500">indicators</div>
+        ${indicatorHtml}
+      </div>
+    `;
+  }
+
+  function renderEvents(payload) {
+    const indexMap = eventIndexMap(payload);
+    els.eventsBody.innerHTML = payload.events.length ? payload.events.map((event) => {
+      const rowIndex = indexMap.get(event.date);
+      const active = rowIndex === state.selectedIndex;
+      return `
+        <tr data-index="${rowIndex}" class="cursor-pointer border-t border-slate-100 ${active ? 'bg-amber-50' : 'hover:bg-slate-50'}">
+          <td class="px-2 py-2 whitespace-nowrap">${escapeHtml(event.date)}</td>
+          <td class="px-2 py-2 font-medium uppercase ${event.signal === 'buy' ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(event.signal)}</td>
+          <td class="px-2 py-2 text-right font-mono">${escapeHtml(numberText(event.price))}</td>
+          <td class="px-2 py-2 text-xs text-slate-600">${escapeHtml(event.reason || "-")}</td>
+        </tr>
+      `;
+    }).join("") : `
+      <tr><td colspan="4" class="px-2 py-4 text-center text-sm text-slate-500">이벤트가 없습니다.</td></tr>
+    `;
+
+    els.eventsBody.querySelectorAll("tr[data-index]").forEach((row) => {
+      row.addEventListener("click", () => setSelectedIndex(Number(row.dataset.index)));
+    });
+  }
+
+  function renderRows(payload) {
+    els.rowsBody.innerHTML = payload.rows.map((row, index) => `
+      <tr data-index="${index}" class="cursor-pointer border-t border-slate-100 ${index === state.selectedIndex ? 'bg-sky-50' : 'hover:bg-slate-50'}">
+        <td class="px-2 py-2 whitespace-nowrap">${escapeHtml(row.date)}</td>
+        <td class="px-2 py-2 uppercase">${escapeHtml(row.signal)}</td>
+        <td class="px-2 py-2 text-right font-mono">${escapeHtml(numberText(row.price))}</td>
+        <td class="px-2 py-2">${escapeHtml(row.position_state || "-")}</td>
+        <td class="px-2 py-2 text-xs text-slate-600">${escapeHtml(row.reason || "-")}</td>
+      </tr>
+    `).join("");
+
+    els.rowsBody.querySelectorAll("tr[data-index]").forEach((row) => {
+      row.addEventListener("click", () => setSelectedIndex(Number(row.dataset.index)));
+    });
+  }
+
+  function updateReplayControls(payload) {
+    els.slider.max = String(Math.max(payload.rows.length - 1, 0));
+    els.slider.value = String(state.selectedIndex);
+    els.prev.disabled = state.selectedIndex <= 0;
+    els.next.disabled = state.selectedIndex >= payload.rows.length - 1;
+  }
+
+  function renderAll(payload) {
+    hideTransient();
+    if (!payload || !payload.rows || !payload.rows.length) {
+      showEmpty("표시할 검토 결과가 없습니다.");
+      return;
+    }
+    els.results.classList.remove("hidden");
+    renderSummary(payload);
+    renderChart(payload);
+    renderDetail(payload);
+    renderEvents(payload);
+    renderRows(payload);
+    updateReplayControls(payload);
+  }
+
+  function setSelectedIndex(index) {
+    if (!state.payload) return;
+    const maxIndex = state.payload.rows.length - 1;
+    state.selectedIndex = Math.max(0, Math.min(index, maxIndex));
+    renderAll(state.payload);
+  }
+
+  async function runFetch() {
+    const ticker = els.ticker.value;
+    const startDate = els.startDate.value;
+    const endDate = els.endDate.value;
+    const clientValidation = validateRange(startDate, endDate);
+    if (clientValidation) {
+      showError(clientValidation);
+      return;
+    }
+
+    showLoading();
+    els.results.classList.add("hidden");
+
+    const url = `/review/data/${encodeURIComponent(ticker)}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+    try {
+      const resp = await fetch(url, { headers: { accept: "application/json" } });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        showError(data.detail || `요청 실패 (${resp.status})`);
+        return;
+      }
+      state.payload = data;
+      state.selectedIndex = 0;
+      renderAll(data);
+    } catch (error) {
+      showError(error?.message || "데이터를 불러오지 못했습니다.");
+    } finally {
+      els.loading.classList.add("hidden");
+    }
+  }
+
+  els.form.addEventListener("submit", function(event) {
+    event.preventDefault();
+    runFetch();
+  });
+
+  els.slider.addEventListener("input", function() {
+    setSelectedIndex(Number(els.slider.value));
+  });
+  els.prev.addEventListener("click", function() { setSelectedIndex(state.selectedIndex - 1); });
+  els.next.addEventListener("click", function() { setSelectedIndex(state.selectedIndex + 1); });
+
+  runFetch();
+})();
+</script>
+{% endif %}
+{% endblock %}

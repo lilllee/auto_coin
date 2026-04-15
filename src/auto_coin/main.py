@@ -91,12 +91,13 @@ def run_scheduler(bot: TradingBot, settings: Settings, notifier: TelegramNotifie
                     timezone="Asia/Seoul"),
         id="daily_reset",
     )
-    scheduler.add_job(
-        bot.force_exit_if_holding,
-        CronTrigger(hour=settings.exit_hour_kst, minute=settings.exit_minute_kst, second=0,
-                    timezone="Asia/Seoul"),
-        id="force_exit",
-    )
+    if settings.time_exit_enabled:
+        scheduler.add_job(
+            bot.force_exit_if_holding,
+            CronTrigger(hour=settings.exit_hour_kst, minute=settings.exit_minute_kst, second=0,
+                        timezone="Asia/Seoul"),
+            id="force_exit",
+        )
     # 일일 리셋 직전 리포트 (force_exit 08:55 이후, daily_reset 09:00 이전)
     scheduler.add_job(
         bot.daily_report,

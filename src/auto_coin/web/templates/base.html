@@ -50,10 +50,11 @@
 
 {% if authed %}
 <nav class="bg-white border-t border-slate-200 fixed bottom-0 inset-x-0 safe-bottom z-10">
-  <div class="max-w-xl mx-auto grid grid-cols-5">
+  <div class="max-w-xl mx-auto grid grid-cols-6">
     {% set tabs = [
       ("/", "📊", "대시"),
       ("/charts", "📈", "차트"),
+      ("/review", "🔍", "전략검토"),
       ("/reports", "📄", "리포트"),
       ("/logs", "📜", "로그"),
       ("/settings", "⚙️", "설정"),

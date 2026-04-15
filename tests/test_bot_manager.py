@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import pytest
+from apscheduler.schedulers.background import BackgroundScheduler
 from sqlmodel import Session
 
 from auto_coin.web import db as web_db
 from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
-from auto_coin.web.settings_service import bootstrap_from_env, save_runtime_settings
+from auto_coin.web.settings_service import (
+    bootstrap_from_env,
+    load_runtime_settings,
+    save_runtime_settings,
+)
 
 
 @pytest.fixture
@@ -87,3 +92,31 @@ def test_reload_when_stopped_stays_stopped(db, box):
     mgr.reload()
     # 한 번도 start 안 했으면 reload 후에도 멈춰있음
     assert mgr.running is False
+
+
+def test_register_jobs_disables_force_exit_for_composite(db, box):
+    with Session(web_db.engine()) as s:
+        bootstrap_from_env(s, box)
+        current = load_runtime_settings(s, box)
+        updated = current.model_copy(update={"strategy_name": "sma200_ema_adx_composite"})
+        save_runtime_settings(s, box, updated)
+
+    mgr = BotManager(box)
+    mgr._build_bot()
+    mgr._scheduler = BackgroundScheduler(timezone="Asia/Seoul")
+    mgr._register_jobs()
+
+    assert mgr._scheduler.get_job("force_exit") is None
+    assert mgr._scheduler.get_job("daily_report") is not None
+
+
+def test_register_jobs_keeps_force_exit_for_volatility_breakout(db, box):
+    with Session(web_db.engine()) as s:
+        bootstrap_from_env(s, box)
+
+    mgr = BotManager(box)
+    mgr._build_bot()
+    mgr._scheduler = BackgroundScheduler(timezone="Asia/Seoul")
+    mgr._register_jobs()
+
+    assert mgr._scheduler.get_job("force_exit") is not None
