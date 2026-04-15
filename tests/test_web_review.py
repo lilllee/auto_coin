@@ -178,3 +178,42 @@ def test_review_data_maps_internal_error_to_500(app_env, mocker):
         )
         assert r.status_code == 500
         assert "review simulation failed" in r.text
+
+
+def test_review_data_passes_include_sell_param(app_env, mocker):
+    run = mocker.patch("auto_coin.web.routers.review.run_review_simulation", return_value=_FakeReviewResult())
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get(
+            "/review/data/KRW-BTC?start_date=2026-04-01&end_date=2026-04-03&include_sell=true",
+            headers={"accept": "application/json"},
+        )
+        assert r.status_code == 200
+        run.assert_called_once()
+        assert run.call_args.kwargs["include_strategy_sell"] is True
+
+
+def test_review_data_defaults_include_sell_false(app_env, mocker):
+    run = mocker.patch("auto_coin.web.routers.review.run_review_simulation", return_value=_FakeReviewResult())
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get(
+            "/review/data/KRW-BTC?start_date=2026-04-01&end_date=2026-04-03",
+            headers={"accept": "application/json"},
+        )
+        assert r.status_code == 200
+        run.assert_called_once()
+        assert run.call_args.kwargs["include_strategy_sell"] is False
+
+
+def test_review_page_shows_mode_selector(app_env):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/review")
+        assert r.status_code == 200
+        assert 'id="review-mode"' in r.text
+        assert "전략 신호만" in r.text
+        assert "전략 SELL 포함" in r.text

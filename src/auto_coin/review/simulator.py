@@ -13,6 +13,17 @@ from auto_coin.strategy import STRATEGY_LABELS, create_strategy
 from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
 
 
+# 전략별 SELL 오버라이드 지원 분류
+_SELL_OVERRIDABLE: frozenset[str] = frozenset({
+    "atr_channel_breakout",
+    "ema_adx_atr_trend",
+    "sma200_regime",
+    "ad_turtle",
+})
+_ENTRY_ONLY: frozenset[str] = frozenset({"volatility_breakout"})
+_ALWAYS_SELL: frozenset[str] = frozenset({"sma200_ema_adx_composite"})
+
+
 class ReviewValidationError(ValueError):
     """잘못된 review 시뮬레이션 입력."""
 
@@ -83,6 +94,7 @@ def run_review_simulation(
     ma_window: int = 5,
     k: float = 0.5,
     max_review_days: int = 90,
+    include_strategy_sell: bool = False,
 ) -> ReviewResult:
     """선택 구간의 전략 signal을 일봉 종가 기준으로 replay한다."""
     start = _normalize_date(start_date)
@@ -115,6 +127,9 @@ def run_review_simulation(
     review_df = df.loc[(df.index.date >= start) & (df.index.date <= end)]
     if review_df.empty:
         raise ReviewValidationError("no candles available for selected range")
+
+    if include_strategy_sell and strategy_name in _SELL_OVERRIDABLE:
+        params = {**params, "allow_sell_signal": True}
 
     strategy = create_strategy(strategy_name, params)
     state = _PositionState()
@@ -203,7 +218,7 @@ def run_review_simulation(
             "entry_date": state.entry_date,
             "entry_price": state.entry_price,
         },
-        notes=["strategy-only replay", "daily-close approximation"],
+        notes=[_mode_note(strategy_name, include_strategy_sell), "daily-close approximation"],
     )
     return ReviewResult(
         ticker=ticker.upper(),
@@ -335,3 +350,15 @@ def _derive_reason(
         return "price>=target"
 
     return f"signal={signal.value}"
+
+
+def _mode_note(strategy_name: str, include_strategy_sell: bool) -> str:
+    if not include_strategy_sell:
+        return "strategy-only replay"
+    if strategy_name in _SELL_OVERRIDABLE:
+        return "strategy sell enabled"
+    if strategy_name in _ENTRY_ONLY:
+        return "entry-only strategy (no sell logic)"
+    if strategy_name in _ALWAYS_SELL:
+        return "strategy sell always active"
+    return "strategy-only replay"

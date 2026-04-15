@@ -25,6 +25,10 @@ from auto_coin.web.settings_service import load_runtime_settings
 
 router = APIRouter()
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
+
+_SELL_OVERRIDABLE_STRATEGIES = {"atr_channel_breakout", "ema_adx_atr_trend", "sma200_regime", "ad_turtle"}
+_ENTRY_ONLY_STRATEGIES = {"volatility_breakout"}
+_ALWAYS_SELL_STRATEGIES = {"sma200_ema_adx_composite"}
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -53,6 +57,9 @@ def review_index(
             "strategy_params": strategy_params,
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
+            "has_sell_override": settings.strategy_name in _SELL_OVERRIDABLE_STRATEGIES,
+            "is_entry_only": settings.strategy_name in _ENTRY_ONLY_STRATEGIES,
+            "is_always_sell": settings.strategy_name in _ALWAYS_SELL_STRATEGIES,
         },
     )
 
@@ -62,6 +69,7 @@ def review_data(
     ticker: str,
     start_date: str = Query(...),
     end_date: str = Query(...),
+    include_sell: bool = Query(default=False),
     db: Session = Depends(get_session_db),
     box: SecretBox = Depends(get_box),
     _uid=Depends(require_auth),
@@ -104,6 +112,7 @@ def review_data(
             strategy_params=strategy_params,
             ma_window=settings.ma_filter_window,
             k=settings.strategy_k,
+            include_strategy_sell=include_sell,
         )
     except ReviewValidationError as exc:
         status_code = 404 if "no candles available" in str(exc) else 400

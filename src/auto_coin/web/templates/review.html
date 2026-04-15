@@ -35,6 +35,22 @@
                class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
       </label>
     </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <label class="block">
+          <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">검토 모드</span>
+          <select id="review-mode" class="border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm">
+            <option value="signal">전략 신호만</option>
+            <option value="sell">전략 SELL 포함</option>
+          </select>
+        </label>
+        {% if is_entry_only %}
+          <span class="text-xs text-amber-600 dark:text-amber-400 mt-5">현재 전략은 진입 전용 — 전략 자체 SELL 로직 없음</span>
+        {% elif is_always_sell %}
+          <span class="text-xs text-emerald-600 dark:text-emerald-400 mt-5">현재 전략은 SELL 항상 활성 (모드 무관)</span>
+        {% elif has_sell_override %}
+          <span id="review-mode-hint" class="text-xs text-slate-500 dark:text-slate-400 mt-5">SELL 포함 선택 시 전략 자체 매도 로직 활성화</span>
+        {% endif %}
+      </div>
     <div class="flex items-center justify-between gap-3">
       <div class="text-xs text-slate-500 dark:text-slate-400">
         전략 신호 전용 리플레이 · 운영 청산(손절/시간) 미반영 · 일봉 종가 기준 · 최대 90일
@@ -133,6 +149,7 @@
     ticker: document.getElementById("review-ticker"),
     startDate: document.getElementById("review-start-date"),
     endDate: document.getElementById("review-end-date"),
+    mode: document.getElementById("review-mode"),
     loading: document.getElementById("review-loading"),
     error: document.getElementById("review-error"),
     empty: document.getElementById("review-empty"),
@@ -450,7 +467,9 @@
     showLoading();
     els.results.classList.add("hidden");
 
-    const url = `/review/data/${encodeURIComponent(ticker)}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}`;
+    const mode = document.getElementById("review-mode").value;
+    const includeSell = mode === "sell" ? "&include_sell=true" : "";
+    const url = `/review/data/${encodeURIComponent(ticker)}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}${includeSell}`;
     try {
       const resp = await fetch(url, { headers: { accept: "application/json" } });
       const data = await resp.json().catch(() => ({}));
