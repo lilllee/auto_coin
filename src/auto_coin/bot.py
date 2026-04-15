@@ -73,9 +73,24 @@ class TradingBot:
         open_positions = self._count_open_positions()
         total_daily_pnl = self._total_daily_pnl_ratio()
 
+        # 현재가 일괄 조회 (6종목 → 1회 API 호출)
+        try:
+            price_map = self._client.get_current_prices(self._tickers)
+        except UpbitError as exc:
+            logger.error("batch price fetch failed: {}", exc)
+            self._notifier.send(f"⚠️ batch price fetch failed: {exc}")
+            return results
+
         for ticker in self._tickers:
             store = self._stores[ticker]
             executor = self._executors[ticker]
+
+            # 현재가 누락 시 skip
+            price = price_map.get(ticker)
+            if price is None or price <= 0:
+                logger.warning("no price for {} — skipping", ticker)
+                continue
+
             try:
                 extra_count = self._extra_candle_count()
                 df = fetch_daily(
@@ -91,10 +106,9 @@ class TradingBot:
                     strategy_name=self._strategy_name,
                     strategy_params=self._strategy_params,
                 )
-                price = self._client.get_current_price(ticker)
             except UpbitError as exc:
-                logger.error("market data fetch failed for {}: {}", ticker, exc)
-                self._notifier.send(f"⚠️ {ticker} market data fetch failed: {exc}")
+                logger.error("candle fetch failed for {}: {}", ticker, exc)
+                self._notifier.send(f"⚠️ {ticker} candle fetch failed: {exc}")
                 continue
 
             state = store.load()
@@ -189,8 +203,19 @@ class TradingBot:
         tickers = self._s.watch_ticker_list
         if not tickers:
             return
+
+        try:
+            price_map = self._client.get_current_prices(tickers)
+        except UpbitError as exc:
+            logger.error("watch batch price failed: {}", exc)
+            return
+
         lines: list[str] = []
         for ticker in tickers:
+            price = price_map.get(ticker)
+            if price is None:
+                lines.append(f"• {ticker}: 현재가 조회 실패")
+                continue
             try:
                 extra_count = self._extra_candle_count()
                 df = fetch_daily(
@@ -206,7 +231,6 @@ class TradingBot:
                     strategy_name=self._strategy_name,
                     strategy_params=self._strategy_params,
                 )
-                price = self._client.get_current_price(ticker)
             except UpbitError as exc:
                 lines.append(f"• {ticker}: fetch 실패 ({exc})")
                 continue
@@ -274,16 +298,30 @@ class TradingBot:
     def force_exit_if_holding(self) -> list[OrderRecord]:
         """KST 08:55 — 보유 중인 모든 종목을 일괄 청산."""
         results: list[OrderRecord] = []
-        for ticker in self._tickers:
+        # 보유 중인 종목 목록
+        holding_tickers = [
+            t for t in self._tickers
+            if self._stores[t].load().position is not None
+        ]
+        if not holding_tickers:
+            return results
+
+        try:
+            price_map = self._client.get_current_prices(holding_tickers)
+        except UpbitError as exc:
+            logger.error("force_exit batch price failed: {}", exc)
+            return results
+
+        for ticker in holding_tickers:
             store = self._stores[ticker]
             executor = self._executors[ticker]
             state = store.load()
             if state.position is None:
                 continue
-            try:
-                price = self._client.get_current_price(ticker)
-            except UpbitError as exc:
-                logger.error("force_exit price fetch failed for {}: {}", ticker, exc)
+
+            price = price_map.get(ticker)
+            if price is None or price <= 0:
+                logger.error("force_exit: no price for {} — skipping", ticker)
                 continue
 
             decision = Decision(

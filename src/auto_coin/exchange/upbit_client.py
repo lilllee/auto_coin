@@ -111,6 +111,28 @@ class UpbitClient:
             raise UpbitError(f"no price returned for {ticker}")
         return float(price)
 
+    def get_current_prices(self, tickers: list[str]) -> dict[str, float]:
+        """여러 종목의 현재가를 한 번에 조회.
+
+        pyupbit.get_current_price()에 리스트를 전달하면 {ticker: price} dict를 반환한다.
+        일부 종목이 None이면 해당 종목은 결과에서 제외한다.
+        """
+        if not tickers:
+            return {}
+        raw = self._call(
+            f"get_current_price({len(tickers)} tickers)",
+            lambda: pyupbit.get_current_price(tickers),
+        )
+        if raw is None:
+            raise UpbitError(f"no prices returned for {tickers}")
+        if isinstance(raw, dict):
+            # 정상 케이스: {ticker: price}
+            return {k: float(v) for k, v in raw.items() if v is not None}
+        # 단건 fallback (리스트가 1개일 때 float 반환 가능)
+        if isinstance(raw, (int, float)) and len(tickers) == 1:
+            return {tickers[0]: float(raw)}
+        raise UpbitError(f"unexpected response type for batch price: {type(raw)}")
+
     # ----- private (auth required) -----
 
     def _require_auth(self) -> pyupbit.Upbit:

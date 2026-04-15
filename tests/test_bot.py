@@ -63,9 +63,10 @@ def _make_bot(store, settings, mocker, *, fetch_df=None, current_price=120.0):
                         min_request_interval=0.0)
     if fetch_df is not None:
         mocker.patch("auto_coin.bot.fetch_daily", return_value=fetch_df)
-    mocker.patch.object(client, "get_current_price", return_value=current_price)
-    notifier = TelegramNotifier(bot_token="", chat_id="")
     ticker = settings.ticker
+    mocker.patch.object(client, "get_current_price", return_value=current_price)
+    mocker.patch.object(client, "get_current_prices", return_value={ticker: current_price})
+    notifier = TelegramNotifier(bot_token="", chat_id="")
     executor = OrderExecutor(client, store, ticker, live=False)
     bot = TradingBot(
         settings=settings, client=client,
@@ -158,6 +159,7 @@ def test_stop_loss_overrides_signal_in_tick(store, mocker):
     bot.tick()
     assert store.load().position is not None
     mocker.patch.object(client, "get_current_price", return_value=116.0)
+    mocker.patch.object(client, "get_current_prices", return_value={s.ticker: 116.0})
     recs = bot.tick()
     assert len(recs) == 1
     assert recs[0].side == "sell"
@@ -312,3 +314,12 @@ def test_main_exits_when_other_runtime_is_active(mocker):
     )
 
     assert main([]) == 1
+
+
+def test_tick_uses_batch_price_fetch(store, mocker):
+    """tick이 get_current_prices로 한 번에 현재가를 조회하는지 확인."""
+    s = _settings()
+    bot, client = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    spy = mocker.spy(client, "get_current_prices")
+    bot.tick()
+    spy.assert_called_once_with([s.ticker])

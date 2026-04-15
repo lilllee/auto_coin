@@ -137,3 +137,64 @@ def test_get_order_unexpected_response_raises(mocker, client):
     mocker.patch.object(client._upbit, "get_order", return_value="not-a-dict")
     with pytest.raises(UpbitError):
         client.get_order("bad-uuid")
+
+
+# ----- get_current_prices (batch) -----
+
+@pytest.fixture
+def batch_client(mocker):
+    mocker.patch("auto_coin.exchange.upbit_client.pyupbit.get_current_price", return_value=0.0)
+    return UpbitClient("", "", max_retries=1, min_request_interval=0)
+
+
+def test_get_current_prices_returns_dict(batch_client, mocker):
+    mocker.patch(
+        "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
+        return_value={"KRW-BTC": 100000000.0, "KRW-ETH": 3000000.0},
+    )
+    result = batch_client.get_current_prices(["KRW-BTC", "KRW-ETH"])
+    assert result == {"KRW-BTC": 100000000.0, "KRW-ETH": 3000000.0}
+
+
+def test_get_current_prices_filters_none_values(batch_client, mocker):
+    mocker.patch(
+        "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
+        return_value={"KRW-BTC": 100000000.0, "KRW-ETH": None},
+    )
+    result = batch_client.get_current_prices(["KRW-BTC", "KRW-ETH"])
+    assert result == {"KRW-BTC": 100000000.0}
+    assert "KRW-ETH" not in result
+
+
+def test_get_current_prices_empty_list(batch_client):
+    result = batch_client.get_current_prices([])
+    assert result == {}
+
+
+def test_get_current_prices_single_ticker_float_fallback(batch_client, mocker):
+    """pyupbit이 단건일 때 float을 반환하는 경우 처리."""
+    mocker.patch(
+        "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
+        return_value=50000000.0,
+    )
+    result = batch_client.get_current_prices(["KRW-BTC"])
+    assert result == {"KRW-BTC": 50000000.0}
+
+
+def test_get_current_prices_none_raises(batch_client, mocker):
+    mocker.patch(
+        "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
+        return_value=None,
+    )
+    with pytest.raises(UpbitError, match="no prices returned"):
+        batch_client.get_current_prices(["KRW-BTC"])
+
+
+def test_get_current_prices_retries_on_failure(batch_client, mocker):
+    """API 실패 시 재시도 후 최종 실패."""
+    mocker.patch(
+        "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
+        side_effect=ConnectionError("timeout"),
+    )
+    with pytest.raises(UpbitError, match="failed after"):
+        batch_client.get_current_prices(["KRW-BTC"])

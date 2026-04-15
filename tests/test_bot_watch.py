@@ -106,6 +106,7 @@ def test_watch_dot_marker_when_below_target(store, mocker):
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
     mocker.patch.object(client, "get_current_price", return_value=105.0)
+    mocker.patch.object(client, "get_current_prices", return_value={"KRW-BTC": 105.0})
     bot.watch()
     msg = send.call_args.args[0]
     assert "🚀" not in msg
@@ -120,6 +121,7 @@ def test_watch_down_ma_when_below_ma(store, mocker):
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
     mocker.patch.object(client, "get_current_price", return_value=120.0)
+    mocker.patch.object(client, "get_current_prices", return_value={"KRW-BTC": 120.0})
     bot.watch()
     msg = send.call_args.args[0]
     assert "↓MA" in msg
@@ -153,6 +155,8 @@ def test_watch_fetch_failure_row_rendered_and_others_continue(store, mocker):
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
     mocker.patch.object(client, "get_current_price", return_value=120.0)
+    mocker.patch.object(client, "get_current_prices",
+                        return_value={"KRW-BTC": 120.0, "KRW-ETH": 120.0})
     bot.watch()
     msg = send.call_args.args[0]
     assert "KRW-BTC" in msg and "🚀" in msg
@@ -167,6 +171,8 @@ def test_watch_multiple_tickers_all_in_single_message(store, mocker):
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
     mocker.patch.object(client, "get_current_price", return_value=120.0)
+    mocker.patch.object(client, "get_current_prices",
+                        return_value={"KRW-BTC": 120.0, "KRW-ETH": 120.0, "KRW-XRP": 120.0})
     bot.watch()
     send.assert_called_once()
     msg = send.call_args.args[0]
@@ -183,6 +189,7 @@ def test_watch_ma_column_absent_omits_ma_mark(store, mocker):
     send = mocker.patch.object(notifier, "send")
     bot, client = _make_bot(store, s, notifier)
     mocker.patch.object(client, "get_current_price", return_value=120.0)
+    mocker.patch.object(client, "get_current_prices", return_value={"KRW-BTC": 120.0})
     bot.watch()
     msg = send.call_args.args[0]
     assert "↑MA" not in msg
