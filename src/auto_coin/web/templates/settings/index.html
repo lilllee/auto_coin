@@ -12,16 +12,16 @@
     ("/settings/audit",     "감사 로그",   "설정/보안/제어 이벤트 기록"),
   ] %}
   {% for href, title, desc in sections %}
-    <a href="{{ href }}" class="tab flex items-center justify-between bg-white border border-slate-200 rounded px-4 py-3 hover:bg-slate-50">
+    <a href="{{ href }}" class="tab flex items-center justify-between bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-700">
       <div>
         <div class="font-medium">{{ title }}</div>
-        <div class="text-xs text-slate-500 mt-0.5">{{ desc }}</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{{ desc }}</div>
       </div>
-      <span class="text-slate-300">›</span>
+      <span class="text-slate-300 dark:text-slate-600">›</span>
     </a>
   {% endfor %}
 </div>
-<div class="mt-6 text-xs text-slate-500">
+<div class="mt-6 text-xs text-slate-500 dark:text-slate-400">
   현재 모드: <span class="font-medium">{{ s.mode.value }}</span>
   · 실거래 가드: <span class="font-medium">{{ "ON" if s.is_live else "OFF" }}</span>
   · kill-switch: <span class="font-medium">{{ "ON" if s.kill_switch else "OFF" }}</span>

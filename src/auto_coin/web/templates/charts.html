@@ -10,7 +10,7 @@
     <label class="block">
       <span class="block text-sm text-slate-600 mb-1">종목</span>
       <select name="ticker" onchange="this.form.submit()"
-              class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+              class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
         {% for t in choices %}
           <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
         {% endfor %}
@@ -18,12 +18,12 @@
     </label>
   </form>
 
-  <div class="bg-white border border-slate-200 rounded p-3">
+  <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3">
     <canvas id="price-chart" height="260"></canvas>
-    <div id="chart-status" class="text-xs text-slate-400 mt-2">불러오는 중…</div>
+    <div id="chart-status" class="text-xs text-slate-400 dark:text-slate-500 mt-2">불러오는 중…</div>
   </div>
 
-  <div class="mt-3 text-xs text-slate-500">
+  <div class="mt-3 text-xs text-slate-500 dark:text-slate-400">
     파란선 = 종가 · 회색선 = MA({{ s.ma_filter_window }}) · 주황 점선 = 오늘 target
     <span id="chart-entry-note"></span>
   </div>

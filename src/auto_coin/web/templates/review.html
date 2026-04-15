@@ -3,88 +3,88 @@
 {% block body %}
 <h1 class="text-xl font-semibold mb-3">전략 검토</h1>
 
-<div class="mb-4 rounded border border-slate-200 bg-white p-3 text-sm">
+<div class="mb-4 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
   <div><span class="font-medium">현재 전략:</span> {{ strategy_label }}</div>
-  <div class="mt-1 text-slate-500"><span class="font-medium">전략 ID:</span> {{ strategy_name }}</div>
-  <pre class="mt-2 overflow-x-auto rounded bg-slate-50 p-2 text-xs">{{ strategy_params | tojson(indent=2) }}</pre>
+  <div class="mt-1 text-slate-500 dark:text-slate-400"><span class="font-medium">전략 ID:</span> {{ strategy_name }}</div>
+  <pre class="mt-2 overflow-x-auto rounded bg-slate-50 dark:bg-slate-800/50 p-2 text-xs">{{ strategy_params | tojson(indent=2) }}</pre>
 </div>
 
 {% if not choices %}
-  <div class="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 text-sm text-slate-500 dark:text-slate-400">
     검토할 종목이 없습니다. 포트폴리오/관측 종목을 먼저 설정하세요.
   </div>
 {% else %}
-  <form id="review-form" class="space-y-3 rounded border border-slate-200 bg-white p-3">
+  <form id="review-form" class="space-y-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
     <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
       <label class="block">
-        <span class="block text-sm text-slate-600 mb-1">종목</span>
-        <select id="review-ticker" name="ticker" class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+        <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">종목</span>
+        <select id="review-ticker" name="ticker" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
           {% for t in choices %}
             <option value="{{ t }}" {% if t == selected %}selected{% endif %}>{{ t }}</option>
           {% endfor %}
         </select>
       </label>
       <label class="block">
-        <span class="block text-sm text-slate-600 mb-1">Start Date</span>
+        <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Start Date</span>
         <input id="review-start-date" type="date" name="start_date" value="{{ start_date }}"
-               class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+               class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
       </label>
       <label class="block">
-        <span class="block text-sm text-slate-600 mb-1">End Date</span>
+        <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">End Date</span>
         <input id="review-end-date" type="date" name="end_date" value="{{ end_date }}"
-               class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+               class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
       </label>
     </div>
     <div class="flex items-center justify-between gap-3">
-      <div class="text-xs text-slate-500">
-        최대 90일 · 일봉 기준 · 전략 동작 검토용 인터랙티브 리플레이
+      <div class="text-xs text-slate-500 dark:text-slate-400">
+        전략 신호 전용 리플레이 · 운영 청산(손절/시간) 미반영 · 일봉 종가 기준 · 최대 90일
       </div>
-      <button id="review-run-button" type="submit" class="btn rounded bg-slate-900 px-4 py-2 text-white">실행</button>
+      <button id="review-run-button" type="submit" class="btn rounded bg-slate-900 dark:bg-slate-200 px-4 py-2 text-white dark:text-slate-900">실행</button>
     </div>
   </form>
 
-  <div id="review-loading" class="mt-4 hidden rounded border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-800">
+  <div id="review-loading" class="mt-4 hidden rounded border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">
     불러오는 중...
   </div>
 
-  <div id="review-error" class="mt-4 hidden rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"></div>
+  <div id="review-error" class="mt-4 hidden rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"></div>
 
-  <div id="review-empty" class="mt-4 hidden rounded border border-slate-200 bg-white px-3 py-4 text-sm text-slate-500">
+  <div id="review-empty" class="mt-4 hidden rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-4 text-sm text-slate-500 dark:text-slate-400">
     표시할 검토 결과가 없습니다.
   </div>
 
   <section id="review-results" class="mt-4 hidden space-y-4">
     <div id="review-summary" class="grid grid-cols-2 gap-3 md:grid-cols-4"></div>
 
-    <div class="rounded border border-slate-200 bg-white p-3">
+    <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div class="flex items-center justify-between gap-3 mb-3">
         <div>
           <div class="text-sm font-medium">가격 / 이벤트 리플레이</div>
-          <div id="review-step-label" class="text-xs text-slate-500">-</div>
+          <div id="review-step-label" class="text-xs text-slate-500 dark:text-slate-400">-</div>
         </div>
-        <div class="text-xs text-slate-500">클릭: 이벤트 행 / 상태 행 / 차트 포인트</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400">클릭: 이벤트 행 / 상태 행 / 차트 포인트</div>
       </div>
-      <div id="review-chart-container" class="rounded border border-slate-100 bg-slate-50 p-2">
+      <div id="review-chart-container" class="rounded border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-2">
         <canvas id="review-chart" height="220"></canvas>
       </div>
       <div class="mt-3 flex items-center gap-2">
-        <button id="review-prev" type="button" class="btn rounded border border-slate-300 px-3 py-2 text-sm">이전</button>
+        <button id="review-prev" type="button" class="btn rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm">이전</button>
         <input id="review-step-slider" type="range" min="0" max="0" value="0" class="w-full">
-        <button id="review-next" type="button" class="btn rounded border border-slate-300 px-3 py-2 text-sm">다음</button>
+        <button id="review-next" type="button" class="btn rounded border border-slate-300 dark:border-slate-600 px-3 py-2 text-sm">다음</button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-      <section class="rounded border border-slate-200 bg-white p-3">
+      <section class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
         <div class="mb-2 text-sm font-medium">현재 시점 상세</div>
         <div id="review-detail" class="space-y-3 text-sm"></div>
       </section>
 
-      <section class="rounded border border-slate-200 bg-white p-3">
+      <section class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
         <div class="mb-2 text-sm font-medium">이벤트</div>
         <div id="review-events" class="overflow-x-auto">
           <table class="min-w-full text-sm">
-            <thead class="text-left text-slate-500">
+            <thead class="text-left text-slate-500 dark:text-slate-400">
               <tr>
                 <th class="px-2 py-2">일자</th>
                 <th class="px-2 py-2">신호</th>
@@ -98,11 +98,11 @@
       </section>
     </div>
 
-    <section class="rounded border border-slate-200 bg-white p-3">
+    <section class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div class="mb-2 text-sm font-medium">일자별 상태</div>
       <div id="review-rows" class="overflow-x-auto">
         <table class="min-w-full text-sm">
-          <thead class="text-left text-slate-500">
+          <thead class="text-left text-slate-500 dark:text-slate-400">
             <tr>
               <th class="px-2 py-2">일자</th>
               <th class="px-2 py-2">신호</th>
@@ -229,11 +229,12 @@
       ["미실현 손익", ratioText(payload.summary?.unrealized_pnl_ratio)],
       ["총 손익", ratioText(payload.summary?.total_pnl_ratio)],
       ["마지막 포지션", payload.summary?.last_position?.state || "-"],
+      ["참고", (payload.summary?.notes || []).join(", ") || "-"],
     ];
 
     els.summary.innerHTML = cards.map(([label, value]) => `
-      <div class="rounded border border-slate-200 bg-white p-3">
-        <div class="text-xs text-slate-500">${escapeHtml(label)}</div>
+      <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+        <div class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(label)}</div>
         <div class="mt-1 text-sm font-medium">${escapeHtml(value)}</div>
       </div>
     `).join("");
@@ -332,38 +333,38 @@
     const indicatorHtml = Object.keys(indicators).length
       ? `<dl class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs">${Object.entries(indicators).map(([key, value]) => `
           <div class="contents">
-            <dt class="text-slate-500">${escapeHtml(key)}</dt>
+            <dt class="text-slate-500 dark:text-slate-400">${escapeHtml(key)}</dt>
             <dd class="font-mono text-right">${escapeHtml(value === null ? "-" : numberText(value, 4))}</dd>
           </div>
         `).join("")}</dl>`
-      : '<div class="text-xs text-slate-500">표시할 indicator가 없습니다.</div>';
+      : '<div class="text-xs text-slate-500 dark:text-slate-400">표시할 indicator가 없습니다.</div>';
 
     els.stepLabel.textContent = `${row.date} · step ${state.selectedIndex + 1}/${payload.rows.length}`;
     els.detail.innerHTML = `
       <div class="grid grid-cols-2 gap-3">
-        <div class="rounded bg-slate-50 p-3">
-          <div class="text-xs text-slate-500">signal</div>
+        <div class="rounded bg-slate-50 dark:bg-slate-800/50 p-3">
+          <div class="text-xs text-slate-500 dark:text-slate-400">signal</div>
           <div class="mt-1 text-sm font-semibold uppercase">${escapeHtml(row.signal)}</div>
         </div>
-        <div class="rounded bg-slate-50 p-3">
-          <div class="text-xs text-slate-500">position</div>
+        <div class="rounded bg-slate-50 dark:bg-slate-800/50 p-3">
+          <div class="text-xs text-slate-500 dark:text-slate-400">position</div>
           <div class="mt-1 text-sm font-semibold">${escapeHtml(row.position_state || "-")}</div>
         </div>
-        <div class="rounded bg-slate-50 p-3">
-          <div class="text-xs text-slate-500">price</div>
+        <div class="rounded bg-slate-50 dark:bg-slate-800/50 p-3">
+          <div class="text-xs text-slate-500 dark:text-slate-400">price</div>
           <div class="mt-1 text-sm font-semibold">${escapeHtml(numberText(row.price))}</div>
         </div>
-        <div class="rounded bg-slate-50 p-3">
-          <div class="text-xs text-slate-500">trade pnl</div>
+        <div class="rounded bg-slate-50 dark:bg-slate-800/50 p-3">
+          <div class="text-xs text-slate-500 dark:text-slate-400">trade pnl</div>
           <div class="mt-1 text-sm font-semibold">${escapeHtml(event ? ratioText(event.trade_pnl_ratio) : "-")}</div>
         </div>
       </div>
-      <div class="rounded border border-slate-200 p-3">
-        <div class="text-xs text-slate-500">reason</div>
+      <div class="rounded border border-slate-200 dark:border-slate-700 p-3">
+        <div class="text-xs text-slate-500 dark:text-slate-400">reason</div>
         <div class="mt-1 text-sm">${escapeHtml(row.reason || "-")}</div>
       </div>
-      <div class="rounded border border-slate-200 p-3">
-        <div class="mb-2 text-xs text-slate-500">indicators</div>
+      <div class="rounded border border-slate-200 dark:border-slate-700 p-3">
+        <div class="mb-2 text-xs text-slate-500 dark:text-slate-400">indicators</div>
         ${indicatorHtml}
       </div>
     `;
@@ -375,15 +376,15 @@
       const rowIndex = indexMap.get(event.date);
       const active = rowIndex === state.selectedIndex;
       return `
-        <tr data-index="${rowIndex}" class="cursor-pointer border-t border-slate-100 ${active ? 'bg-amber-50' : 'hover:bg-slate-50'}">
+        <tr data-index="${rowIndex}" class="cursor-pointer border-t border-slate-100 dark:border-slate-700 ${active ? 'bg-amber-50 dark:bg-amber-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-700'}">
           <td class="px-2 py-2 whitespace-nowrap">${escapeHtml(event.date)}</td>
-          <td class="px-2 py-2 font-medium uppercase ${event.signal === 'buy' ? 'text-emerald-700' : 'text-red-700'}">${escapeHtml(event.signal)}</td>
+          <td class="px-2 py-2 font-medium uppercase ${event.signal === 'buy' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}">${escapeHtml(event.signal)}</td>
           <td class="px-2 py-2 text-right font-mono">${escapeHtml(numberText(event.price))}</td>
-          <td class="px-2 py-2 text-xs text-slate-600">${escapeHtml(event.reason || "-")}</td>
+          <td class="px-2 py-2 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(event.reason || "-")}</td>
         </tr>
       `;
     }).join("") : `
-      <tr><td colspan="4" class="px-2 py-4 text-center text-sm text-slate-500">이벤트가 없습니다.</td></tr>
+      <tr><td colspan="4" class="px-2 py-4 text-center text-sm text-slate-500 dark:text-slate-400">이벤트가 없습니다.</td></tr>
     `;
 
     els.eventsBody.querySelectorAll("tr[data-index]").forEach((row) => {
@@ -393,12 +394,12 @@
 
   function renderRows(payload) {
     els.rowsBody.innerHTML = payload.rows.map((row, index) => `
-      <tr data-index="${index}" class="cursor-pointer border-t border-slate-100 ${index === state.selectedIndex ? 'bg-sky-50' : 'hover:bg-slate-50'}">
+      <tr data-index="${index}" class="cursor-pointer border-t border-slate-100 dark:border-slate-700 ${index === state.selectedIndex ? 'bg-sky-50 dark:bg-sky-900/30' : 'hover:bg-slate-50 dark:hover:bg-slate-700'}">
         <td class="px-2 py-2 whitespace-nowrap">${escapeHtml(row.date)}</td>
         <td class="px-2 py-2 uppercase">${escapeHtml(row.signal)}</td>
         <td class="px-2 py-2 text-right font-mono">${escapeHtml(numberText(row.price))}</td>
         <td class="px-2 py-2">${escapeHtml(row.position_state || "-")}</td>
-        <td class="px-2 py-2 text-xs text-slate-600">${escapeHtml(row.reason || "-")}</td>
+        <td class="px-2 py-2 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(row.reason || "-")}</td>
       </tr>
     `).join("");
 

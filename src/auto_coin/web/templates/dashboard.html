@@ -4,24 +4,24 @@
 <h1 class="text-xl font-semibold mb-3">대시보드</h1>
 
 {# 상태 + 컨트롤 — 5초 polling 대상 아님 (버튼 submit 시 전체 새로고침) #}
-<div class="bg-white border border-slate-200 rounded p-3 mb-3 text-sm">
+<div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3 mb-3 text-sm">
   <div class="flex items-center justify-between flex-wrap gap-2">
     <div class="flex flex-wrap gap-1.5">
       {% if running %}
-        <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800">running</span>
+        <span class="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400">running</span>
       {% else %}
-        <span class="px-2 py-0.5 rounded bg-slate-200 text-slate-700">stopped</span>
+        <span class="px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">stopped</span>
       {% endif %}
       {% if settings.is_live %}
-        <span class="px-2 py-0.5 rounded bg-red-100 text-red-800">LIVE</span>
+        <span class="px-2 py-0.5 rounded bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400">LIVE</span>
       {% else %}
-        <span class="px-2 py-0.5 rounded bg-slate-100 text-slate-700">paper</span>
+        <span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">paper</span>
       {% endif %}
       {% if settings.kill_switch %}
-        <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800">kill-switch ON</span>
+        <span class="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-400">kill-switch ON</span>
       {% endif %}
     </div>
-    <div class="text-xs text-slate-500">
+    <div class="text-xs text-slate-500 dark:text-slate-400">
       {{ settings.portfolio_ticker_list | length }}종목 · 슬롯 {{ slot_max }}
     </div>
   </div>
@@ -38,19 +38,19 @@
   </form>
   <form method="post" action="/control/restart" class="m-0">
     <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
-    <button type="submit" class="btn w-full rounded border border-slate-300 bg-white">재시작(reload)</button>
+    <button type="submit" class="btn w-full rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800">재시작(reload)</button>
   </form>
   {% if running %}
     <form method="post" action="/control/stop" class="m-0 col-span-2"
           onsubmit="this.confirm_input.value = confirm('봇을 정지할까요? (포지션은 그대로 유지)') ? 'yes' : ''">
       <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <input type="hidden" name="confirm" value="" />
-      <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 정지</button>
+      <button type="submit" class="btn w-full rounded bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900">봇 정지</button>
     </form>
   {% else %}
     <form method="post" action="/control/start" class="m-0 col-span-2">
       <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
-      <button type="submit" class="btn w-full rounded bg-slate-900 text-white">봇 시작</button>
+      <button type="submit" class="btn w-full rounded bg-slate-900 dark:bg-slate-200 text-white dark:text-slate-900">봇 시작</button>
     </form>
   {% endif %}
 </div>

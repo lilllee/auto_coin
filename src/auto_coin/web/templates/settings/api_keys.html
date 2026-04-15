@@ -6,29 +6,29 @@
 <h1 class="text-xl font-semibold my-3">API 키</h1>
 {{ error_box(error) }}
 
-<div class="mb-4 px-3 py-2 rounded bg-amber-50 text-amber-800 text-xs">
+<div class="mb-4 px-3 py-2 rounded bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-400 text-xs">
   ⚠️ 저장된 키는 마지막 4자리만 표시됩니다. 비어 있는 상태로 저장하면 기존 값이 유지됩니다.
 </div>
 
 <form method="post" action="/settings/api-keys" class="space-y-4">
   <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
-  <fieldset class="border border-slate-200 rounded p-3">
+  <fieldset class="border border-slate-200 dark:border-slate-700 rounded p-3">
     <legend class="text-sm font-semibold px-1">Upbit</legend>
     <label class="block mb-3">
-      <span class="block text-sm text-slate-600 mb-1">Access Key ({{ upbit_access_mask or "없음" }})</span>
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Access Key ({{ upbit_access_mask or "없음" }})</span>
       <input type="text" name="upbit_access_key" autocomplete="off" placeholder="변경 시에만 입력"
-             class="w-full border border-slate-300 rounded px-3 py-2 text-sm font-mono">
+             class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm font-mono">
     </label>
     <label class="block mb-3">
-      <span class="block text-sm text-slate-600 mb-1">Secret Key ({{ upbit_secret_mask or "없음" }})</span>
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Secret Key ({{ upbit_secret_mask or "없음" }})</span>
       <input type="password" name="upbit_secret_key" autocomplete="off" placeholder="변경 시에만 입력"
-             class="w-full border border-slate-300 rounded px-3 py-2 text-sm font-mono">
+             class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm font-mono">
     </label>
     <button type="button"
             hx-post="/settings/api-keys/test-upbit"
             hx-target="#upbit-check"
             hx-swap="innerHTML"
-            class="text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
+            class="text-sm px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
       Upbit 연결 테스트
     </button>
     <div id="upbit-check" class="mt-2 text-sm"></div>
@@ -36,29 +36,29 @@
             hx-post="/settings/api-keys/upbit-holdings"
             hx-target="#upbit-holdings"
             hx-swap="innerHTML"
-            class="mt-2 text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
+            class="mt-2 text-sm px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
       Upbit 보유 코인 목록 가져오기
     </button>
     <div id="upbit-holdings" class="mt-2 text-sm"></div>
   </fieldset>
 
-  <fieldset class="border border-slate-200 rounded p-3">
+  <fieldset class="border border-slate-200 dark:border-slate-700 rounded p-3">
     <legend class="text-sm font-semibold px-1">Telegram</legend>
     <label class="block mb-3">
-      <span class="block text-sm text-slate-600 mb-1">Bot Token ({{ telegram_mask or "없음" }})</span>
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Bot Token ({{ telegram_mask or "없음" }})</span>
       <input type="password" name="telegram_bot_token" autocomplete="off" placeholder="변경 시에만 입력"
-             class="w-full border border-slate-300 rounded px-3 py-2 text-sm font-mono">
+             class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm font-mono">
     </label>
     <label class="block mb-3">
-      <span class="block text-sm text-slate-600 mb-1">Chat ID</span>
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Chat ID</span>
       <input type="text" name="telegram_chat_id" value="{{ s.telegram_chat_id }}"
-             class="w-full border border-slate-300 rounded px-3 py-2 text-sm font-mono">
+             class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm font-mono">
     </label>
     <button type="button"
             hx-post="/settings/api-keys/test-telegram"
             hx-target="#telegram-check"
             hx-swap="innerHTML"
-            class="text-sm px-3 py-1.5 rounded border border-slate-300 hover:bg-slate-50">
+            class="text-sm px-3 py-1.5 rounded border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700">
       Telegram 연결 테스트 (현재 저장값 기준 · 메시지 1건 전송)
     </button>
     <div id="telegram-check" class="mt-2 text-sm"></div>
@@ -67,7 +67,7 @@
   {{ submit("키 저장") }}
 </form>
 
-<p class="text-xs text-slate-400 mt-4">
+<p class="text-xs text-slate-400 dark:text-slate-500 mt-4">
   테스트/조회 버튼은 <strong>DB 저장값 우선</strong>, 비어 있으면 <strong>.env 저장값</strong> 기준입니다.
   새 키 입력 후 확인하려면 먼저 저장하세요.
 </p>

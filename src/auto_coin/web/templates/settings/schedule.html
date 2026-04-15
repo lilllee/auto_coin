@@ -7,7 +7,7 @@
 {{ error_box(error) }}
 
 {% if s.is_live %}
-<div class="mb-4 px-3 py-2 rounded bg-red-50 text-red-800 text-sm">
+<div class="mb-4 px-3 py-2 rounded bg-red-50 dark:bg-red-900/30 text-red-800 dark:text-red-400 text-sm">
   ⚠️ 실거래 모드 활성 상태입니다. 주문은 업비트로 실제 전송됩니다.
 </div>
 {% endif %}
@@ -15,8 +15,8 @@
 <form method="post" action="/settings/schedule" class="space-y-3">
   <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <label class="block mb-3">
-    <span class="block text-sm text-slate-600 mb-1">모드</span>
-    <select name="mode" class="w-full border border-slate-300 rounded px-3 py-2 text-base">
+    <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">모드</span>
+    <select name="mode" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
       <option value="paper" {% if s.mode.value == "paper" %}selected{% endif %}>paper (가상 매매)</option>
       <option value="live" {% if s.mode.value == "live" %}selected{% endif %}>live (실거래 — 주의)</option>
     </select>
@@ -38,12 +38,12 @@
   {{ field("daily_reset_hour_kst", "일일 리셋 시각 — 시 (KST)",
            s.daily_reset_hour_kst, type="number", min="0", max="23") }}
   <label class="block">
-    <span class="block text-sm text-slate-600 mb-1">라이브 전환 TOTP 6자리</span>
+    <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">라이브 전환 TOTP 6자리</span>
     <input type="text" name="totp_code" inputmode="numeric" pattern="[0-9]{6}"
            maxlength="6" minlength="6" autocomplete="one-time-code"
-           class="w-full border border-slate-300 rounded px-3 py-2 text-base font-mono"
+           class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base font-mono"
            placeholder="paper → live 전환 시에만 필요">
-    <span class="block text-xs text-slate-400 mt-1">
+    <span class="block text-xs text-slate-400 dark:text-slate-500 mt-1">
       현재 paper 모드에서 live 모드로 바꿀 때만 검증합니다.
     </span>
   </label>

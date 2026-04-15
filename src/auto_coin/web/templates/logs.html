@@ -4,8 +4,8 @@
 <div class="flex items-center justify-between mb-3">
   <h1 class="text-xl font-semibold">로그</h1>
   <div class="text-xs">
-    <label class="mr-2 text-slate-500">레벨</label>
-    <select id="level-filter" class="border border-slate-300 rounded px-2 py-1">
+    <label class="mr-2 text-slate-500 dark:text-slate-400">레벨</label>
+    <select id="level-filter" class="border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1">
       <option value="DEBUG">DEBUG↑</option>
       <option value="INFO" selected>INFO↑</option>
       <option value="WARNING">WARNING↑</option>
@@ -14,11 +14,11 @@
   </div>
 </div>
 
-<div class="flex items-center justify-between mb-2 text-xs text-slate-500">
+<div class="flex items-center justify-between mb-2 text-xs text-slate-500 dark:text-slate-400">
   <label class="flex items-center gap-1">
     <input type="checkbox" id="autoscroll" checked> 자동 스크롤
   </label>
-  <span id="conn-status" class="px-2 py-0.5 rounded bg-slate-100">연결 중…</span>
+  <span id="conn-status" class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700">연결 중…</span>
 </div>
 
 <div id="log-box"
