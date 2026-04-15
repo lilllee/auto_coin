@@ -267,7 +267,19 @@ STRATEGY_ENTRY_CONFIRMATION: dict[str, int] = {
     "volatility_breakout": 0,        # 장중 돌파 포착 — 지연 금지
     "atr_channel_breakout": 1,       # 채널 돌파 1회 확인
     "ad_turtle": 1,                  # Donchian 돌파 1회 확인
-    "sma200_ema_adx_composite": 2,   # SMA200 경계 흔들림 방지
-    "ema_adx_atr_trend": 2,          # 느린 EMA/ADX 경계 방지
-    "sma200_regime": 2,              # SMA 경계 흔들림 방지
+    "sma200_ema_adx_composite": 0,   # daily_confirm이 debounce를 대체
+    "ema_adx_atr_trend": 0,          # daily_confirm이 debounce를 대체
+    "sma200_regime": 0,              # daily_confirm이 debounce를 대체
+}
+
+# 전략별 실행 모드.
+# - "intraday": 매 tick BUY 판단 (현재가 반응형)
+# - "daily_confirm": 거래일당 1회만 BUY 판단 (일봉 확정 후 첫 tick)
+STRATEGY_EXECUTION_MODE: dict[str, str] = {
+    "volatility_breakout": "intraday",
+    "atr_channel_breakout": "intraday",
+    "ad_turtle": "intraday",
+    "sma200_ema_adx_composite": "daily_confirm",
+    "ema_adx_atr_trend": "daily_confirm",
+    "sma200_regime": "daily_confirm",
 }

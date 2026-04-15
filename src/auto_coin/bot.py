@@ -27,7 +27,7 @@ from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.reporter import build_daily_report
 from auto_coin.risk.manager import Action, Decision, RiskContext, RiskManager
-from auto_coin.strategy import STRATEGY_ENTRY_CONFIRMATION
+from auto_coin.strategy import STRATEGY_ENTRY_CONFIRMATION, STRATEGY_EXECUTION_MODE
 from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
 
 
@@ -61,6 +61,8 @@ class TradingBot:
         self._entry_confirmation_ticks = STRATEGY_ENTRY_CONFIRMATION.get(
             strategy.name, 0
         )
+        self._execution_mode = STRATEGY_EXECUTION_MODE.get(strategy.name, "intraday")
+        self._entry_evaluated: dict[str, str] = {}  # ticker → trading_day (평가 완료 표시)
 
     # ----- main loop steps -----
 
@@ -126,6 +128,16 @@ class TradingBot:
             avg_entry = state.position.avg_entry_price if state.position else None
             krw_balance = self._krw_slot_budget(executor.live)
 
+            # daily_confirm 모드: 미보유 시 거래일당 1회만 BUY 평가
+            _daily_confirm_pending = False
+            if self._execution_mode == "daily_confirm" and coin_balance <= 0:
+                trading_day = self._current_trading_day()
+                if self._entry_evaluated.get(ticker) == trading_day:
+                    # 이미 오늘 평가 완료 — BUY skip, 손절/SELL 대상 아님(미보유)
+                    continue
+                _daily_confirm_pending = True
+                logger.info("tick {}: daily_confirm entry evaluation (once per day)", ticker)
+
             snap = MarketSnapshot(df=df, current_price=price, has_position=coin_balance > 0)
             signal = self._strategy.generate_signal(snap)
 
@@ -149,6 +161,10 @@ class TradingBot:
                 if self._pending_buys.get(ticker, 0) > 0:
                     logger.debug("tick {}: pending BUY reset (signal={})", ticker, signal.value)
                 self._pending_buys[ticker] = 0
+                # daily_confirm이고 BUY가 아님 → 오늘 평가 완료 (조건 미충족)
+                if _daily_confirm_pending:
+                    self._entry_evaluated[ticker] = self._current_trading_day()
+                    logger.info("tick {}: daily_confirm evaluated — no entry today", ticker)
 
             ctx = RiskContext(
                 krw_balance=krw_balance,
@@ -163,6 +179,10 @@ class TradingBot:
             decision = self._risk.evaluate(signal, ctx)
             logger.debug("tick {}: signal={} decision={} reason={}",
                          ticker, signal.value, decision.action.value, decision.reason)
+
+            # daily_confirm 표시 (BUY 평가 완료 — HOLD/SELL 포함)
+            if _daily_confirm_pending:
+                self._entry_evaluated[ticker] = self._current_trading_day()
 
             if decision.action is Action.HOLD:
                 continue
@@ -197,6 +217,7 @@ class TradingBot:
         """KST 09:00 — 모든 종목의 일일 손익 누적 초기화."""
         self._candle_cache.invalidate()
         self._pending_buys.clear()
+        self._entry_evaluated.clear()
         prev_total = self._total_daily_pnl_ratio()
         for store in self._stores.values():
             state = store.load()
@@ -377,6 +398,15 @@ class TradingBot:
         return results
 
     # ----- helpers -----
+
+    def _current_trading_day(self) -> str:
+        """KST 09:00 기준 거래일 키 반환."""
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        now = datetime.now(ZoneInfo("Asia/Seoul"))
+        if now.hour < 9:
+            now = now - timedelta(days=1)
+        return now.strftime("%Y-%m-%d")
 
     def _extra_candle_count(self) -> int:
         """전략별 필요 캔들 수 계산."""

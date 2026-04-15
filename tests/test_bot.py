@@ -420,3 +420,104 @@ def test_daily_reset_clears_pending_buys(store, mocker):
     bot.daily_reset()
 
     assert bot._pending_buys == {}
+
+
+# ──────────────────────────────────────────────
+# 실행 모드 (execution mode) 테스트
+# ──────────────────────────────────────────────
+
+def test_intraday_mode_allows_buy_any_time(store, mocker):
+    """intraday 모드(VB)에서는 시간에 관계없이 BUY가 가능해야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+
+    # VB는 기본이 intraday
+    assert bot._execution_mode == "intraday"
+
+    # 15:00 KST (entry window 밖) 로 mock해도 BUY 발생해야 함
+    mocker.patch.object(bot, "_current_trading_day", return_value="2026-04-16")
+
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+
+
+def test_daily_confirm_first_tick_allows_buy(store, mocker):
+    """daily_confirm 모드에서 거래일 첫 tick은 BUY 평가가 가능해야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot._execution_mode = "daily_confirm"
+    bot._entry_confirmation_ticks = 0  # daily_confirm이 debounce 대체
+
+    mocker.patch.object(bot, "_current_trading_day", return_value="2026-04-16")
+
+    # 첫 tick — _entry_evaluated 비어 있으므로 BUY 평가 허용
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+
+
+def test_daily_confirm_second_tick_skips_buy(store, mocker):
+    """daily_confirm 모드에서 같은 거래일 두 번째 tick은 BUY 평가를 skip해야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot._execution_mode = "daily_confirm"
+    bot._entry_confirmation_ticks = 0
+
+    mocker.patch.object(bot, "_current_trading_day", return_value="2026-04-16")
+
+    # tick 1 — 평가 완료 (BUY 또는 HOLD, 여기선 BUY)
+    bot.tick()
+    # 결과 상관없이 _entry_evaluated에 오늘 날짜가 기록돼야 함
+    assert bot._entry_evaluated.get(s.ticker) == "2026-04-16"
+
+    # tick 2 — 같은 거래일, 미보유 상태면 skip
+    # 보유 중이면 skip 대상이 아니므로, 포지션 없는 시나리오를 위해 강제 청산
+    if store.load().position is not None:
+        bot.force_exit_if_holding()
+
+    recs2 = bot.tick()
+    assert recs2 == []
+    assert store.load().position is None
+
+
+def test_daily_confirm_holding_still_checks_stop_loss(store, mocker):
+    """daily_confirm이어도 보유 중이면 매 tick 손절 체크해야 한다."""
+    s = _settings(stop_loss_ratio=-0.02)
+    bot, client = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot._execution_mode = "daily_confirm"
+    bot._entry_confirmation_ticks = 0
+
+    mocker.patch.object(bot, "_current_trading_day", return_value="2026-04-16")
+
+    # 포지션 진입 (첫 tick)
+    recs = bot.tick()
+    assert len(recs) == 1 and recs[0].side == "buy"
+    assert store.load().position is not None
+
+    # 오늘 이미 평가 완료로 표시 (두 번째 tick은 원래 skip 대상이지만, 보유 중이면 제외)
+    assert bot._entry_evaluated.get(s.ticker) == "2026-04-16"
+
+    # 현재가가 손절선 아래 (진입가 120 × (1 - 0.02) = 117.6)
+    mocker.patch.object(client, "get_current_price", return_value=116.0)
+    mocker.patch.object(client, "get_current_prices", return_value={s.ticker: 116.0})
+
+    # tick 2 — 보유 중(coin_balance > 0)이므로 daily_confirm gate를 통과해 손절 실행
+    recs2 = bot.tick()
+    assert len(recs2) == 1
+    assert recs2[0].side == "sell"
+    assert store.load().position is None
+
+
+def test_daily_reset_clears_entry_evaluated(store, mocker):
+    """daily_reset 호출 시 _entry_evaluated가 초기화되어야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    # 수동으로 평가 완료 상태 세팅
+    bot._entry_evaluated = {"KRW-BTC": "2026-04-16"}
+    assert bot._entry_evaluated == {"KRW-BTC": "2026-04-16"}
+
+    bot.daily_reset()
+
+    assert bot._entry_evaluated == {}
