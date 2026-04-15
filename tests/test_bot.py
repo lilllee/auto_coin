@@ -16,7 +16,8 @@ from auto_coin.main import main
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
 from auto_coin.runtime_guard import RuntimeGuardError
-from auto_coin.strategy import create_strategy
+from auto_coin.strategy import STRATEGY_ENTRY_CONFIRMATION, create_strategy
+from auto_coin.strategy.base import Signal
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
@@ -323,3 +324,99 @@ def test_tick_uses_batch_price_fetch(store, mocker):
     spy = mocker.spy(client, "get_current_prices")
     bot.tick()
     spy.assert_called_once_with([s.ticker])
+
+
+# ──────────────────────────────────────────────
+# 진입 확인 메커니즘 (entry confirmation) 테스트
+# ──────────────────────────────────────────────
+
+def test_entry_confirmation_zero_immediate_buy(store, mocker):
+    """confirmation=0 (VB)이면 첫 BUY 신호에 즉시 진입해야 한다."""
+    assert STRATEGY_ENTRY_CONFIRMATION["volatility_breakout"] == 0
+
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    # VB는 confirmation=0 — 첫 tick에 바로 주문이 나와야 함
+    recs = bot.tick()
+    assert len(recs) == 1
+    assert recs[0].side == "buy"
+
+
+def test_entry_confirmation_requires_consecutive_buys(store, mocker):
+    """confirmation=2이면 2연속 BUY 신호 후에야 실제 진입해야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot._entry_confirmation_ticks = 2
+
+    # tick 1: BUY 신호 → pending (1/2), 주문 없음
+    recs1 = bot.tick()
+    assert recs1 == []
+    assert store.load().position is None
+
+    # tick 2: BUY 신호 → confirmed (2/2), 주문 발생
+    recs2 = bot.tick()
+    assert len(recs2) == 1
+    assert recs2[0].side == "buy"
+    assert store.load().position is not None
+
+
+def test_entry_confirmation_resets_on_non_buy(store, mocker):
+    """BUY → HOLD → BUY 패턴이면 pending이 리셋되어야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+    bot._entry_confirmation_ticks = 2
+
+    # tick 1: BUY → pending=1
+    recs1 = bot.tick()
+    assert recs1 == []
+    assert bot._pending_buys.get(s.ticker, 0) == 1
+
+    # tick 2: HOLD 신호 → pending 리셋
+    # VolatilityBreakout은 frozen dataclass이므로 클래스 레벨로 패치
+    mocker.patch.object(VolatilityBreakout, "generate_signal", return_value=Signal.HOLD)
+    recs2 = bot.tick()
+    assert recs2 == []
+    assert bot._pending_buys.get(s.ticker, 0) == 0
+
+    # tick 3: BUY 신호 복귀 → pending=1 (리셋 후 재시작), 주문 없음
+    mocker.patch.object(VolatilityBreakout, "generate_signal", return_value=Signal.BUY)
+    recs3 = bot.tick()
+    assert recs3 == []
+    assert bot._pending_buys.get(s.ticker, 0) == 1
+
+
+def test_entry_confirmation_does_not_affect_stop_loss(store, mocker):
+    """confirmation이 있어도 손절은 즉시 실행되어야 한다."""
+    s = _settings(stop_loss_ratio=-0.02)
+    bot, client = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+
+    # 먼저 포지션 진입 (confirmation=0인 상태에서)
+    recs = bot.tick()
+    assert len(recs) == 1 and recs[0].side == "buy"
+    assert store.load().position is not None
+
+    # 이제 confirmation=2 설정 — 손절에는 영향 없어야 함
+    bot._entry_confirmation_ticks = 2
+
+    # 현재가가 손절선 아래 (진입가 120 × (1 - 0.02) = 117.6)
+    mocker.patch.object(client, "get_current_price", return_value=116.0)
+    mocker.patch.object(client, "get_current_prices", return_value={s.ticker: 116.0})
+    recs2 = bot.tick()
+    assert len(recs2) == 1
+    assert recs2[0].side == "sell"
+    assert store.load().position is None
+
+
+def test_daily_reset_clears_pending_buys(store, mocker):
+    """daily_reset 호출 시 pending BUY 상태가 초기화되어야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    bot._entry_confirmation_ticks = 2
+
+    # pending 상태를 수동으로 세팅
+    bot._pending_buys[s.ticker] = 1
+    assert bot._pending_buys.get(s.ticker, 0) == 1
+
+    bot.daily_reset()
+
+    assert bot._pending_buys == {}

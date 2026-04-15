@@ -27,7 +27,8 @@ from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.reporter import build_daily_report
 from auto_coin.risk.manager import Action, Decision, RiskContext, RiskManager
-from auto_coin.strategy.base import MarketSnapshot, Strategy
+from auto_coin.strategy import STRATEGY_ENTRY_CONFIRMATION
+from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
 
 
 class TradingBot:
@@ -56,6 +57,10 @@ class TradingBot:
             with contextlib.suppress(json.JSONDecodeError, TypeError):
                 self._strategy_params = json.loads(settings.strategy_params_json)
         self._candle_cache = DailyCandleCache()
+        self._pending_buys: dict[str, int] = {}  # ticker → 연속 BUY 신호 횟수
+        self._entry_confirmation_ticks = STRATEGY_ENTRY_CONFIRMATION.get(
+            strategy.name, 0
+        )
 
     # ----- main loop steps -----
 
@@ -124,6 +129,27 @@ class TradingBot:
             snap = MarketSnapshot(df=df, current_price=price, has_position=coin_balance > 0)
             signal = self._strategy.generate_signal(snap)
 
+            # 진입 확인 메커니즘 (BUY만, SELL/HOLD/손절 무관)
+            if signal is Signal.BUY and self._entry_confirmation_ticks > 0:
+                self._pending_buys[ticker] = self._pending_buys.get(ticker, 0) + 1
+                pending = self._pending_buys[ticker]
+                required = self._entry_confirmation_ticks
+                if pending < required:
+                    logger.info(
+                        "tick {}: BUY pending ({}/{}) — waiting for confirmation",
+                        ticker, pending, required,
+                    )
+                    continue
+                logger.info(
+                    "tick {}: BUY confirmed ({}/{}) — proceeding",
+                    ticker, pending, required,
+                )
+                self._pending_buys[ticker] = 0
+            elif signal is not Signal.BUY:
+                if self._pending_buys.get(ticker, 0) > 0:
+                    logger.debug("tick {}: pending BUY reset (signal={})", ticker, signal.value)
+                self._pending_buys[ticker] = 0
+
             ctx = RiskContext(
                 krw_balance=krw_balance,
                 coin_balance=coin_balance,
@@ -170,6 +196,7 @@ class TradingBot:
     def daily_reset(self) -> None:
         """KST 09:00 — 모든 종목의 일일 손익 누적 초기화."""
         self._candle_cache.invalidate()
+        self._pending_buys.clear()
         prev_total = self._total_daily_pnl_ratio()
         for store in self._stores.values():
             state = store.load()

@@ -260,3 +260,14 @@ def create_strategy(name: str, params: dict | None = None) -> Strategy:
 def get_strategy_names() -> list[str]:
     """등록된 전략 이름 목록."""
     return list(STRATEGY_REGISTRY.keys())
+
+
+# 전략별 진입 확인 tick 수. 0이면 즉시 진입 (debounce 없음).
+STRATEGY_ENTRY_CONFIRMATION: dict[str, int] = {
+    "volatility_breakout": 0,        # 장중 돌파 포착 — 지연 금지
+    "atr_channel_breakout": 1,       # 채널 돌파 1회 확인
+    "ad_turtle": 1,                  # Donchian 돌파 1회 확인
+    "sma200_ema_adx_composite": 2,   # SMA200 경계 흔들림 방지
+    "ema_adx_atr_trend": 2,          # 느린 EMA/ADX 경계 방지
+    "sma200_regime": 2,              # SMA 경계 흔들림 방지
+}
