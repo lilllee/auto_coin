@@ -19,7 +19,14 @@ class _FakeReviewResult:
             "ticker": "KRW-BTC",
             "strategy": {"name": "volatility_breakout", "params": {"k": 0.5}},
             "range": {"start_date": "2026-04-01", "end_date": "2026-04-03", "days": 3},
-            "summary": {"buy_count": 1, "sell_count": 0, "event_count": 1},
+            "summary": {
+                "mode_label": "전략 신호만",
+                "buy_count": 1,
+                "sell_count": 0,
+                "event_count": 1,
+                "interpretation": "선택 구간에서는 진입 조건이 끝까지 충족되지 않았습니다.",
+                "notes": ["strategy-only replay"],
+            },
             "rows": [{"date": "2026-04-01", "signal": "hold"}],
             "events": [{"date": "2026-04-02", "signal": "buy"}],
         }
@@ -92,6 +99,7 @@ def test_review_data_returns_json(app_env, mocker):
         assert r.status_code == 200
         data = r.json()
         assert data["ticker"] == "KRW-BTC"
+        assert data["summary"]["mode_label"] == "전략 신호만"
         assert data["summary"]["buy_count"] == 1
         assert data["rows"][0]["signal"] == "hold"
         run.assert_called_once()
@@ -217,3 +225,4 @@ def test_review_page_shows_mode_selector(app_env):
         assert 'id="review-mode"' in r.text
         assert "전략 신호만" in r.text
         assert "전략 SELL 포함" in r.text
+        assert "운영 청산(손절/시간) 미반영" in r.text

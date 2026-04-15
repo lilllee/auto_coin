@@ -17,6 +17,11 @@ from fastapi.templating import Jinja2Templates
 from sqlmodel import Session
 
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.review.reasons import (
+    ALWAYS_SELL_REVIEW_STRATEGIES,
+    ENTRY_ONLY_REVIEW_STRATEGIES,
+    REVIEW_SELL_OVERRIDABLE,
+)
 from auto_coin.review.simulator import ReviewValidationError, run_review_simulation
 from auto_coin.strategy import STRATEGY_LABELS
 from auto_coin.web.auth import get_box, get_session_db, require_auth
@@ -26,9 +31,6 @@ from auto_coin.web.settings_service import load_runtime_settings
 router = APIRouter()
 _TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "templates"
 
-_SELL_OVERRIDABLE_STRATEGIES = {"atr_channel_breakout", "ema_adx_atr_trend", "sma200_regime", "ad_turtle"}
-_ENTRY_ONLY_STRATEGIES = {"volatility_breakout"}
-_ALWAYS_SELL_STRATEGIES = {"sma200_ema_adx_composite"}
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -57,9 +59,9 @@ def review_index(
             "strategy_params": strategy_params,
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
-            "has_sell_override": settings.strategy_name in _SELL_OVERRIDABLE_STRATEGIES,
-            "is_entry_only": settings.strategy_name in _ENTRY_ONLY_STRATEGIES,
-            "is_always_sell": settings.strategy_name in _ALWAYS_SELL_STRATEGIES,
+            "has_sell_override": settings.strategy_name in REVIEW_SELL_OVERRIDABLE,
+            "is_entry_only": settings.strategy_name in ENTRY_ONLY_REVIEW_STRATEGIES,
+            "is_always_sell": settings.strategy_name in ALWAYS_SELL_REVIEW_STRATEGIES,
         },
     )
 

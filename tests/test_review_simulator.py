@@ -5,7 +5,10 @@ from datetime import datetime
 import pandas as pd
 import pytest
 
+from auto_coin.review.reasons import derive_review_reason
 from auto_coin.review.simulator import ReviewValidationError, run_review_simulation
+from auto_coin.strategy import create_strategy
+from auto_coin.strategy.base import Signal
 
 
 def _composite_review_df() -> pd.DataFrame:
@@ -246,7 +249,8 @@ def test_review_notes_reflect_sell_mode(mocker):
         },
         include_strategy_sell=False,
     )
-    assert result_default.summary.notes[0] == "strategy-only replay"
+    assert result_default.summary.notes[0] == "strategy sell always active"
+    assert result_default.summary.mode_label == "SELL 항상 활성"
 
     result_sell = run_review_simulation(
         client=object(),  # type: ignore[arg-type]
@@ -264,3 +268,77 @@ def test_review_notes_reflect_sell_mode(mocker):
         include_strategy_sell=True,
     )
     assert result_sell.summary.notes[0] == "strategy sell always active"
+
+
+@pytest.mark.parametrize(
+    ("strategy_name", "strategy_params", "row_data", "expected_reason"),
+    [
+        (
+            "sma200_regime",
+            {"ma_window": 200, "buffer_pct": 0.0, "allow_sell_signal": True},
+            {"sma200": 100, "close": 95},
+            "price<sma200, strategy exit",
+        ),
+        (
+            "atr_channel_breakout",
+            {"atr_window": 14, "channel_multiplier": 1.0, "allow_sell_signal": True},
+            {"upper_channel": 120, "lower_channel": 100, "atr14": 5, "close": 95},
+            "price<lower_channel, strategy exit",
+        ),
+        (
+            "ema_adx_atr_trend",
+            {
+                "ema_fast_window": 27,
+                "ema_slow_window": 125,
+                "adx_window": 90,
+                "adx_threshold": 14.0,
+                "allow_sell_signal": True,
+            },
+            {"ema27": 90, "ema125": 100, "adx90": 20, "close": 95},
+            "ema27<=ema125, strategy exit",
+        ),
+        (
+            "ad_turtle",
+            {"entry_window": 20, "exit_window": 10, "allow_sell_signal": True},
+            {"donchian_high_20": 120, "donchian_low_10": 100, "close": 95},
+            "price<donchian_low_10, strategy exit",
+        ),
+    ],
+)
+def test_review_reasons_explain_strategy_exit_paths(strategy_name, strategy_params, row_data, expected_reason):
+    strategy = create_strategy(strategy_name, strategy_params)
+    row = pd.Series(row_data)
+
+    reason = derive_review_reason(
+        strategy_name,
+        strategy,
+        row,
+        current_price=row_data["close"],
+        has_position=True,
+        signal=Signal.SELL,
+    )
+
+    assert reason == expected_reason
+
+
+def test_review_summary_exposes_mode_and_interpretation(mocker):
+    mocker.patch("auto_coin.review.simulator.fetch_daily", return_value=_composite_review_df())
+
+    result = run_review_simulation(
+        client=object(),  # type: ignore[arg-type]
+        ticker="KRW-BTC",
+        start_date="2026-04-01",
+        end_date="2026-04-05",
+        strategy_name="sma200_ema_adx_composite",
+        strategy_params={
+            "sma_window": 200,
+            "ema_fast_window": 27,
+            "ema_slow_window": 125,
+            "adx_window": 90,
+            "adx_threshold": 14.0,
+        },
+        include_strategy_sell=True,
+    )
+
+    assert result.summary.mode_label == "SELL 항상 활성"
+    assert result.summary.interpretation == "선택 구간에서 전략 기준 청산까지 확인되었습니다."

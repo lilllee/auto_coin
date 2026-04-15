@@ -239,6 +239,7 @@
     const cards = [
       ["전략", payload.strategy?.name || "-"],
       ["기간", `${payload.range?.start_date || "-"} ~ ${payload.range?.end_date || "-"}`],
+      ["검토 모드", payload.summary?.mode_label || "-"],
       ["BUY", numberText(payload.summary?.buy_count)],
       ["SELL", numberText(payload.summary?.sell_count)],
       ["이벤트", numberText(payload.summary?.event_count)],
@@ -246,6 +247,7 @@
       ["미실현 손익", ratioText(payload.summary?.unrealized_pnl_ratio)],
       ["총 손익", ratioText(payload.summary?.total_pnl_ratio)],
       ["마지막 포지션", payload.summary?.last_position?.state || "-"],
+      ["해석", payload.summary?.interpretation || "-"],
       ["참고", (payload.summary?.notes || []).join(", ") || "-"],
     ];
 
@@ -358,6 +360,13 @@
 
     els.stepLabel.textContent = `${row.date} · step ${state.selectedIndex + 1}/${payload.rows.length}`;
     els.detail.innerHTML = `
+      <div class="rounded border border-slate-200 dark:border-slate-700 p-3">
+        <div class="text-xs text-slate-500 dark:text-slate-400">interpretation</div>
+        <div class="mt-1 text-sm">${escapeHtml(payload.summary?.interpretation || "-")}</div>
+        <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          mode · ${escapeHtml(payload.summary?.mode_label || "-")} · ${(payload.summary?.notes || []).join(", ") || "-"}
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="rounded bg-slate-50 dark:bg-slate-800/50 p-3">
           <div class="text-xs text-slate-500 dark:text-slate-400">signal</div>

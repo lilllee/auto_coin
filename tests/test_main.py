@@ -33,7 +33,7 @@ class _DummyNotifier:
 
 
 class _FakeScheduler:
-    instances: list["_FakeScheduler"] = []
+    instances: list[_FakeScheduler] = []
 
     def __init__(self, timezone: str) -> None:
         self.timezone = timezone

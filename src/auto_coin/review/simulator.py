@@ -9,19 +9,15 @@ import pandas as pd
 
 from auto_coin.data.candles import fetch_daily, recommended_history_days
 from auto_coin.exchange.upbit_client import UpbitClient
+from auto_coin.review.reasons import (
+    REVIEW_SELL_OVERRIDABLE,
+    derive_review_reason,
+    mode_label,
+    mode_note,
+    summary_interpretation,
+)
 from auto_coin.strategy import STRATEGY_LABELS, create_strategy
 from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
-
-
-# 전략별 SELL 오버라이드 지원 분류
-_SELL_OVERRIDABLE: frozenset[str] = frozenset({
-    "atr_channel_breakout",
-    "ema_adx_atr_trend",
-    "sma200_regime",
-    "ad_turtle",
-})
-_ENTRY_ONLY: frozenset[str] = frozenset({"volatility_breakout"})
-_ALWAYS_SELL: frozenset[str] = frozenset({"sma200_ema_adx_composite"})
 
 
 class ReviewValidationError(ValueError):
@@ -52,6 +48,7 @@ class ReviewEvent:
 
 @dataclass(frozen=True)
 class ReviewSummary:
+    mode_label: str
     buy_count: int
     sell_count: int
     event_count: int
@@ -59,6 +56,7 @@ class ReviewSummary:
     unrealized_pnl_ratio: float
     total_pnl_ratio: float
     last_position: dict[str, Any]
+    interpretation: str
     notes: list[str] = field(default_factory=list)
 
 
@@ -128,7 +126,7 @@ def run_review_simulation(
     if review_df.empty:
         raise ReviewValidationError("no candles available for selected range")
 
-    if include_strategy_sell and strategy_name in _SELL_OVERRIDABLE:
+    if include_strategy_sell and strategy_name in REVIEW_SELL_OVERRIDABLE:
         params = {**params, "allow_sell_signal": True}
 
     strategy = create_strategy(strategy_name, params)
@@ -148,7 +146,7 @@ def run_review_simulation(
         )
         signal = strategy.generate_signal(snap)
         indicators = _extract_indicators(strategy_name, strategy, row)
-        reason = _derive_reason(
+        reason = derive_review_reason(
             strategy_name,
             strategy,
             row,
@@ -206,19 +204,28 @@ def run_review_simulation(
     if state.has_position and state.entry_price is not None:
         unrealized = (last_price - state.entry_price) / state.entry_price
 
+    buy_count = sum(1 for event in events if event.signal == Signal.BUY.value)
+    sell_count = sum(1 for event in events if event.signal == Signal.SELL.value)
+    last_position_state = "long" if state.has_position else "flat"
     summary = ReviewSummary(
-        buy_count=sum(1 for event in events if event.signal == Signal.BUY.value),
-        sell_count=sum(1 for event in events if event.signal == Signal.SELL.value),
+        mode_label=mode_label(strategy_name, include_strategy_sell),
+        buy_count=buy_count,
+        sell_count=sell_count,
         event_count=len(events),
         realized_pnl_ratio=state.realized_pnl_ratio,
         unrealized_pnl_ratio=unrealized,
         total_pnl_ratio=state.realized_pnl_ratio + unrealized,
         last_position={
-            "state": "long" if state.has_position else "flat",
+            "state": last_position_state,
             "entry_date": state.entry_date,
             "entry_price": state.entry_price,
         },
-        notes=[_mode_note(strategy_name, include_strategy_sell), "daily-close approximation"],
+        interpretation=summary_interpretation(
+            buy_count=buy_count,
+            sell_count=sell_count,
+            last_position_state=last_position_state,
+        ),
+        notes=[mode_note(strategy_name, include_strategy_sell), "daily-close approximation"],
     )
     return ReviewResult(
         ticker=ticker.upper(),
@@ -292,73 +299,3 @@ def _extract_indicators(strategy_name: str, strategy: Strategy, row: pd.Series) 
         indicators[f"adx{strategy.adx_window}"] = _float_or_none(row.get(f"adx{strategy.adx_window}"))
 
     return indicators
-
-
-def _derive_reason(
-    strategy_name: str,
-    strategy: Strategy,
-    row: pd.Series,
-    *,
-    current_price: float,
-    has_position: bool,
-    signal: Signal,
-) -> str:
-    if strategy_name == "sma200_ema_adx_composite":
-        sma = _float_or_none(row.get(f"sma{strategy.sma_window}"))
-        ema_fast = _float_or_none(row.get(f"ema{strategy.ema_fast_window}"))
-        ema_slow = _float_or_none(row.get(f"ema{strategy.ema_slow_window}"))
-        adx = _float_or_none(row.get(f"adx{strategy.adx_window}"))
-        if sma is None:
-            return f"sma{strategy.sma_window} unavailable"
-        if current_price < sma:
-            return (
-                f"price<sma{strategy.sma_window} (risk-off while holding)"
-                if has_position
-                else f"price<sma{strategy.sma_window}, stay out"
-            )
-        if has_position:
-            return "risk-on and already in position"
-        if ema_fast is None or ema_slow is None or adx is None:
-            return "ema/adx unavailable"
-        if signal is Signal.BUY:
-            return (
-                f"price>=sma{strategy.sma_window} and "
-                f"ema{strategy.ema_fast_window}>ema{strategy.ema_slow_window} and "
-                f"adx{strategy.adx_window}>={strategy.adx_threshold:.1f}"
-            )
-        if ema_fast <= ema_slow:
-            return f"ema{strategy.ema_fast_window}<=ema{strategy.ema_slow_window}"
-        if adx < strategy.adx_threshold:
-            return f"adx{strategy.adx_window}<{strategy.adx_threshold:.1f}"
-        return "entry conditions not met"
-
-    if strategy_name == "volatility_breakout":
-        target = _float_or_none(row.get("target"))
-        ma = _float_or_none(row.get(f"ma{strategy.ma_window}"))
-        if target is None:
-            return "target unavailable"
-        if has_position:
-            return "already in position"
-        if current_price < target:
-            return "price<target"
-        if strategy.require_ma_filter:
-            if ma is None:
-                return f"ma{strategy.ma_window} unavailable"
-            if current_price <= ma:
-                return f"price<=ma{strategy.ma_window}"
-            return f"price>=target and price>ma{strategy.ma_window}"
-        return "price>=target"
-
-    return f"signal={signal.value}"
-
-
-def _mode_note(strategy_name: str, include_strategy_sell: bool) -> str:
-    if not include_strategy_sell:
-        return "strategy-only replay"
-    if strategy_name in _SELL_OVERRIDABLE:
-        return "strategy sell enabled"
-    if strategy_name in _ENTRY_ONLY:
-        return "entry-only strategy (no sell logic)"
-    if strategy_name in _ALWAYS_SELL:
-        return "strategy sell always active"
-    return "strategy-only replay"
