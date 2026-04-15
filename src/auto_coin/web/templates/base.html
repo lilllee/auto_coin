@@ -67,11 +67,12 @@ tailwind.config = { darkMode: 'class' }
 
 {% if authed %}
 <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 fixed bottom-0 inset-x-0 safe-bottom z-10">
-  <div class="max-w-xl mx-auto grid grid-cols-6">
+  <div class="max-w-xl mx-auto grid grid-cols-7">
     {% set tabs = [
       ("/", "📊", "대시"),
       ("/charts", "📈", "차트"),
       ("/review", "🔍", "전략검토"),
+      ("/signal-board", "📡", "상태판"),
       ("/reports", "📄", "리포트"),
       ("/logs", "📜", "로그"),
       ("/settings", "⚙️", "설정"),

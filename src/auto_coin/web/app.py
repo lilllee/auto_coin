@@ -33,6 +33,7 @@ from auto_coin.web.routers import logs as logs_router
 from auto_coin.web.routers import reports as reports_router
 from auto_coin.web.routers import review as review_router
 from auto_coin.web.routers import settings as settings_router
+from auto_coin.web.routers import signal_board as signal_board_router
 from auto_coin.web.services import log_stream
 from auto_coin.web.session_secret import load_or_create_session_secret
 from auto_coin.web.settings_service import bootstrap_from_env, load_runtime_settings
@@ -101,6 +102,7 @@ def create_app() -> FastAPI:
     app.include_router(review_router.router)
     app.include_router(reports_router.router)
     app.include_router(logs_router.router)
+    app.include_router(signal_board_router.router)
 
     # /health — 인증 없이 헬스체크
     @app.get("/health")

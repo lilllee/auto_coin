@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}전략 상태판 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">전략 상태판</h1>
+
+<div class="mb-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+  <div><span class="font-medium">현재 전략:</span> {{ strategy_label }}</div>
+  <div class="mt-1 text-slate-500 dark:text-slate-400">종목: {{ tickers | join(", ") }}</div>
+</div>
+
+<div class="flex items-center justify-between mb-3">
+  <button id="signal-refresh" type="button" class="btn rounded bg-slate-900 dark:bg-slate-200 px-4 py-2 text-white dark:text-slate-900 text-sm">새로고침</button>
+  <span id="signal-updated" class="text-xs text-slate-400 dark:text-slate-500"></span>
+</div>
+
+<div id="signal-loading" class="rounded border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">
+  불러오는 중...
+</div>
+
+<div id="signal-error" class="hidden rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"></div>
+
+<section id="signal-results" class="hidden space-y-4">
+  <!-- 레짐 배지 -->
+  <div id="signal-regime" class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3"></div>
+
+  <!-- 슬롯/킬스위치 요약 -->
+  <div id="signal-summary" class="grid grid-cols-3 gap-2"></div>
+
+  <!-- 종목별 상태 카드 -->
+  <div id="signal-tickers" class="space-y-2"></div>
+</section>
+
+<script>
+(function() {
+  const els = {
+    loading: document.getElementById("signal-loading"),
+    error: document.getElementById("signal-error"),
+    results: document.getElementById("signal-results"),
+    regime: document.getElementById("signal-regime"),
+    summary: document.getElementById("signal-summary"),
+    tickers: document.getElementById("signal-tickers"),
+    refresh: document.getElementById("signal-refresh"),
+    updated: document.getElementById("signal-updated"),
+  };
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+
+  function numberText(v, d=0) {
+    if (v === null || v === undefined) return "-";
+    return Number(v).toLocaleString("ko-KR", {maximumFractionDigits: d, minimumFractionDigits: d});
+  }
+
+  const statusColors = {
+    buyable: "bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-400",
+    waiting: "bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300",
+    blocked: "bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-400",
+    holding: "bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-400",
+  };
+
+  function renderRegime(data) {
+    const regimeColor = data.regime === "risk-on"
+      ? "text-emerald-700 dark:text-emerald-400"
+      : data.regime === "risk-off"
+        ? "text-red-700 dark:text-red-400"
+        : "text-slate-500 dark:text-slate-400";
+    els.regime.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-sm font-medium">현재 레짐:</span>
+          <span class="ml-2 font-semibold ${regimeColor}">${escapeHtml(data.regime.toUpperCase())}</span>
+        </div>
+        <div class="text-xs text-slate-500 dark:text-slate-400">${escapeHtml(data.regime_reason)}</div>
+      </div>
+    `;
+  }
+
+  function renderSummary(data) {
+    const cards = [
+      ["슬롯", `${data.slot_used}/${data.slot_max}`],
+      ["전략", escapeHtml(data.strategy_label)],
+      ["Kill-switch", data.kill_switch ? "ON" : "OFF"],
+    ];
+    els.summary.innerHTML = cards.map(([label, value]) => `
+      <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-sm">
+        <div class="text-xs text-slate-500 dark:text-slate-400">${label}</div>
+        <div class="mt-1 font-semibold">${value}</div>
+      </div>
+    `).join("");
+  }
+
+  function renderTickers(data) {
+    if (!data.tickers || !data.tickers.length) {
+      els.tickers.innerHTML = '<div class="text-sm text-slate-500 dark:text-slate-400">종목이 없습니다.</div>';
+      return;
+    }
+    els.tickers.innerHTML = data.tickers.map(t => {
+      const color = statusColors[t.status] || statusColors.waiting;
+      return `
+        <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-medium">${escapeHtml(t.ticker)}</span>
+              <span class="px-2 py-0.5 rounded text-xs ${color}">${escapeHtml(t.status_label)}</span>
+            </div>
+            <div class="text-right">
+              <div class="font-mono">${t.current_price ? numberText(t.current_price) : '-'}</div>
+              <div class="text-xs uppercase font-medium ${t.signal === 'buy' ? 'text-emerald-600 dark:text-emerald-400' : t.signal === 'sell' ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}">${escapeHtml(t.signal)}</div>
+            </div>
+          </div>
+          <div class="mt-2 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(t.reason)}</div>
+          ${t.error ? '<div class="mt-1 text-xs text-red-500 dark:text-red-400">' + escapeHtml(t.error) + '</div>' : ''}
+        </div>
+      `;
+    }).join("");
+  }
+
+  async function loadData() {
+    els.loading.classList.remove("hidden");
+    els.error.classList.add("hidden");
+    els.results.classList.add("hidden");
+    try {
+      const resp = await fetch("/signal-board/data", {headers: {accept: "application/json"}});
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        els.loading.classList.add("hidden");
+        els.error.textContent = data.detail || `요청 실패 (${resp.status})`;
+        els.error.classList.remove("hidden");
+        return;
+      }
+      els.loading.classList.add("hidden");
+      els.results.classList.remove("hidden");
+      renderRegime(data);
+      renderSummary(data);
+      renderTickers(data);
+      els.updated.textContent = "갱신: " + new Date().toLocaleTimeString("ko-KR");
+    } catch (e) {
+      els.loading.classList.add("hidden");
+      els.error.textContent = e?.message || "데이터를 불러오지 못했습니다.";
+      els.error.classList.remove("hidden");
+    }
+  }
+
+  els.refresh.addEventListener("click", loadData);
+  loadData();
+})();
+</script>
+{% endblock %}
