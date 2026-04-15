@@ -20,13 +20,17 @@ Tailscale로 외출 중 접근, launchd로 맥 재부팅 후 자동 기동.
 5. [설정 수정](#5-설정-수정)
 6. [차트 보기](#6-차트-보기)
 7. [리포트 · 실시간 로그](#7-리포트--실시간-로그)
-8. [외부(폰) 접속 — Tailscale](#8-외부폰-접속--tailscale)
-9. [상시 실행 — launchd](#9-상시-실행--launchd)
-10. [파일 · 저장 경로](#10-파일--저장-경로)
-11. [트러블슈팅](#11-트러블슈팅)
-12. [V1 CLI도 여전히 동작](#12-v1-cli도-여전히-동작)
-13. [개발자 참고](#13-개발자-참고)
-14. [문서 인덱스](#14-문서-인덱스)
+8. [전략 검토 (Review)](#8-전략-검토-review)
+9. [전략 상태판 (Signal Board)](#9-전략-상태판-signal-board)
+10. [전략 비교](#10-전략-비교)
+11. [리스크 현황](#11-리스크-현황)
+12. [외부(폰) 접속 — Tailscale](#12-외부폰-접속--tailscale)
+13. [상시 실행 — launchd](#13-상시-실행--launchd)
+14. [파일 · 저장 경로](#14-파일--저장-경로)
+15. [트러블슈팅](#15-트러블슈팅)
+16. [V1 CLI도 여전히 동작](#16-v1-cli도-여전히-동작)
+17. [개발자 참고](#17-개발자-참고)
+18. [문서 인덱스](#18-문서-인덱스)
 
 ---
 
@@ -47,7 +51,7 @@ Tailscale로 외출 중 접근, launchd로 맥 재부팅 후 자동 기동.
 - **인증**: password + TOTP 2FA (`/setup` 최초 필수).
 - **보안**: API 키 Fernet 암호화(`~/.auto_coin_master.key`, 0600), 세션 쿠키 7일, 5회 실패 시 10분 lockout.
 
-하단 탭: **📊대시 · 📈차트 · 📄리포트 · 📜로그 · ⚙️설정**.
+하단 탭: **📊대시 · 📈차트 · 🔍전략검토 · 📡상태판 · 📄리포트 · 📜로그 · ⚙️설정**.
 
 ---
 
@@ -70,8 +74,8 @@ cp .env.example .env && chmod 600 .env
 **기본값은 paper 모드**. 실거래는 `/settings/schedule`에서 mode=live + live_trading +
 Kill-switch OFF 3중 조건 충족 시에만 주문이 나갑니다.
 
-재부팅 후 자동 기동 → [§9 launchd](#9-상시-실행--launchd).
-외출 중 폰 접속 → [§8 Tailscale](#8-외부폰-접속--tailscale).
+재부팅 후 자동 기동 → [§13 launchd](#13-상시-실행--launchd).
+외출 중 폰 접속 → [§12 Tailscale](#12-외부폰-접속--tailscale).
 
 ---
 
@@ -207,7 +211,44 @@ cp my-analysis.md reports/2026-04-14-manual.md
 
 ---
 
-## 8. 외부(폰) 접속 — Tailscale
+## 8. 전략 검토 (Review)
+
+`/review` — 전략 신호를 일봉 종가 기준으로 인터랙티브 리플레이.
+
+- **3가지 모드**: 전략 신호만 / 전략 SELL 포함 / 운영 청산 포함
+- 종목·기간 선택, 최대 90일
+- BUY/SELL 이벤트, 가격 차트, step slider, 상세 reason 패널
+- 전략별 상세 이유 (왜 BUY/HOLD/SELL인지)
+- 다크 모드 지원
+
+## 9. 전략 상태판 (Signal Board)
+
+`/signal-board` — 현재가 기준 실시간 전략 상태.
+
+- 종목별 상태: 매수 가능 / 대기 / 차단 / 보유 중
+- 현재 레짐: risk-on / risk-off
+- 슬롯 사용량, kill-switch 상태
+- 장중 신호 힌트
+
+## 10. 전략 비교
+
+`/compare` — 모든 전략을 같은 기간/종목에서 비교.
+
+- 전략별 BUY/SELL 횟수, 총 손익
+- 현재 전략 하이라이트
+- 총 손익 기준 정렬
+
+## 11. 리스크 현황
+
+`/risk` — 운영 리스크 지표 통합 뷰.
+
+- Kill-switch, 슬롯, 일일 손실 한도, 개별 손절
+- 운영 모드, 포지션 상태
+- 청산/리셋/heartbeat 스케줄
+
+---
+
+## 12. 외부(폰) 접속 — Tailscale
 
 자세한 내용: [docs/v2/tailscale-setup.md](docs/v2/tailscale-setup.md).
 
@@ -224,7 +265,7 @@ cp my-analysis.md reports/2026-04-14-manual.md
 
 ---
 
-## 9. 상시 실행 — launchd
+## 13. 상시 실행 — launchd
 
 ```bash
 ./deploy/install_launchd.sh
@@ -247,7 +288,7 @@ launchctl load   ~/Library/LaunchAgents/com.sj9608.auto_coin.plist   # 재시작
 
 ---
 
-## 10. 파일 · 저장 경로
+## 14. 파일 · 저장 경로
 
 | 경로 | 내용 | 민감도 |
 |---|---|---|
@@ -264,7 +305,7 @@ launchctl load   ~/Library/LaunchAgents/com.sj9608.auto_coin.plist   # 재시작
 
 ---
 
-## 11. 트러블슈팅
+## 15. 트러블슈팅
 
 ### 웹이 뜨지 않음
 ```bash
@@ -319,7 +360,7 @@ launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
 
 ---
 
-## 12. V1 CLI도 여전히 동작
+## 16. V1 CLI도 여전히 동작
 
 `v2` 머지 이후에도 V1 CLI 경로는 그대로 유지됩니다. `.env`와 `state/*.json`을 공유합니다.
 
@@ -335,7 +376,7 @@ python -m auto_coin.main --live     # 실거래 강제 (주의)
 
 ---
 
-## 13. 개발자 참고
+## 17. 개발자 참고
 
 ### 모듈 구조
 ```
@@ -394,7 +435,7 @@ python -m auto_coin.backtest.runner --ticker KRW-BTC --days 365 --sweep 0.3 0.7 
 
 ---
 
-## 14. 문서 인덱스
+## 18. 문서 인덱스
 
 ```
 .

@@ -184,10 +184,10 @@ V3는 아래 순서로 진행하는 것이 가장 실용적이다.
 - [x] reason / summary 해석 회귀 테스트 추가
 
 ### 이번 정지 시점 기준 미완료
-- [ ] V3.3 Operational Exit 모드
-- [ ] V3.4 Signal Board
-- [ ] V3.5 실운영 / Review 정합성 강화
-- [ ] V3.6 이후 비교 / 리스크 / 문서화 마일스톤
+- [x] V3.3 Operational Exit 모드
+- [x] V3.4 Signal Board
+- [x] V3.5 실운영 / Review 정합성 강화
+- [x] V3.6 이후 비교 / 리스크 / 문서화 마일스톤
 
 ### 마지막 검증 결과
 - [x] `python3 -m pytest --tb=short -q tests/test_review_simulator.py tests/test_web_review.py`
@@ -213,18 +213,18 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.1 — Review 모드 확장 (strategy-only / strategy-sell)
 기존 `review`를 전략 신호 검토기에서 한 단계 확장한다.
 
-- [ ] review 모드 선택 UI 추가
+- [x] review 모드 선택 UI 추가
   - 전략 신호만
   - 전략 SELL 포함
-- [ ] `allow_sell_signal` 보유 전략 4종에 대해 review 전용 override 지원
+- [x] `allow_sell_signal` 보유 전략 4종에 대해 review 전용 override 지원
   - `atr_channel_breakout`
   - `ema_adx_atr_trend`
   - `sma200_regime`
   - `ad_turtle`
-- [ ] `volatility_breakout`는 entry-only 전략으로 명시
-- [ ] `sma200_ema_adx_composite`는 SELL 항상 활성 전략으로 명시
-- [ ] review notes / 안내 문구 개선
-- [ ] 테스트 추가:
+- [x] `volatility_breakout`는 entry-only 전략으로 명시
+- [x] `sma200_ema_adx_composite`는 SELL 항상 활성 전략으로 명시
+- [x] review notes / 안내 문구 개선
+- [x] 테스트 추가:
   - include_sell param 전달
   - 전략별 SELL 가능/불가 검증
   - UI 모드 표시
@@ -236,14 +236,14 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.2 — Review 설명력 강화 (why-buy / why-hold / why-sell)
 현재 상태에 대한 사람이 읽을 수 있는 설명을 강화한다.
 
-- [ ] 전략별 reason formatter 분리 (`review/reasons.py`)
-- [ ] HOLD 이유 세분화
+- [x] 전략별 reason formatter 분리 (`review/reasons.py`)
+- [x] HOLD 이유 세분화
   - 예: `price<sma200, stay out`
   - 예: `adx<threshold`
   - 예: `already in position`
-- [ ] SELL reason도 전략 청산 / 운영 청산 구분 가능하도록 설계
-- [ ] summary에 상태 해석 문구 추가
-- [ ] 이벤트/행(row) 상세 패널 고도화
+- [x] SELL reason도 전략 청산 / 운영 청산 구분 가능하도록 설계
+- [x] summary에 상태 해석 문구 추가
+- [x] 이벤트/행(row) 상세 패널 고도화
 
 **완료 기준**: review 화면만 보고도 “왜 지금 BUY/HOLD/SELL인지”를 사람이 이해할 수 있음.
 
@@ -252,14 +252,14 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.3 — Operational Exit 모드 (review용)
 실운영 청산 흐름과 review 간극을 줄이기 위한 옵션형 모드를 추가한다.
 
-- [ ] review 전용 `include_operational_exits` 설계/구현
-- [ ] 최소 반영 후보:
+- [x] review 전용 `include_operational_exits` 설계/구현
+- [x] 최소 반영 후보:
   - 시간청산
   - 손절
   - kill-switch 반영 여부 검토
-- [ ] 전략 청산 vs 운영 청산 reason 분리
-- [ ] review 결과에서 “이 청산은 전략/운영 중 무엇인지” 명확히 표시
-- [ ] UI 모드 선택:
+- [x] 전략 청산 vs 운영 청산 reason 분리
+- [x] review 결과에서 “이 청산은 전략/운영 중 무엇인지” 명확히 표시
+- [x] UI 모드 선택:
   - 전략 신호만
   - 전략 SELL 포함
   - 운영 청산 포함
@@ -271,20 +271,20 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.4 — 실시간 전략 상태판 (Signal Board)
 실전 투자에 직접 도움이 되는 현재 상태판을 만든다.
 
-- [ ] 신규 페이지: `/signal-board` 또는 대시보드 내 확장 섹션
-- [ ] 종목별 현재 상태 표시
+- [x] 신규 페이지: `/signal-board` 또는 대시보드 내 확장 섹션
+- [x] 종목별 현재 상태 표시
   - BUY 가능
   - 대기
   - 차단
-- [ ] 상태 이유 표시
+- [x] 상태 이유 표시
   - 예: `price < sma200`
   - 예: `ema_fast <= ema_slow`
   - 예: `adx < threshold`
   - 예: `cooldown active`
   - 예: `slot full`
-- [ ] 현재 레짐 요약
+- [x] 현재 레짐 요약
   - risk-on / risk-off
-- [ ] 현재 전략/종목별 조건 충족 여부를 badge 형식으로 표시
+- [x] 현재 전략/종목별 조건 충족 여부를 badge 형식으로 표시
 
 **완료 기준**: 사용자가 “왜 지금 안 사고 있는지”를 실시간으로 이해 가능.
 
@@ -293,11 +293,11 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.5 — 실운영/Review 정합성 강화
 실시간 현재가 기반 운영과 review 간 차이를 줄인다.
 
-- [ ] 현재가 기반 상태 점검 서비스 추가
-- [ ] review와 운영 판단 차이 표시
+- [x] 현재가 기반 상태 점검 서비스 추가
+- [x] review와 운영 판단 차이 표시
 - [ ] 필요한 경우 1H review 모드 검토
-- [ ] 종가 기준 / 실시간가 기준 차이를 UI에 명확히 노출
-- [ ] 전략별 “장중 신호 가능성” 설명 문구 추가
+- [x] 종가 기준 / 실시간가 기준 차이를 UI에 명확히 노출
+- [x] 전략별 “장중 신호 가능성” 설명 문구 추가
 
 **완료 기준**: review 결과와 실전 판단 차이를 구조적으로 설명 가능.
 
@@ -306,12 +306,12 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.6 — 전략 비교 보드
 전략을 늘리기보다, 현재 전략들의 특성과 상태를 비교한다.
 
-- [ ] 기간 기준 전략 비교
+- [x] 기간 기준 전략 비교
   - 최근 30일 / 90일 / 180일
-- [ ] 전략별 BUY/SELL 횟수
-- [ ] 전략별 상태 분포
-- [ ] 전략별 단순 누적 손익(설명용)
-- [ ] 현재 시장 구간에서 어떤 전략이 더 active한지 표시
+- [x] 전략별 BUY/SELL 횟수
+- [x] 전략별 상태 분포
+- [x] 전략별 단순 누적 손익(설명용)
+- [x] 현재 시장 구간에서 어떤 전략이 더 active한지 표시
 
 **완료 기준**: 사용자가 “지금 장에서는 어떤 전략이 더 반응하는가”를 비교 가능.
 
@@ -320,11 +320,11 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.7 — 운영 리스크 대시보드
 실운영 리스크를 별도로 보여준다.
 
-- [ ] 일일 손실 제한 상태
-- [ ] kill-switch 상태
-- [ ] 포지션 슬롯 상태
+- [x] 일일 손실 제한 상태
+- [x] kill-switch 상태
+- [x] 포지션 슬롯 상태
 - [ ] 연속 손절 횟수 / cooldown 상태
-- [ ] 운영 청산 이벤트 타임라인
+- [x] 운영 청산 이벤트 타임라인
 - [ ] 전략 청산 vs 운영 청산 비율
 
 **완료 기준**: 실전 운영에서 “왜 진입이 막혔는지 / 왜 청산됐는지”를 리스크 관점에서 확인 가능.
@@ -334,11 +334,11 @@ V3 시작 전, 현재 상태를 “V2 완료본”으로 고정한다.
 ### V3.8 — 문서화 / 운영 매뉴얼 업데이트
 V3 사용성을 문서로 고정한다.
 
-- [ ] README 업데이트
-- [ ] review 모드 설명 문서 추가
-- [ ] Signal Board 사용 문서 추가
-- [ ] 실전/검토 차이 문서화
-- [ ] 변경 이력 `CHANGELOG.md` 반영
+- [x] README 업데이트
+- [x] review 모드 설명 문서 추가
+- [x] Signal Board 사용 문서 추가
+- [x] 실전/검토 차이 문서화
+- [x] 변경 이력 `CHANGELOG.md` 반영
 
 **완료 기준**: V3 기능이 운영 문서와 함께 정리됨.
 

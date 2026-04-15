@@ -7,6 +7,78 @@ auto_coin의 버전/마일스톤별 주요 변경 이력.
 
 ---
 
+## [V3 — 전략 검토 고도화 + 투자 판단 보조] (2026-04-16)
+
+### V3.1 — Review SELL 모드 (2026-04-15)
+
+**추가**
+- `review/simulator.py` — `include_strategy_sell` 파라미터: 전략 자체 SELL 로직을 review에서만 활성화
+- `review.html` — 모드 선택 UI: "전략 신호만" / "전략 SELL 포함"
+- entry-only 전략(volatility_breakout) 라벨 표시
+- SELL 항상 활성 전략(sma200_ema_adx_composite) 라벨 표시
+
+**테스트**: 533 passed
+
+### V3.2 — Review 설명력 강화 (2026-04-15)
+
+**추가**
+- `review/reasons.py` — 전략별 reason formatter 모듈 분리
+- 6개 전략 모두 상세 why-buy/hold/sell 이유 제공
+- `mode_note()`, `mode_label()`, `summary_interpretation()` 헬퍼
+
+**테스트**: 538 passed
+
+### V3.3 — Operational Exit 모드 (2026-04-16)
+
+**추가**
+- review 전용 운영 청산 시뮬레이션: 손절(stop-loss) + 시간청산(time-exit for VB)
+- `ReviewEvent.exit_type` — strategy vs operational 구분
+- UI 3모드 선택: "전략 신호만" / "전략 SELL 포함" / "운영 청산 포함"
+- 이벤트 테이블에 유형 컬럼 추가
+
+**테스트**: 544 passed
+
+### V3.4 — Signal Board (2026-04-16)
+
+**추가**
+- `/signal-board` 신규 페이지: 종목별 실시간 전략 상태 표시
+- `web/services/signal_board.py` — 현재가 기반 전략 신호 계산 서비스
+- 종목별 상태(매수 가능/대기/차단/보유 중) + 이유
+- 레짐 인디케이터(risk-on/risk-off)
+- 슬롯/kill-switch 요약
+
+**테스트**: 549 passed
+
+### V3.5 — Review/실운영 정합성 (2026-04-16)
+
+**추가**
+- review 페이지에 일봉 종가 기준 disclaimer 배너
+- Signal Board에 장중 신호 힌트
+- summary 해석 문구에 데이터 기준 접미사
+
+### V3.6 — 전략 비교 보드 (2026-04-16)
+
+**추가**
+- `/compare` 신규 페이지: 전체 전략을 같은 기간/종목으로 비교
+- 총 손익 기준 내림차순 정렬, 현재 전략 하이라이트
+- BUY/SELL 횟수, 실현/미실현/총 손익 비교 테이블
+
+### V3.7 — 리스크 대시보드 (2026-04-16)
+
+**추가**
+- `/risk` 신규 페이지: kill-switch, 슬롯, 손실 한도, 손절선, 운영 모드, 포지션 현황, 스케줄 정보 통합 뷰
+
+### V3.8 — 문서화 (2026-04-16)
+
+**변경**
+- README.md 업데이트: V3 기능(전략검토/상태판/비교/리스크) 반영
+- CHANGELOG.md 업데이트: V3.1~V3.8 이력 추가
+- docs/v3/PLAN.md 체크박스 갱신
+
+**테스트**: 553 passed · `ruff check` 통과
+
+---
+
 ## [Unreleased — v2 branch]
 
 ### Phase 1 trade-safety fixes + Phase 2 security completion (2026-04-14)
