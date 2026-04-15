@@ -84,7 +84,9 @@ def derive_review_reason(
     return f"signal={signal.value}"
 
 
-def mode_note(strategy_name: str, include_strategy_sell: bool) -> str:
+def mode_note(strategy_name: str, include_strategy_sell: bool, include_operational_exits: bool = False) -> str:
+    if include_operational_exits:
+        return "operational exits enabled"
     if strategy_name in ALWAYS_SELL_REVIEW_STRATEGIES:
         return "strategy sell always active"
     if not include_strategy_sell:
@@ -96,7 +98,9 @@ def mode_note(strategy_name: str, include_strategy_sell: bool) -> str:
     return "strategy-only replay"
 
 
-def mode_label(strategy_name: str, include_strategy_sell: bool) -> str:
+def mode_label(strategy_name: str, include_strategy_sell: bool, include_operational_exits: bool = False) -> str:
+    if include_operational_exits:
+        return "운영 청산 포함"
     if strategy_name in ALWAYS_SELL_REVIEW_STRATEGIES:
         return "SELL 항상 활성"
     if not include_strategy_sell:
@@ -113,8 +117,11 @@ def summary_interpretation(
     buy_count: int,
     sell_count: int,
     last_position_state: str,
+    has_operational_exits: bool = False,
 ) -> str:
     if sell_count > 0:
+        if has_operational_exits:
+            return "운영 청산(손절/시간)이 포함된 검토 결과입니다."
         return "선택 구간에서 전략 기준 청산까지 확인되었습니다."
     if last_position_state == "long":
         return "선택 구간 마지막까지 포지션을 유지했습니다."

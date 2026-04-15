@@ -342,3 +342,130 @@ def test_review_summary_exposes_mode_and_interpretation(mocker):
 
     assert result.summary.mode_label == "SELL 항상 활성"
     assert result.summary.interpretation == "선택 구간에서 전략 기준 청산까지 확인되었습니다."
+
+
+def test_review_operational_stop_loss(mocker):
+    """include_operational_exits=True면 종가가 손절선 아래일 때 SELL 발생."""
+    # BUY 후 가격이 손절선 아래로 떨어지는 데이터
+    # upper_channel=110으로 close=100 구간에서 BUY 미발생,
+    # close=120인 2026-04-03에 upper_channel=95로 전환 → BUY at 120
+    # stop_loss_ratio=-0.15 → stop_price=120*0.85=102, close=100(04-05)에서 손절
+    idx = pd.date_range("2026-03-28", periods=9, freq="D")
+    df = pd.DataFrame(
+        {
+            "open": [100, 100, 100, 100, 100, 100, 120, 115, 100],
+            "high": [101, 101, 101, 101, 101, 101, 121, 116, 101],
+            "low": [99, 99, 99, 99, 99, 99, 119, 114, 99],
+            "close": [100, 100, 100, 100, 100, 100, 120, 115, 100],
+            "volume": [1] * 9,
+            "upper_channel": [110, 110, 110, 110, 110, 110, 95, 95, 95],
+            "lower_channel": [80, 80, 80, 80, 80, 80, 80, 80, 80],
+            "atr14": [5, 5, 5, 5, 5, 5, 5, 5, 5],
+        },
+        index=idx,
+    )
+    mocker.patch("auto_coin.review.simulator.fetch_daily", return_value=df)
+
+    result = run_review_simulation(
+        client=object(),  # type: ignore[arg-type]
+        ticker="KRW-BTC",
+        start_date="2026-04-01",
+        end_date="2026-04-05",
+        strategy_name="atr_channel_breakout",
+        strategy_params={"atr_window": 14, "channel_multiplier": 1.0},
+        include_strategy_sell=True,
+        include_operational_exits=True,
+        stop_loss_ratio=-0.15,  # -15% (120 * 0.85 = 102, 가격 100은 손절 대상)
+    )
+
+    sell_events = [e for e in result.events if e.signal == "sell"]
+    assert len(sell_events) >= 1
+    stop_loss_events = [e for e in sell_events if e.exit_type and "stop_loss" in e.exit_type]
+    assert len(stop_loss_events) >= 1
+
+
+def test_review_operational_time_exit_vb(mocker):
+    """volatility_breakout은 include_operational_exits=True면 다음 일봉에서 자동 청산."""
+    idx = pd.date_range("2026-03-28", periods=9, freq="D")
+    df = pd.DataFrame(
+        {
+            "open": [100, 100, 100, 100, 100, 100, 100, 100, 100],
+            "high": [101, 101, 101, 101, 101, 101, 101, 101, 101],
+            "low": [99, 99, 99, 99, 99, 99, 99, 99, 99],
+            "close": [100, 100, 100, 100, 100, 100, 100, 100, 100],
+            "volume": [1] * 9,
+            "target": [None, None, None, None, 95, 95, 95, 95, 95],
+            "ma5": [90, 90, 90, 90, 90, 90, 90, 90, 90],
+        },
+        index=idx,
+    )
+    mocker.patch("auto_coin.review.simulator.fetch_daily", return_value=df)
+
+    result = run_review_simulation(
+        client=object(),  # type: ignore[arg-type]
+        ticker="KRW-BTC",
+        start_date="2026-04-01",
+        end_date="2026-04-05",
+        strategy_name="volatility_breakout",
+        strategy_params={"k": 0.5, "ma_window": 5},
+        include_operational_exits=True,
+        stop_loss_ratio=-0.02,
+    )
+
+    sell_events = [e for e in result.events if e.signal == "sell"]
+    time_exits = [e for e in sell_events if e.exit_type and "time_exit" in e.exit_type]
+    assert len(time_exits) >= 1
+
+
+def test_review_operational_exits_disabled_by_default(mocker):
+    """include_operational_exits=False(기본값)면 운영 청산 미반영."""
+    idx = pd.date_range("2026-03-28", periods=9, freq="D")
+    df = pd.DataFrame(
+        {
+            "open": [100, 100, 100, 100, 100, 100, 120, 115, 100],
+            "high": [101, 101, 101, 101, 101, 101, 121, 116, 101],
+            "low": [99, 99, 99, 99, 99, 99, 119, 114, 99],
+            "close": [100, 100, 100, 100, 100, 100, 120, 115, 100],
+            "volume": [1] * 9,
+            "upper_channel": [95, 95, 95, 95, 95, 95, 95, 95, 95],
+            "lower_channel": [80, 80, 80, 80, 80, 80, 80, 80, 80],
+            "atr14": [5, 5, 5, 5, 5, 5, 5, 5, 5],
+        },
+        index=idx,
+    )
+    mocker.patch("auto_coin.review.simulator.fetch_daily", return_value=df)
+
+    result = run_review_simulation(
+        client=object(),  # type: ignore[arg-type]
+        ticker="KRW-BTC",
+        start_date="2026-04-01",
+        end_date="2026-04-05",
+        strategy_name="atr_channel_breakout",
+        strategy_params={"atr_window": 14, "channel_multiplier": 1.0},
+        include_operational_exits=False,
+    )
+
+    op_events = [e for e in result.events if e.exit_type is not None]
+    assert len(op_events) == 0
+
+
+def test_review_notes_operational_mode(mocker):
+    """include_operational_exits=True면 notes에 'operational exits enabled' 포함."""
+    mocker.patch("auto_coin.review.simulator.fetch_daily", return_value=_composite_review_df())
+
+    result = run_review_simulation(
+        client=object(),  # type: ignore[arg-type]
+        ticker="KRW-BTC",
+        start_date="2026-04-01",
+        end_date="2026-04-05",
+        strategy_name="sma200_ema_adx_composite",
+        strategy_params={
+            "sma_window": 200,
+            "ema_fast_window": 27,
+            "ema_slow_window": 125,
+            "adx_window": 90,
+            "adx_threshold": 14.0,
+        },
+        include_operational_exits=True,
+    )
+    assert result.summary.notes[0] == "operational exits enabled"

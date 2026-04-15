@@ -41,8 +41,10 @@
           <select id="review-mode" class="border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm">
             <option value="signal">전략 신호만</option>
             <option value="sell">전략 SELL 포함</option>
+            <option value="ops">운영 청산 포함</option>
           </select>
         </label>
+        <span id="review-ops-hint" class="text-xs text-slate-400 dark:text-slate-500 mt-5">운영 청산(손절/시간) 미반영</span>
         {% if is_entry_only %}
           <span class="text-xs text-amber-600 dark:text-amber-400 mt-5">현재 전략은 진입 전용 — 전략 자체 SELL 로직 없음</span>
         {% elif is_always_sell %}
@@ -53,7 +55,7 @@
       </div>
     <div class="flex items-center justify-between gap-3">
       <div class="text-xs text-slate-500 dark:text-slate-400">
-        전략 신호 전용 리플레이 · 운영 청산(손절/시간) 미반영 · 일봉 종가 기준 · 최대 90일
+        일봉 종가 기준 · 최대 90일 · 모드에 따라 전략 SELL/운영 청산 반영
       </div>
       <button id="review-run-button" type="submit" class="btn rounded bg-slate-900 dark:bg-slate-200 px-4 py-2 text-white dark:text-slate-900">실행</button>
     </div>
@@ -105,6 +107,7 @@
                 <th class="px-2 py-2">일자</th>
                 <th class="px-2 py-2">신호</th>
                 <th class="px-2 py-2 text-right">가격</th>
+                <th class="px-2 py-2">유형</th>
                 <th class="px-2 py-2">이유</th>
               </tr>
             </thead>
@@ -406,11 +409,14 @@
           <td class="px-2 py-2 whitespace-nowrap">${escapeHtml(event.date)}</td>
           <td class="px-2 py-2 font-medium uppercase ${event.signal === 'buy' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}">${escapeHtml(event.signal)}</td>
           <td class="px-2 py-2 text-right font-mono">${escapeHtml(numberText(event.price))}</td>
+          <td class="px-2 py-2 text-xs ${event.exit_type ? 'text-amber-600 dark:text-amber-400' : 'text-slate-600 dark:text-slate-400'}">
+            ${escapeHtml(event.exit_type ? event.exit_type.replace('operational:', '') : 'strategy')}
+          </td>
           <td class="px-2 py-2 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(event.reason || "-")}</td>
         </tr>
       `;
     }).join("") : `
-      <tr><td colspan="4" class="px-2 py-4 text-center text-sm text-slate-500 dark:text-slate-400">이벤트가 없습니다.</td></tr>
+      <tr><td colspan="5" class="px-2 py-4 text-center text-sm text-slate-500 dark:text-slate-400">이벤트가 없습니다.</td></tr>
     `;
 
     els.eventsBody.querySelectorAll("tr[data-index]").forEach((row) => {
@@ -477,8 +483,9 @@
     els.results.classList.add("hidden");
 
     const mode = document.getElementById("review-mode").value;
-    const includeSell = mode === "sell" ? "&include_sell=true" : "";
-    const url = `/review/data/${encodeURIComponent(ticker)}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}${includeSell}`;
+    const includeSell = mode === "sell" || mode === "ops" ? "&include_sell=true" : "";
+    const includeOps = mode === "ops" ? "&include_ops=true" : "";
+    const url = `/review/data/${encodeURIComponent(ticker)}?start_date=${encodeURIComponent(startDate)}&end_date=${encodeURIComponent(endDate)}${includeSell}${includeOps}`;
     try {
       const resp = await fetch(url, { headers: { accept: "application/json" } });
       const data = await resp.json().catch(() => ({}));

@@ -44,6 +44,7 @@ class ReviewEvent:
     position_before: str
     position_after: str
     trade_pnl_ratio: float | None = None
+    exit_type: str | None = None  # None=strategy, "operational:stop_loss", "operational:time_exit"
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,7 @@ class _PositionState:
     entry_price: float | None = None
     entry_date: str | None = None
     realized_pnl_ratio: float = 0.0
+    hold_days: int = 0  # 보유 일수 추적
 
 
 def run_review_simulation(
@@ -93,6 +95,9 @@ def run_review_simulation(
     k: float = 0.5,
     max_review_days: int = 90,
     include_strategy_sell: bool = False,
+    include_operational_exits: bool = False,
+    stop_loss_ratio: float = -0.02,
+    enable_time_exit: bool = True,
 ) -> ReviewResult:
     """선택 구간의 전략 signal을 일봉 종가 기준으로 replay한다."""
     start = _normalize_date(start_date)
@@ -158,11 +163,13 @@ def run_review_simulation(
         position_before = "long" if state.has_position else "flat"
         trade_pnl_ratio: float | None = None
         event_emitted = False
+        op_exit_emitted = False
 
         if signal is Signal.BUY and not state.has_position:
             state.has_position = True
             state.entry_price = price
             state.entry_date = ts.date().isoformat()
+            state.hold_days = 0
             event_emitted = True
         elif signal is Signal.SELL and state.has_position and state.entry_price is not None:
             trade_pnl_ratio = (price - state.entry_price) / state.entry_price
@@ -170,7 +177,50 @@ def run_review_simulation(
             state.has_position = False
             state.entry_price = None
             state.entry_date = None
+            state.hold_days = 0
             event_emitted = True
+
+        # Operational exits (only when enabled and not already exited by strategy)
+        if include_operational_exits and state.has_position and not event_emitted:
+            op_exit_reason: str | None = None
+            op_exit_type: str | None = None
+
+            # 1. Stop loss check: close <= entry * (1 + stop_loss_ratio)
+            if state.entry_price is not None and stop_loss_ratio < 0:
+                stop_price = state.entry_price * (1 + stop_loss_ratio)
+                if price <= stop_price:
+                    op_exit_reason = f"stop-loss ({stop_loss_ratio:.1%})"
+                    op_exit_type = "operational:stop_loss"
+
+            # 2. Time exit: for day-trading strategies, exit next day
+            if op_exit_reason is None and enable_time_exit and strategy_name == "volatility_breakout" and state.hold_days >= 1:
+                op_exit_reason = "time-exit (next day close)"
+                op_exit_type = "operational:time_exit"
+
+            if op_exit_reason is not None:
+                assert state.entry_price is not None
+                trade_pnl_ratio = (price - state.entry_price) / state.entry_price
+                state.realized_pnl_ratio += trade_pnl_ratio
+                state.has_position = False
+                state.entry_price = None
+                state.entry_date = None
+                state.hold_days = 0
+                event_emitted = True
+                op_exit_emitted = True
+
+                events.append(
+                    ReviewEvent(
+                        date=ts.date().isoformat(),
+                        signal="sell",
+                        price=price,
+                        reason=op_exit_reason,
+                        indicators=indicators,
+                        position_before="long",
+                        position_after="flat",
+                        trade_pnl_ratio=trade_pnl_ratio,
+                        exit_type=op_exit_type,
+                    )
+                )
 
         position_after = "long" if state.has_position else "flat"
 
@@ -185,7 +235,7 @@ def run_review_simulation(
             )
         )
 
-        if event_emitted:
+        if event_emitted and not op_exit_emitted:
             events.append(
                 ReviewEvent(
                     date=ts.date().isoformat(),
@@ -199,6 +249,9 @@ def run_review_simulation(
                 )
             )
 
+        if state.has_position:
+            state.hold_days += 1
+
     last_price = rows[-1].price
     unrealized = 0.0
     if state.has_position and state.entry_price is not None:
@@ -208,7 +261,7 @@ def run_review_simulation(
     sell_count = sum(1 for event in events if event.signal == Signal.SELL.value)
     last_position_state = "long" if state.has_position else "flat"
     summary = ReviewSummary(
-        mode_label=mode_label(strategy_name, include_strategy_sell),
+        mode_label=mode_label(strategy_name, include_strategy_sell, include_operational_exits),
         buy_count=buy_count,
         sell_count=sell_count,
         event_count=len(events),
@@ -224,8 +277,9 @@ def run_review_simulation(
             buy_count=buy_count,
             sell_count=sell_count,
             last_position_state=last_position_state,
+            has_operational_exits=include_operational_exits,
         ),
-        notes=[mode_note(strategy_name, include_strategy_sell), "daily-close approximation"],
+        notes=[mode_note(strategy_name, include_strategy_sell, include_operational_exits), "daily-close approximation"],
     )
     return ReviewResult(
         ticker=ticker.upper(),

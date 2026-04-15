@@ -226,3 +226,26 @@ def test_review_page_shows_mode_selector(app_env):
         assert "전략 신호만" in r.text
         assert "전략 SELL 포함" in r.text
         assert "운영 청산(손절/시간) 미반영" in r.text
+
+
+def test_review_data_passes_include_ops_param(app_env, mocker):
+    run = mocker.patch("auto_coin.web.routers.review.run_review_simulation", return_value=_FakeReviewResult())
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get(
+            "/review/data/KRW-BTC?start_date=2026-04-01&end_date=2026-04-03&include_ops=true",
+            headers={"accept": "application/json"},
+        )
+        assert r.status_code == 200
+        run.assert_called_once()
+        assert run.call_args.kwargs["include_operational_exits"] is True
+
+
+def test_review_page_shows_ops_mode_option(app_env):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/review")
+        assert r.status_code == 200
+        assert "운영 청산 포함" in r.text

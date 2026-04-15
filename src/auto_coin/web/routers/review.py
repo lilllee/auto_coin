@@ -72,6 +72,7 @@ def review_data(
     start_date: str = Query(...),
     end_date: str = Query(...),
     include_sell: bool = Query(default=False),
+    include_ops: bool = Query(default=False),
     db: Session = Depends(get_session_db),
     box: SecretBox = Depends(get_box),
     _uid=Depends(require_auth),
@@ -115,6 +116,8 @@ def review_data(
             ma_window=settings.ma_filter_window,
             k=settings.strategy_k,
             include_strategy_sell=include_sell,
+            include_operational_exits=include_ops,
+            stop_loss_ratio=settings.stop_loss_ratio,
         )
     except ReviewValidationError as exc:
         status_code = 404 if "no candles available" in str(exc) else 400
