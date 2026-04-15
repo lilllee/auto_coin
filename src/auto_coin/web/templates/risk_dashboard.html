@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}리스크 현황 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">리스크 현황</h1>
+
+<!-- 핵심 리스크 지표 -->
+<div class="grid grid-cols-2 gap-2 mb-4 md:grid-cols-4">
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+    <div class="text-xs text-slate-500 dark:text-slate-400">Kill-switch</div>
+    <div class="mt-1 text-lg font-semibold {% if settings.kill_switch %}text-red-600 dark:text-red-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">
+      {{ "ON" if settings.kill_switch else "OFF" }}
+    </div>
+  </div>
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+    <div class="text-xs text-slate-500 dark:text-slate-400">슬롯 사용</div>
+    <div class="mt-1 text-lg font-semibold">{{ slot_used }}/{{ slot_max }}</div>
+  </div>
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+    <div class="text-xs text-slate-500 dark:text-slate-400">일일 손실 한도</div>
+    <div class="mt-1 text-lg font-semibold">{{ "{:.1f}%".format(settings.daily_loss_limit * 100) }}</div>
+  </div>
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+    <div class="text-xs text-slate-500 dark:text-slate-400">개별 손절</div>
+    <div class="mt-1 text-lg font-semibold">{{ "{:.1f}%".format(settings.stop_loss_ratio * 100) }}</div>
+  </div>
+</div>
+
+<!-- 운영 모드 -->
+<div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 mb-4 text-sm">
+  <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">모드</div>
+      <div class="mt-1 font-medium {% if settings.is_live %}text-red-600 dark:text-red-400{% endif %}">
+        {{ settings.mode.value | upper }}
+      </div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">실거래 허용</div>
+      <div class="mt-1 font-medium">{{ "ON" if settings.live_trading else "OFF" }}</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">전략</div>
+      <div class="mt-1 font-medium">{{ strategy_label }}</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">1슬롯 투입 비율</div>
+      <div class="mt-1 font-medium">{{ "{:.0f}%".format(settings.max_position_ratio * 100) }}</div>
+    </div>
+  </div>
+</div>
+
+<!-- 포지션 상태 -->
+<h2 class="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">포지션 상태</h2>
+<div class="space-y-2 mb-4">
+  {% for p in positions %}
+  <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm flex items-center justify-between">
+    <div class="font-mono font-medium">{{ p.ticker }}</div>
+    <div class="flex items-center gap-2">
+      {% if p.has_position %}
+        <span class="px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-900/40 text-sky-800 dark:text-sky-400 text-xs">보유 중</span>
+        {% if p.entry_price %}
+          <span class="text-xs text-slate-500 dark:text-slate-400">진입 {{ "{:,.0f}".format(p.entry_price) }}</span>
+        {% endif %}
+      {% else %}
+        <span class="text-xs text-slate-400 dark:text-slate-500">flat</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- 스케줄 정보 -->
+<h2 class="text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">스케줄</h2>
+<div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
+  <div class="grid grid-cols-2 gap-3">
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">tick 주기</div>
+      <div class="mt-1">{{ settings.check_interval_seconds }}초</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">청산 시각</div>
+      <div class="mt-1">{{ "%02d:%02d"|format(settings.exit_hour_kst, settings.exit_minute_kst) }} KST</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">일일 리셋</div>
+      <div class="mt-1">{{ "%02d:00"|format(settings.daily_reset_hour_kst) }} KST</div>
+    </div>
+    <div>
+      <div class="text-xs text-slate-500 dark:text-slate-400">heartbeat</div>
+      <div class="mt-1">{{ settings.heartbeat_interval_hours }}시간 {{ "(비활성)" if settings.heartbeat_interval_hours == 0 else "" }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-4 text-xs text-slate-400 dark:text-slate-500">
+  리스크 설정은 <a href="/settings/risk" class="underline">리스크 설정</a>에서 변경할 수 있습니다.
+</div>
+{% endblock %}

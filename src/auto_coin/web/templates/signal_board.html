@@ -6,6 +6,9 @@
 <div class="mb-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
   <div><span class="font-medium">현재 전략:</span> {{ strategy_label }}</div>
   <div class="mt-1 text-slate-500 dark:text-slate-400">종목: {{ tickers | join(", ") }}</div>
+  <div class="mt-2 text-xs text-slate-400 dark:text-slate-500">
+    📡 현재가 기준 실시간 판단 · review(전략검토)는 일봉 종가 기준
+  </div>
 </div>
 
 <div class="flex items-center justify-between mb-3">
@@ -90,6 +93,14 @@
     `).join("");
   }
 
+  function _intradayHint(signal, status) {
+    if (signal === "buy" && status === "buyable") return "장중 진입 조건 충족 — 실운영에서 매수 가능";
+    if (signal === "hold" && status === "waiting") return "현재 진입 조건 미충족 — 장중 변동에 따라 변할 수 있음";
+    if (status === "blocked") return null;
+    if (status === "holding") return "보유 중 — 청산 조건은 리스크 설정에 따라 결정";
+    return null;
+  }
+
   function renderTickers(data) {
     if (!data.tickers || !data.tickers.length) {
       els.tickers.innerHTML = '<div class="text-sm text-slate-500 dark:text-slate-400">종목이 없습니다.</div>';
@@ -97,6 +108,7 @@
     }
     els.tickers.innerHTML = data.tickers.map(t => {
       const color = statusColors[t.status] || statusColors.waiting;
+      const intradayHint = _intradayHint(t.signal, t.status);
       return `
         <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-sm">
           <div class="flex items-center justify-between">
@@ -111,6 +123,7 @@
           </div>
           <div class="mt-2 text-xs text-slate-600 dark:text-slate-400">${escapeHtml(t.reason)}</div>
           ${t.error ? '<div class="mt-1 text-xs text-red-500 dark:text-red-400">' + escapeHtml(t.error) + '</div>' : ''}
+          ${intradayHint ? '<div class="mt-1 text-xs text-amber-600 dark:text-amber-400">' + escapeHtml(intradayHint) + '</div>' : ''}
         </div>
       `;
     }).join("");

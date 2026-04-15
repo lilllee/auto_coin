@@ -73,6 +73,7 @@
 
   <section id="review-results" class="mt-4 hidden space-y-4">
     <div id="review-summary" class="grid grid-cols-2 gap-3 md:grid-cols-4"></div>
+    <div id="review-disclaimer" class="mt-2"></div>
 
     <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
       <div class="flex items-center justify-between gap-3 mb-3">
@@ -252,6 +253,7 @@
       ["마지막 포지션", payload.summary?.last_position?.state || "-"],
       ["해석", payload.summary?.interpretation || "-"],
       ["참고", (payload.summary?.notes || []).join(", ") || "-"],
+      ["데이터 기준", "일봉 종가 (확정봉)"],
     ];
 
     els.summary.innerHTML = cards.map(([label, value]) => `
@@ -455,6 +457,16 @@
     }
     els.results.classList.remove("hidden");
     renderSummary(payload);
+    const disclaimerEl = document.getElementById("review-disclaimer");
+    if (disclaimerEl) {
+        disclaimerEl.innerHTML = `
+            <div class="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+                <div>📌 이 결과는 <strong>일봉 종가(확정봉)</strong> 기준 시뮬레이션입니다.</div>
+                <div>📌 실운영은 <strong>현재가(실시간)</strong>로 판단하므로 장중 진입/청산 타이밍이 다를 수 있습니다.</div>
+                <div>📌 전략 상태판(<a href="/signal-board" class="underline">Signal Board</a>)에서 현재가 기준 판단을 확인하세요.</div>
+            </div>
+        `;
+    }
     renderChart(payload);
     renderDetail(payload);
     renderEvents(payload);

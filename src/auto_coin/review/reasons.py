@@ -119,15 +119,16 @@ def summary_interpretation(
     last_position_state: str,
     has_operational_exits: bool = False,
 ) -> str:
+    suffix = " (일봉 종가 기준, 실운영과 차이 가능)"
     if sell_count > 0:
         if has_operational_exits:
-            return "운영 청산(손절/시간)이 포함된 검토 결과입니다."
-        return "선택 구간에서 전략 기준 청산까지 확인되었습니다."
+            return "운영 청산(손절/시간)이 포함된 검토 결과입니다." + suffix
+        return "선택 구간에서 전략 기준 청산까지 확인되었습니다." + suffix
     if last_position_state == "long":
-        return "선택 구간 마지막까지 포지션을 유지했습니다."
+        return "선택 구간 마지막까지 포지션을 유지했습니다." + suffix
     if buy_count > 0:
-        return "진입 이벤트는 있었지만 구간 종료 시점에는 포지션이 없습니다."
-    return "선택 구간에서는 진입 조건이 끝까지 충족되지 않았습니다."
+        return "진입 이벤트는 있었지만 구간 종료 시점에는 포지션이 없습니다." + suffix
+    return "선택 구간에서는 진입 조건이 끝까지 충족되지 않았습니다." + suffix
 
 
 def _sma200_regime_reason(

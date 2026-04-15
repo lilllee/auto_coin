@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}전략 비교 — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">전략 비교</h1>
+
+<form id="compare-form" class="space-y-3 rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+  <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+    <label class="block">
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">종목</span>
+      <select id="compare-ticker" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
+        {% for t in tickers %}
+          <option value="{{ t }}" {% if t == selected_ticker %}selected{% endif %}>{{ t }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="block">
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">Start</span>
+      <input id="compare-start" type="date" value="{{ start_date }}" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
+    </label>
+    <label class="block">
+      <span class="block text-sm text-slate-600 dark:text-slate-400 mb-1">End</span>
+      <input id="compare-end" type="date" value="{{ end_date }}" class="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-base">
+    </label>
+  </div>
+  <div class="flex items-center justify-between">
+    <div class="text-xs text-slate-500 dark:text-slate-400">모든 전략을 같은 구간에서 비교 · 전략 SELL 포함 · 최대 90일</div>
+    <button type="submit" class="btn rounded bg-slate-900 dark:bg-slate-200 px-4 py-2 text-white dark:text-slate-900">비교 실행</button>
+  </div>
+</form>
+
+<div id="compare-loading" class="mt-4 hidden rounded border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">
+  전략별 시뮬레이션 실행 중... (시간이 걸릴 수 있습니다)
+</div>
+<div id="compare-error" class="mt-4 hidden rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"></div>
+
+<section id="compare-results" class="mt-4 hidden">
+  <div id="compare-table-wrap" class="overflow-x-auto rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+    <table class="min-w-full text-sm">
+      <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+        <tr>
+          <th class="px-3 py-2">전략</th>
+          <th class="px-3 py-2 text-right">BUY</th>
+          <th class="px-3 py-2 text-right">SELL</th>
+          <th class="px-3 py-2 text-right">실현 손익</th>
+          <th class="px-3 py-2 text-right">미실현</th>
+          <th class="px-3 py-2 text-right">총 손익</th>
+          <th class="px-3 py-2">마지막 상태</th>
+        </tr>
+      </thead>
+      <tbody id="compare-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+(function() {
+  const els = {
+    form: document.getElementById("compare-form"),
+    ticker: document.getElementById("compare-ticker"),
+    start: document.getElementById("compare-start"),
+    end: document.getElementById("compare-end"),
+    loading: document.getElementById("compare-loading"),
+    error: document.getElementById("compare-error"),
+    results: document.getElementById("compare-results"),
+    body: document.getElementById("compare-body"),
+  };
+
+  function escapeHtml(s) {
+    return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+  }
+  function ratioText(v) {
+    if (v === null || v === undefined) return "-";
+    const pct = Number(v) * 100;
+    return (pct > 0 ? "+" : "") + pct.toFixed(2) + "%";
+  }
+  function pnlColor(v) {
+    if (v === null || v === undefined || v === 0) return "";
+    return v > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400";
+  }
+
+  async function runCompare() {
+    els.loading.classList.remove("hidden");
+    els.error.classList.add("hidden");
+    els.results.classList.add("hidden");
+
+    const url = `/compare/data?ticker=${encodeURIComponent(els.ticker.value)}&start_date=${encodeURIComponent(els.start.value)}&end_date=${encodeURIComponent(els.end.value)}`;
+    try {
+      const resp = await fetch(url, {headers: {accept: "application/json"}});
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        els.loading.classList.add("hidden");
+        els.error.textContent = data.detail || `요청 실패 (${resp.status})`;
+        els.error.classList.remove("hidden");
+        return;
+      }
+      els.loading.classList.add("hidden");
+      els.results.classList.remove("hidden");
+      renderTable(data);
+    } catch(e) {
+      els.loading.classList.add("hidden");
+      els.error.textContent = e?.message || "비교 실행 실패";
+      els.error.classList.remove("hidden");
+    }
+  }
+
+  function renderTable(data) {
+    const strategies = data.strategies || [];
+    // 총 손익 기준 내림차순 정렬
+    strategies.sort((a, b) => (b.total_pnl_ratio || -999) - (a.total_pnl_ratio || -999));
+
+    els.body.innerHTML = strategies.map(s => {
+      if (s.error) {
+        return `<tr class="border-t border-slate-100 dark:border-slate-700">
+          <td class="px-3 py-2 ${s.is_current ? 'font-semibold' : ''}">${escapeHtml(s.strategy_label)}${s.is_current ? ' <span class="text-xs text-sky-600 dark:text-sky-400">현재</span>' : ''}</td>
+          <td colspan="6" class="px-3 py-2 text-xs text-red-500 dark:text-red-400">${escapeHtml(s.error)}</td>
+        </tr>`;
+      }
+      return `<tr class="border-t border-slate-100 dark:border-slate-700 ${s.is_current ? 'bg-sky-50 dark:bg-sky-900/20' : ''}">
+        <td class="px-3 py-2 ${s.is_current ? 'font-semibold' : ''}">${escapeHtml(s.strategy_label)}${s.is_current ? ' <span class="text-xs text-sky-600 dark:text-sky-400">현재</span>' : ''}</td>
+        <td class="px-3 py-2 text-right">${s.buy_count}</td>
+        <td class="px-3 py-2 text-right">${s.sell_count}</td>
+        <td class="px-3 py-2 text-right font-mono ${pnlColor(s.realized_pnl_ratio)}">${ratioText(s.realized_pnl_ratio)}</td>
+        <td class="px-3 py-2 text-right font-mono ${pnlColor(s.unrealized_pnl_ratio)}">${ratioText(s.unrealized_pnl_ratio)}</td>
+        <td class="px-3 py-2 text-right font-mono font-semibold ${pnlColor(s.total_pnl_ratio)}">${ratioText(s.total_pnl_ratio)}</td>
+        <td class="px-3 py-2">${escapeHtml(s.last_position)}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  els.form.addEventListener("submit", function(e) { e.preventDefault(); runCompare(); });
+})();
+</script>
+{% endblock %}

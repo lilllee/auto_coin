@@ -341,7 +341,7 @@ def test_review_summary_exposes_mode_and_interpretation(mocker):
     )
 
     assert result.summary.mode_label == "SELL 항상 활성"
-    assert result.summary.interpretation == "선택 구간에서 전략 기준 청산까지 확인되었습니다."
+    assert result.summary.interpretation == "선택 구간에서 전략 기준 청산까지 확인되었습니다. (일봉 종가 기준, 실운영과 차이 가능)"
 
 
 def test_review_operational_stop_loss(mocker):

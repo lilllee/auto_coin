@@ -27,6 +27,7 @@ from auto_coin.web.crypto import SecretBox
 from auto_coin.web.csrf import CSRFMiddleware
 from auto_coin.web.routers import auth as auth_router
 from auto_coin.web.routers import charts as charts_router
+from auto_coin.web.routers import compare as compare_router
 from auto_coin.web.routers import control as control_router
 from auto_coin.web.routers import dashboard as dashboard_router
 from auto_coin.web.routers import logs as logs_router
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(control_router.router)
     app.include_router(settings_router.router)
     app.include_router(charts_router.router)
+    app.include_router(compare_router.router)
     app.include_router(review_router.router)
     app.include_router(reports_router.router)
     app.include_router(logs_router.router)
