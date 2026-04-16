@@ -42,6 +42,8 @@ class TradingBot:
         stores: dict[str, OrderStore],
         executors: dict[str, OrderExecutor],
         notifier: TelegramNotifier,
+        snapshot_writer=None,
+        trade_log_query=None,
     ) -> None:
         self._s = settings
         self._client = client
@@ -50,6 +52,8 @@ class TradingBot:
         self._stores = stores
         self._executors = executors
         self._notifier = notifier
+        self._snapshot_writer = snapshot_writer
+        self._trade_log_query = trade_log_query
         self._tickers = list(stores.keys())  # 진입 우선순위는 dict 삽입 순서
         self._strategy_name = strategy.name
         self._strategy_params: dict = {}
@@ -230,6 +234,7 @@ class TradingBot:
 
     def daily_reset(self) -> None:
         """KST 09:00 — 모든 종목의 일일 손익 누적 초기화."""
+        self._save_daily_snapshot()
         self._candle_cache.invalidate()
         self._pending_buys.clear()
         self._entry_evaluated.clear()
@@ -398,6 +403,7 @@ class TradingBot:
                 action=Action.SELL,
                 reason="exit window (next-day open)",
                 volume=state.position.volume,
+                reason_code="time_exit",
             )
             try:
                 record = executor.execute(decision, current_price=price)
@@ -414,6 +420,56 @@ class TradingBot:
         return results
 
     # ----- helpers -----
+
+    def _save_daily_snapshot(self) -> None:
+        """Persist daily performance snapshot before reset."""
+        if self._snapshot_writer is None:
+            return
+        try:
+            from datetime import date as date_cls
+            from datetime import timedelta, timezone
+
+            kst = timezone(timedelta(hours=9))
+            # Use the first store's daily_pnl_date as the trading day
+            sample_state = next(iter(self._stores.values())).load()
+            if sample_state.daily_pnl_date:
+                snap_date = date_cls.fromisoformat(sample_state.daily_pnl_date)
+            else:
+                from datetime import datetime as _dt
+
+                snap_date = (_dt.now(kst) - timedelta(days=1)).date()
+
+            total_pnl = self._total_daily_pnl_ratio()
+            open_pos = sum(1 for s in self._stores.values() if s.load().position is not None)
+
+            # Count today's closed trades from TradeLog if available
+            closed_count = 0
+            win_count = 0
+            loss_count = 0
+            realized_krw = 0.0
+            if self._trade_log_query:
+                try:
+                    stats = self._trade_log_query(snap_date)
+                    closed_count = stats.get("closed_count", 0)
+                    win_count = stats.get("win_count", 0)
+                    loss_count = stats.get("loss_count", 0)
+                    realized_krw = stats.get("realized_pnl_krw", 0.0)
+                except Exception:
+                    logger.warning("trade log query for snapshot failed", exc_info=True)
+
+            self._snapshot_writer({
+                "snapshot_date": snap_date,
+                "mode": self._s.mode.value if hasattr(self._s.mode, "value") else str(self._s.mode),
+                "strategy_name": self._strategy_name,
+                "total_pnl_ratio": total_pnl,
+                "open_positions": open_pos,
+                "closed_trades_count": closed_count,
+                "win_count": win_count,
+                "loss_count": loss_count,
+                "realized_pnl_krw": realized_krw,
+            })
+        except Exception:
+            logger.warning("daily snapshot save failed", exc_info=True)
 
     def _current_trading_day(self) -> str:
         """KST 09:00 기준 거래일 키 반환."""

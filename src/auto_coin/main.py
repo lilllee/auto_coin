@@ -47,6 +47,7 @@ def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
         stores[t] = OrderStore(settings.state_dir / f"{safe}.json")
         executors[t] = OrderExecutor(
             client, stores[t], t, live=settings.is_live,
+            strategy_name=settings.strategy_name,
             fill_poll_interval=settings.fill_poll_interval_seconds,
             fill_poll_timeout=settings.fill_poll_timeout_seconds,
         )

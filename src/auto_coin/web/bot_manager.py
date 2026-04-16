@@ -113,6 +113,58 @@ class BotManager:
 
     # ----- internals ---------------------------------------------------
 
+    def _make_trade_logger(self):
+        def on_trade_closed(data: dict):
+            from auto_coin.web.models import TradeLog
+
+            try:
+                with Session(web_db.engine()) as s:
+                    s.add(TradeLog(**data))
+                    s.commit()
+            except Exception:
+                logger.warning("TradeLog DB write failed", exc_info=True)
+        return on_trade_closed
+
+    def _make_snapshot_writer(self):
+        def write_snapshot(data: dict):
+            from auto_coin.web.models import DailySnapshot
+
+            try:
+                with Session(web_db.engine()) as s:
+                    s.add(DailySnapshot(**data))
+                    s.commit()
+            except Exception:
+                logger.warning("DailySnapshot DB write failed", exc_info=True)
+        return write_snapshot
+
+    def _make_trade_log_query(self):
+        def query_trade_stats(snap_date):
+            from auto_coin.web.models import TradeLog
+
+            with Session(web_db.engine()) as s:
+                from datetime import datetime as _dt
+                from datetime import timedelta
+
+                from sqlmodel import select
+
+                day_start = _dt.combine(snap_date, _dt.min.time())
+                day_end = day_start + timedelta(days=1)
+                stmt = select(TradeLog).where(
+                    TradeLog.exit_at >= day_start,
+                    TradeLog.exit_at < day_end,
+                )
+                trades = s.exec(stmt).all()
+                win = sum(1 for t in trades if t.pnl_ratio > 0)
+                loss = sum(1 for t in trades if t.pnl_ratio <= 0)
+                realized = sum(t.pnl_krw for t in trades)
+                return {
+                    "closed_count": len(trades),
+                    "win_count": win,
+                    "loss_count": loss,
+                    "realized_pnl_krw": realized,
+                }
+        return query_trade_stats
+
     def _build_bot(self) -> None:
         """현재 DB 설정을 기반으로 TradingBot 인스턴스를 새로 조립."""
         with Session(web_db.engine()) as s:
@@ -128,11 +180,14 @@ class BotManager:
         state_dir = Path(settings.state_dir)
         stores: dict[str, OrderStore] = {}
         executors: dict[str, OrderExecutor] = {}
+        trade_logger = self._make_trade_logger()
         for t in tickers:
             safe = t.replace("/", "_")
             stores[t] = OrderStore(state_dir / f"{safe}.json")
             executors[t] = OrderExecutor(
                 client, stores[t], t, live=settings.is_live,
+                strategy_name=settings.strategy_name,
+                on_trade_closed=trade_logger,
                 fill_poll_interval=settings.fill_poll_interval_seconds,
                 fill_poll_timeout=settings.fill_poll_timeout_seconds,
             )
@@ -154,6 +209,8 @@ class BotManager:
             risk_manager=RiskManager(settings),
             stores=stores, executors=executors,
             notifier=notifier,
+            snapshot_writer=self._make_snapshot_writer(),
+            trade_log_query=self._make_trade_log_query(),
         )
 
     def _register_jobs(self) -> None:

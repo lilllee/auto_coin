@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from sqlmodel import Field, SQLModel
@@ -93,6 +93,41 @@ class AuditLog(SQLModel, table=True):
     actor: str = "admin"
     before_json: str = ""
     after_json: str = ""
+
+
+class TradeLog(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    ticker: str = Field(index=True)
+    strategy_name: str = Field(index=True)
+    mode: str = Field(index=True)            # "paper" / "live"
+    entry_at: datetime
+    exit_at: datetime
+    entry_price: float
+    exit_price: float                         # paper=exact, live=approximate (decision-time price)
+    quantity: float
+    entry_value_krw: float
+    exit_value_krw: float
+    fee_krw: float                            # round-trip fee
+    pnl_ratio: float                          # fee-adjusted return
+    pnl_krw: float                            # fee-adjusted P&L in KRW
+    hold_seconds: int
+    exit_reason_code: str | None = None       # "stop_loss", "signal_sell", "time_exit", etc.
+    exit_reason_text: str | None = None       # full reason text for debugging
+    created_at: datetime = Field(default_factory=_now)
+
+
+class DailySnapshot(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    snapshot_date: date = Field(index=True)
+    mode: str
+    strategy_name: str
+    total_pnl_ratio: float
+    open_positions: int
+    closed_trades_count: int
+    win_count: int
+    loss_count: int
+    realized_pnl_krw: float
+    created_at: datetime = Field(default_factory=_now)
 
 
 def default_db_path() -> Path:

@@ -14,6 +14,7 @@ from dataclasses import replace
 
 from loguru import logger
 
+from auto_coin.config import UPBIT_FEE_RATE
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 from auto_coin.executor.store import OrderRecord, OrderStore, Position, now_iso
 from auto_coin.formatting import format_price
@@ -28,6 +29,8 @@ class OrderExecutor:
         ticker: str,
         *,
         live: bool = False,
+        strategy_name: str = "",
+        on_trade_closed=None,
         fill_poll_interval: float = 1.0,
         fill_poll_timeout: float = 10.0,
     ) -> None:
@@ -35,6 +38,8 @@ class OrderExecutor:
         self._store = store
         self._ticker = ticker
         self._live = live
+        self._strategy_name = strategy_name
+        self._on_trade_closed = on_trade_closed
         self._fill_poll_interval = fill_poll_interval
         self._fill_poll_timeout = fill_poll_timeout
         if live and not client.authenticated:
@@ -159,6 +164,7 @@ class OrderExecutor:
                     reason=decision.reason,
                     volume=fallback_volume,
                     krw_amount=decision.krw_amount,
+                    reason_code=decision.reason_code,
                 )
             else:
                 raise ValueError("SELL decision missing volume")
@@ -191,7 +197,10 @@ class OrderExecutor:
             status=status,
             note=f"{note} | reason={decision.reason}",
         )
-        self._record_and_close_position(record, current_price=current_price)
+        self._record_and_close_position(
+            record, current_price=current_price,
+            reason_code=decision.reason_code, reason_text=decision.reason,
+        )
         logger.info("SELL {} vol={:.8f} @ {} (live={}, uuid={}, status={}) — {}",
                     self._ticker, decision.volume,
                     format_price(current_price), self._live, record.uuid, status,
@@ -219,16 +228,55 @@ class OrderExecutor:
         )
         self._store.save(state)
 
-    def _record_and_close_position(self, record: OrderRecord, *, current_price: float) -> None:
+    def _record_and_close_position(
+        self, record: OrderRecord, *, current_price: float,
+        reason_code: str | None = None, reason_text: str | None = None,
+    ) -> None:
         state = self._store.load()
         if any(o.uuid == record.uuid for o in state.orders):
             logger.warning("duplicate order uuid {} — skipping", record.uuid)
             return
         state.orders.append(record)
-        # 일일 손익 누적: 페이퍼 모드에서만 정확히 계산 가능 (체결가 알 수 있음)
-        if state.position is not None and not self._live and state.position.avg_entry_price > 0:
-            ret = (current_price - state.position.avg_entry_price) / state.position.avg_entry_price
-            state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret)
+        # 일일 손익 누적 (fee-adjusted)
+        if state.position is not None and state.position.avg_entry_price > 0:
+            fee = UPBIT_FEE_RATE
+            ret = (current_price * (1 - fee)) / (state.position.avg_entry_price * (1 + fee)) - 1
+            if not self._live:
+                state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret)
+
+            # Fire trade-closed callback (before position is cleared)
+            if self._on_trade_closed is not None:
+                try:
+                    from datetime import datetime as _dt
+
+                    entry_val = state.position.avg_entry_price * state.position.volume
+                    exit_val = current_price * state.position.volume
+                    fee_krw = (entry_val + exit_val) * fee
+                    pnl_krw = exit_val - entry_val - fee_krw
+                    entry_dt = _dt.fromisoformat(state.position.entry_at)
+                    exit_dt = _dt.fromisoformat(record.placed_at)
+                    hold_sec = max(int((exit_dt - entry_dt).total_seconds()), 0)
+                    self._on_trade_closed({
+                        "ticker": self._ticker,
+                        "strategy_name": self._strategy_name,
+                        "mode": "live" if self._live else "paper",
+                        "entry_at": entry_dt,
+                        "exit_at": exit_dt,
+                        "entry_price": state.position.avg_entry_price,
+                        "exit_price": current_price,
+                        "quantity": state.position.volume,
+                        "entry_value_krw": entry_val,
+                        "exit_value_krw": exit_val,
+                        "fee_krw": fee_krw,
+                        "pnl_ratio": ret,
+                        "pnl_krw": pnl_krw,
+                        "hold_seconds": hold_sec,
+                        "exit_reason_code": reason_code,
+                        "exit_reason_text": reason_text,
+                    })
+                except Exception:
+                    logger.warning("on_trade_closed callback failed", exc_info=True)
+
         state.last_exit_at = now_iso()
         state.position = None
         self._store.save(state)

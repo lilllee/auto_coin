@@ -68,7 +68,8 @@ def test_paper_sell_closes_position_and_updates_pnl(unauth_client, store):
     state = store.load()
     assert state.position is None
     assert len(state.orders) == 2
-    assert state.daily_pnl_ratio == pytest.approx(0.10)
+    # fee-adjusted: (110*(1-0.0005)) / (100*(1+0.0005)) - 1
+    assert state.daily_pnl_ratio == pytest.approx(0.09890054972513744)
 
 
 def test_live_buy_calls_client_and_records(mocker, auth_client, store):
@@ -144,7 +145,9 @@ def test_full_paper_cycle_buy_then_sell(unauth_client, store):
     assert len(state_final.orders) == 2
     assert state_final.orders[0].side == "buy"
     assert state_final.orders[1].side == "sell"
-    assert state_final.daily_pnl_ratio == pytest.approx(0.02)
+    # fee-adjusted: (51e6*(1-0.0005)) / (50e6*(1+0.0005)) - 1
+    expected = (51e6 * (1 - 0.0005)) / (50e6 * (1 + 0.0005)) - 1
+    assert state_final.daily_pnl_ratio == pytest.approx(expected)
     assert sell_rec.uuid != buy_rec.uuid
 
 

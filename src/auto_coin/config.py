@@ -4,6 +4,8 @@ from pathlib import Path
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+UPBIT_FEE_RATE: float = 0.0005  # Upbit 0.05% per trade (buy + sell)
+
 
 class Mode(StrEnum):
     PAPER = "paper"
