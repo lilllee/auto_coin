@@ -521,3 +521,40 @@ def test_daily_reset_clears_entry_evaluated(store, mocker):
     bot.daily_reset()
 
     assert bot._entry_evaluated == {}
+
+
+# ──────────────────────────────────────────────
+# 연속 손절 제한 (daily stop-loss limit) 테스트
+# ──────────────────────────────────────────────
+
+def test_stop_loss_increments_count(store, mocker):
+    """손절 SELL 실행 후 _stop_loss_counts[ticker] == 1."""
+    s = _settings(stop_loss_ratio=-0.02)
+    bot, client = _make_bot(store, s, mocker, fetch_df=_enriched_df(True), current_price=120.0)
+
+    # 매수 진입
+    recs = bot.tick()
+    assert len(recs) == 1 and recs[0].side == "buy"
+
+    # 손절 현재가로 교체 (진입가 120 × (1 - 0.02) = 117.6 아래)
+    mocker.patch.object(client, "get_current_price", return_value=116.0)
+    mocker.patch.object(client, "get_current_prices", return_value={s.ticker: 116.0})
+
+    recs2 = bot.tick()
+    assert len(recs2) == 1 and recs2[0].side == "sell"
+
+    assert bot._stop_loss_counts[s.ticker] == 1
+
+
+def test_daily_reset_clears_stop_loss_counts(store, mocker):
+    """daily_reset이 _stop_loss_counts를 초기화한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    # 수동으로 카운트 세팅
+    bot._stop_loss_counts = {"KRW-BTC": 2}
+    assert bot._stop_loss_counts == {"KRW-BTC": 2}
+
+    bot.daily_reset()
+
+    assert bot._stop_loss_counts == {}

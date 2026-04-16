@@ -228,3 +228,54 @@ def test_invalid_price_zero_blocks_stop_loss(rm):
     d = rm.evaluate(Signal.HOLD, ctx)
     assert d.action is Action.HOLD
     assert "invalid price" in d.reason
+
+
+# ---- daily stop-loss limit ----
+
+def test_stop_loss_reason_code(rm):
+    """손절 트리거 시 reason_code == 'stop_loss'."""
+    ctx = RiskContext(krw_balance=0, coin_balance=0.001, current_price=97.0,
+                      avg_entry_price=100.0)  # -3% (손절 -2%)
+    d = rm.evaluate(Signal.HOLD, ctx)
+    assert d.action is Action.SELL
+    assert d.reason_code == "stop_loss"
+
+
+def test_daily_stop_loss_limit_blocks_buy():
+    """stop_loss_count_today >= max_daily_stop_losses이면 BUY가 HOLD로 차단."""
+    rm = RiskManager(_settings(max_daily_stop_losses=2))
+    ctx = RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0,
+                      stop_loss_count_today=2)
+    d = rm.evaluate(Signal.BUY, ctx)
+    assert d.action is Action.HOLD
+    assert d.reason_code == "daily_stop_loss_limit"
+
+
+def test_daily_stop_loss_limit_below_max_allows_buy():
+    """stop_loss_count_today < max_daily_stop_losses이면 BUY 승인."""
+    rm = RiskManager(_settings(max_daily_stop_losses=2))
+    ctx = RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0,
+                      stop_loss_count_today=1)
+    d = rm.evaluate(Signal.BUY, ctx)
+    assert d.action is Action.BUY
+
+
+def test_all_decisions_have_reason_code():
+    """HOLD/BUY/SELL 각 케이스 모두 reason_code가 None이 아님."""
+    rm = RiskManager(_settings())
+
+    # HOLD — signal=HOLD, flat
+    d_hold = rm.evaluate(Signal.HOLD,
+                         RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0))
+    assert d_hold.reason_code is not None
+
+    # BUY — approved
+    d_buy = rm.evaluate(Signal.BUY,
+                        RiskContext(krw_balance=100_000, coin_balance=0, current_price=100.0))
+    assert d_buy.reason_code is not None
+
+    # SELL — approved (has position)
+    d_sell = rm.evaluate(Signal.SELL,
+                         RiskContext(krw_balance=0, coin_balance=0.001, current_price=100.0,
+                                     avg_entry_price=100.0))
+    assert d_sell.reason_code is not None

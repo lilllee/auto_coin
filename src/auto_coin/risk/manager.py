@@ -29,6 +29,7 @@ class Decision:
     reason: str
     krw_amount: float | None = None  # BUY 시 매수에 사용할 KRW
     volume: float | None = None      # SELL 시 매도 수량
+    reason_code: str | None = None   # "stop_loss", "kill_switch", "cooldown", "daily_loss_limit", "slot_full", "signal_buy", "signal_sell", etc.
 
 
 @dataclass(frozen=True)
@@ -44,6 +45,7 @@ class RiskContext:
     portfolio_open_positions: int = 0  # 지금 보유 중인 종목 수 (자신 제외 X, 포함해서 센다)
     portfolio_max_positions: int = 1   # 동시 보유 상한
     cooldown_active: bool = False  # True면 해당 종목이 쿨다운 기간 중
+    stop_loss_count_today: int = 0  # 당일 손절 횟수
 
 
 class RiskManager:
@@ -56,7 +58,7 @@ class RiskManager:
 
         # 0) 가격 데이터 무효 — 어떤 판단도 하지 않음
         if ctx.current_price <= 0:
-            return Decision(Action.HOLD, reason="invalid price (<=0)")
+            return Decision(Action.HOLD, reason="invalid price (<=0)", reason_code="invalid_price")
 
         # 1) 보유 중 손절은 모든 다른 판단보다 우선 — 즉시 청산
         if has_position and ctx.avg_entry_price is not None:
@@ -66,6 +68,7 @@ class RiskManager:
                     action=Action.SELL,
                     reason="avg_entry_price invalid (<=0), forced exit for safety",
                     volume=ctx.coin_balance,
+                    reason_code="invalid_entry_price",
                 )
             unrealized = (ctx.current_price - ctx.avg_entry_price) / ctx.avg_entry_price
             if unrealized <= s.stop_loss_ratio:
@@ -73,47 +76,59 @@ class RiskManager:
                     action=Action.SELL,
                     reason=f"stop_loss triggered ({unrealized*100:+.2f}% <= {s.stop_loss_ratio*100:.2f}%)",
                     volume=ctx.coin_balance,
+                    reason_code="stop_loss",
                 )
 
         # 2) Kill-switch는 신규 진입(BUY)만 차단 — 기존 포지션 청산은 막지 않는다
         if s.kill_switch and signal is Signal.BUY:
-            return Decision(Action.HOLD, reason="kill_switch active")
+            return Decision(Action.HOLD, reason="kill_switch active", reason_code="kill_switch")
 
         # 2.5) 쿨다운 기간 중 신규 진입 차단
         if signal is Signal.BUY and ctx.cooldown_active:
-            return Decision(Action.HOLD, reason="cooldown active (recent exit)")
+            return Decision(Action.HOLD, reason="cooldown active (recent exit)", reason_code="cooldown")
+
+        # 2.7) 당일 연속 손절 한도 — 한도 초과 시 신규 진입 차단
+        if signal is Signal.BUY and ctx.stop_loss_count_today >= s.max_daily_stop_losses:
+            return Decision(
+                Action.HOLD,
+                reason=f"daily stop-loss limit hit ({ctx.stop_loss_count_today}/{s.max_daily_stop_losses})",
+                reason_code="daily_stop_loss_limit",
+            )
 
         # 3) 일일 손실 한도 도달 시 신규 진입 차단
         if signal is Signal.BUY and ctx.daily_pnl_ratio <= s.daily_loss_limit:
             return Decision(
                 Action.HOLD,
                 reason=f"daily_loss_limit hit ({ctx.daily_pnl_ratio*100:+.2f}%)",
+                reason_code="daily_loss_limit",
             )
 
         # 4) BUY 처리
         if signal is Signal.BUY:
             if has_position:
-                return Decision(Action.HOLD, reason="already in position")
+                return Decision(Action.HOLD, reason="already in position", reason_code="already_in_position")
             # 포트폴리오 동시 보유 상한 체크 (단일 종목이면 기본 1 slot)
             if ctx.portfolio_open_positions >= ctx.portfolio_max_positions:
                 return Decision(
                     Action.HOLD,
                     reason=f"portfolio slot full "
                            f"({ctx.portfolio_open_positions}/{ctx.portfolio_max_positions})",
+                    reason_code="slot_full",
                 )
             krw_amount = ctx.krw_balance * s.max_position_ratio
             if krw_amount < s.min_order_krw:
                 return Decision(
                     Action.HOLD,
                     reason=f"order size {krw_amount:.0f} KRW below min {s.min_order_krw}",
+                    reason_code="below_min_order",
                 )
-            return Decision(Action.BUY, reason="signal=BUY approved", krw_amount=krw_amount)
+            return Decision(Action.BUY, reason="signal=BUY approved", krw_amount=krw_amount, reason_code="signal_buy")
 
         # 5) SELL 처리 (전략이 직접 SELL을 내는 경우는 드물지만 지원)
         if signal is Signal.SELL:
             if not has_position:
-                return Decision(Action.HOLD, reason="no position to sell")
-            return Decision(Action.SELL, reason="signal=SELL approved", volume=ctx.coin_balance)
+                return Decision(Action.HOLD, reason="no position to sell", reason_code="no_position")
+            return Decision(Action.SELL, reason="signal=SELL approved", volume=ctx.coin_balance, reason_code="signal_sell")
 
         # 6) HOLD
-        return Decision(Action.HOLD, reason="signal=HOLD")
+        return Decision(Action.HOLD, reason="signal=HOLD", reason_code="signal_hold")

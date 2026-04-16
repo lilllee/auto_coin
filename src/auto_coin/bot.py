@@ -63,6 +63,7 @@ class TradingBot:
         )
         self._execution_mode = STRATEGY_EXECUTION_MODE.get(strategy.name, "intraday")
         self._entry_evaluated: dict[str, str] = {}  # ticker → trading_day (평가 완료 표시)
+        self._stop_loss_counts: dict[str, int] = {}  # ticker → 당일 손절 횟수
 
     # ----- main loop steps -----
 
@@ -175,6 +176,7 @@ class TradingBot:
                 portfolio_open_positions=open_positions,
                 portfolio_max_positions=self._s.max_concurrent_positions,
                 cooldown_active=self._is_cooldown_active(state),
+                stop_loss_count_today=self._stop_loss_counts.get(ticker, 0),
             )
             decision = self._risk.evaluate(signal, ctx)
             logger.debug("tick {}: signal={} decision={} reason={}",
@@ -203,6 +205,19 @@ class TradingBot:
             elif record.side == "sell":
                 open_positions = max(0, open_positions - 1)
 
+            # 손절 카운트
+            if record.side == "sell" and decision.reason_code == "stop_loss":
+                self._stop_loss_counts[ticker] = self._stop_loss_counts.get(ticker, 0) + 1
+                sl_count = self._stop_loss_counts[ticker]
+                logger.warning(
+                    "tick {}: stop-loss count {}/{}",
+                    ticker, sl_count, self._s.max_daily_stop_losses,
+                )
+                if sl_count >= self._s.max_daily_stop_losses:
+                    self._notifier.send(
+                        f"🔒 {ticker} locked for today: {sl_count} stop-losses"
+                    )
+
             side_emoji = "🟢" if record.side == "buy" else "🔴"
             self._notifier.send(
                 f"{side_emoji} {record.side.upper()} {record.market} "
@@ -218,6 +233,7 @@ class TradingBot:
         self._candle_cache.invalidate()
         self._pending_buys.clear()
         self._entry_evaluated.clear()
+        self._stop_loss_counts.clear()
         prev_total = self._total_daily_pnl_ratio()
         for store in self._stores.values():
             state = store.load()
