@@ -78,6 +78,15 @@ def _ensure_schema(engine) -> None:
                 ),
             )
 
+    # TradeLog: decision_exit_price (live slippage 관측용, P2-3 패치)
+    if "tradelog" in inspector.get_table_names():
+        tradelog_columns = {c["name"] for c in inspector.get_columns("tradelog")}
+        if "decision_exit_price" not in tradelog_columns:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("ALTER TABLE tradelog ADD COLUMN decision_exit_price REAL"),
+                )
+
     # AppSettings: strategy_name / strategy_params_json (multi-strategy support)
     if "appsettings" in inspector.get_table_names():
         app_columns = {c["name"] for c in inspector.get_columns("appsettings")}

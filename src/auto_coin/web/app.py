@@ -30,6 +30,7 @@ from auto_coin.web.routers import charts as charts_router
 from auto_coin.web.routers import compare as compare_router
 from auto_coin.web.routers import control as control_router
 from auto_coin.web.routers import dashboard as dashboard_router
+from auto_coin.web.routers import kpi as kpi_router
 from auto_coin.web.routers import logs as logs_router
 from auto_coin.web.routers import reports as reports_router
 from auto_coin.web.routers import review as review_router
@@ -105,6 +106,7 @@ def create_app() -> FastAPI:
     app.include_router(reports_router.router)
     app.include_router(logs_router.router)
     app.include_router(signal_board_router.router)
+    app.include_router(kpi_router.router)
 
     # /health — 인증 없이 헬스체크
     @app.get("/health")
@@ -157,10 +159,19 @@ def create_app() -> FastAPI:
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
     # 최초 기동 가이드: /로 오되 setup 필요하면 /setup
+    from auto_coin.web.auth import AUTH_DISABLED
+
     @app.middleware("http")
     async def setup_first(request: Request, call_next):
-        # /setup, /login, /logout, /health, /static 및 /setup/* 은 통과
         path = request.url.path
+        if AUTH_DISABLED:
+            # 템플릿이 인증 상태를 감지할 수 있도록 플래그 노출 (scope에 기록 — Jinja 접근 용이)
+            request.scope["auth_disabled_flag"] = True
+            # 인증 비활성 모드에서는 인증 관련 페이지 자체를 노출하지 않음
+            if path.startswith(("/login", "/setup", "/recovery", "/logout")):
+                return RedirectResponse("/", status_code=303)
+            return await call_next(request)
+        # /setup, /login, /logout, /health, /static 및 /setup/* 은 통과
         if path.startswith(("/setup", "/login", "/logout", "/health", "/static", "/favicon")):
             return await call_next(request)
         # DB 보고 user 없으면 /setup으로

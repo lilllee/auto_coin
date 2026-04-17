@@ -28,7 +28,8 @@ tailwind.config = { darkMode: 'class' }
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
 {% set path = request.url.path if request else "" %}
-{% set authed = request and request.session.get("user_id") %}
+{% set auth_disabled = (request.scope.get("auth_disabled_flag") if request else False) %}
+{% set authed = request and (request.session.get("user_id") or auth_disabled) %}
 
 <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
   <a href="/" class="font-semibold tracking-tight dark:text-white">auto_coin</a>
@@ -37,7 +38,7 @@ tailwind.config = { darkMode: 'class' }
       <span id="theme-icon-light" class="hidden dark:inline">☀️</span>
       <span id="theme-icon-dark" class="inline dark:hidden">🌙</span>
     </button>
-    {% if authed %}
+    {% if authed and not auth_disabled %}
       <form method="post" action="/logout" class="m-0">
         <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
         <button class="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white" type="submit">로그아웃</button>
@@ -67,12 +68,13 @@ tailwind.config = { darkMode: 'class' }
 
 {% if authed %}
 <nav class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 fixed bottom-0 inset-x-0 safe-bottom z-10">
-  <div class="max-w-xl mx-auto grid grid-cols-7">
+  <div class="max-w-xl mx-auto grid grid-cols-8">
     {% set tabs = [
       ("/", "📊", "대시"),
       ("/charts", "📈", "차트"),
       ("/review", "🔍", "전략검토"),
       ("/signal-board", "📡", "상태판"),
+      ("/kpi", "📐", "KPI"),
       ("/reports", "📄", "리포트"),
       ("/logs", "📜", "로그"),
       ("/settings", "⚙️", "설정"),

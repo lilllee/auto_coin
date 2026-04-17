@@ -335,3 +335,190 @@ def test_paper_mode_skips_fill_polling(unauth_client, store):
     assert rec.status == "paper"
     # poll_fill returns None for non-live, so no fill polling occurs
     assert store.load().position.volume == pytest.approx(100.0)
+
+
+# ---------------------------------------------------------------------------
+# Live SELL fill reflection (P2-3 patch)
+# ---------------------------------------------------------------------------
+
+def _make_live_executor_with_capture(client, store, *, mocker):
+    """헬퍼: BUY는 done(체결)으로 모의, SELL은 인자로 받는 fill_info 반환."""
+    captured = []
+
+    def on_trade_closed(data: dict):
+        captured.append(data)
+
+    mocker.patch.object(
+        client._upbit, "buy_market_order",
+        return_value={"uuid": "buy-uuid", "side": "bid"},
+    )
+    mocker.patch.object(
+        client._upbit, "sell_market_order",
+        return_value={"uuid": "sell-uuid", "side": "ask"},
+    )
+    ex = OrderExecutor(
+        client, store, "KRW-BTC", live=True,
+        strategy_name="vb",
+        on_trade_closed=on_trade_closed,
+        fill_poll_interval=0.005,
+        fill_poll_timeout=0.05,
+    )
+    return ex, captured
+
+
+def test_live_sell_fill_avg_price_reflected_in_record_and_tradelog(
+    mocker, auth_client, store,
+):
+    """live SELL: fill avg_price/executed_volume/paid_fee가 OrderRecord와 TradeLog에 반영된다."""
+    ex, captured = _make_live_executor_with_capture(auth_client, store, mocker=mocker)
+
+    # BUY: 체결 확인 → position.avg_entry_price=100, volume=100
+    def fake_get_order(uuid):
+        if uuid == "buy-uuid":
+            return {"state": "done", "executed_volume": "100.0", "avg_price": "100.0"}
+        if uuid == "sell-uuid":
+            return {
+                "state": "done",
+                "executed_volume": "100.0",
+                "avg_price": "108.5",        # decision_price=110과 다른 실제 fill
+                "paid_fee": "5.4",           # 실제 매도 수수료
+            }
+        return {"state": "wait"}
+    mocker.patch.object(auth_client._upbit, "get_order", side_effect=fake_get_order)
+
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+    sell_rec = ex.execute(
+        Decision(Action.SELL, reason="exit signal", volume=100.0, reason_code="signal_sell"),
+        current_price=110.0,
+    )
+
+    # OrderRecord — fill 값 반영
+    assert sell_rec.status == "filled"
+    assert sell_rec.price == pytest.approx(108.5)
+    assert sell_rec.volume == pytest.approx(100.0)
+    assert sell_rec.krw_amount == pytest.approx(108.5 * 100.0)
+    assert "decision_price=" in sell_rec.note
+
+    # TradeLog callback payload
+    assert len(captured) == 1
+    data = captured[0]
+    assert data["mode"] == "live"
+    assert data["exit_price"] == pytest.approx(108.5)
+    assert data["decision_exit_price"] == pytest.approx(110.0)
+    assert data["quantity"] == pytest.approx(100.0)
+    assert data["exit_value_krw"] == pytest.approx(108.5 * 100.0)
+    # fee_krw = buy_fee_approx (entry_val * 0.0005) + actual sell paid_fee (5.4)
+    expected_fee = (100.0 * 100.0) * 0.0005 + 5.4
+    assert data["fee_krw"] == pytest.approx(expected_fee)
+    # pnl_krw = exit_val - entry_val - fee_krw
+    expected_pnl_krw = 10_850.0 - 10_000.0 - expected_fee
+    assert data["pnl_krw"] == pytest.approx(expected_pnl_krw)
+    # pnl_ratio = pnl_krw / entry_val
+    assert data["pnl_ratio"] == pytest.approx(expected_pnl_krw / 10_000.0)
+
+
+def test_live_sell_fill_missing_avg_price_falls_back_to_decision_price(
+    mocker, auth_client, store,
+):
+    """live SELL: fill_info에 avg_price 없으면 decision-time current_price 사용."""
+    ex, captured = _make_live_executor_with_capture(auth_client, store, mocker=mocker)
+
+    def fake_get_order(uuid):
+        if uuid == "buy-uuid":
+            return {"state": "done", "executed_volume": "100.0", "avg_price": "100.0"}
+        if uuid == "sell-uuid":
+            # avg_price 없음, paid_fee 없음, executed_volume만 있음
+            return {"state": "done", "executed_volume": "100.0"}
+        return {"state": "wait"}
+    mocker.patch.object(auth_client._upbit, "get_order", side_effect=fake_get_order)
+
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+    sell_rec = ex.execute(
+        Decision(Action.SELL, reason="exit", volume=100.0),
+        current_price=110.0,
+    )
+
+    # OrderRecord.price는 미확정 → None 유지
+    assert sell_rec.status == "filled"
+    assert sell_rec.price is None
+    assert sell_rec.krw_amount is None
+    assert sell_rec.volume == pytest.approx(100.0)
+
+    # TradeLog: decision price fallback + 기존 공식 (paid_fee 없음 → UPBIT_FEE_RATE)
+    data = captured[0]
+    assert data["exit_price"] == pytest.approx(110.0)            # fallback
+    assert data["decision_exit_price"] == pytest.approx(110.0)
+    fee = 0.0005
+    expected_ratio = (110.0 * (1 - fee)) / (100.0 * (1 + fee)) - 1
+    assert data["pnl_ratio"] == pytest.approx(expected_ratio)
+    expected_fee_krw = (100.0 * 100.0 + 110.0 * 100.0) * fee     # 기존 공식
+    assert data["fee_krw"] == pytest.approx(expected_fee_krw)
+
+
+def test_live_sell_fill_avg_price_from_trades_array(
+    mocker, auth_client, store,
+):
+    """avg_price 직접 필드가 없어도 trades[]에서 가중평균을 계산해 반영한다."""
+    ex, captured = _make_live_executor_with_capture(auth_client, store, mocker=mocker)
+
+    def fake_get_order(uuid):
+        if uuid == "buy-uuid":
+            return {"state": "done", "executed_volume": "100.0", "avg_price": "100.0"}
+        if uuid == "sell-uuid":
+            return {
+                "state": "done",
+                "executed_volume": "100.0",
+                "trades": [
+                    {"price": "108.0", "volume": "60.0", "funds": "6480.0"},
+                    {"price": "109.0", "volume": "40.0", "funds": "4360.0"},
+                ],
+                "paid_fee": "5.42",
+            }
+        return {"state": "wait"}
+    mocker.patch.object(auth_client._upbit, "get_order", side_effect=fake_get_order)
+
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+    ex.execute(Decision(Action.SELL, reason="exit", volume=100.0), current_price=110.0)
+
+    expected_avg = (6480.0 + 4360.0) / 100.0  # = 108.4
+    data = captured[0]
+    assert data["exit_price"] == pytest.approx(expected_avg)
+    assert data["decision_exit_price"] == pytest.approx(110.0)
+
+
+def test_live_sell_poll_timeout_uses_decision_price_fallback(
+    mocker, auth_client, store,
+):
+    """SELL 폴링 타임아웃 시 OrderRecord.price=None, TradeLog는 decision price fallback."""
+    ex, captured = _make_live_executor_with_capture(auth_client, store, mocker=mocker)
+
+    def fake_get_order(uuid):
+        if uuid == "buy-uuid":
+            return {"state": "done", "executed_volume": "100.0", "avg_price": "100.0"}
+        return {"state": "wait"}
+    mocker.patch.object(auth_client._upbit, "get_order", side_effect=fake_get_order)
+
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+    sell_rec = ex.execute(
+        Decision(Action.SELL, reason="exit", volume=100.0),
+        current_price=110.0,
+    )
+
+    assert sell_rec.status == "placed"   # 폴링 타임아웃 → filled로 승급되지 않음
+    assert sell_rec.price is None
+    data = captured[0]
+    assert data["exit_price"] == pytest.approx(110.0)
+    assert data["decision_exit_price"] == pytest.approx(110.0)
+
+
+def test_extract_sell_fill_helper_handles_missing_and_zero():
+    """_extract_sell_fill: 누락/0/잘못된 값은 None으로 안전하게."""
+    from auto_coin.executor.order import OrderExecutor as Ex
+    assert Ex._extract_sell_fill({}) == (None, None, None)
+    assert Ex._extract_sell_fill({"avg_price": "0", "executed_volume": "0"}) == (
+        None, None, None,
+    )
+    assert Ex._extract_sell_fill({"avg_price": "abc"}) == (None, None, None)
+    assert Ex._extract_sell_fill({
+        "avg_price": "100.5", "executed_volume": "2.5", "paid_fee": "0.5",
+    }) == (100.5, 2.5, 0.5)

@@ -1,0 +1,343 @@
+{% extends "base.html" %}
+{% block title %}KPI — auto_coin{% endblock %}
+{% block body %}
+<h1 class="text-xl font-semibold mb-3">KPI 요약</h1>
+
+<div class="mb-3 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-300">
+  ⚠️ <b>"estimated_*" 지표는 추정치입니다.</b> DailySnapshot의 <code>total_pnl_ratio</code>는 종목별 수익률의 단순합 구조이므로,
+  누적 수익률·MDD는 정확한 포트폴리오 가중 수익률과 차이가 있습니다. "거래 통계"(승률·평균 수익률·거래별 실현 KRW)는 fee 반영된 정확한 값입니다.
+</div>
+
+<form method="get" class="mb-3 flex gap-2 items-center">
+  <label class="text-sm text-slate-600 dark:text-slate-400">기간</label>
+  <select name="period" onchange="this.form.submit()"
+          class="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-3 py-2 text-sm">
+    {% for p in periods %}
+      <option value="{{ p }}" {% if p == period %}selected{% endif %}>{{ {"7d":"최근 7일","14d":"최근 14일","30d":"최근 30일","all":"전체"}[p] }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<div id="kpi-loading" class="rounded border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-900/30 px-3 py-2 text-sm text-sky-800 dark:text-sky-400">불러오는 중…</div>
+<div id="kpi-error" class="hidden rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"></div>
+
+<section id="kpi-body" class="hidden space-y-4">
+  <!-- 거래 통계 카드 -->
+  <div>
+    <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">거래 통계 (fee 반영·정확)</h2>
+    <div id="trade-summary" class="grid grid-cols-2 gap-2"></div>
+  </div>
+
+  <!-- 일별 추정 지표 카드 -->
+  <div>
+    <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">일별 추정 지표 <span class="text-xs text-amber-600 dark:text-amber-400">(근사)</span></h2>
+    <div id="daily-summary" class="grid grid-cols-2 gap-2"></div>
+  </div>
+
+  <!-- 차트 -->
+  <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3">
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">추정 누적 equity (1.0 시작)</div>
+    <canvas id="equity-chart" height="220"></canvas>
+  </div>
+
+  <!-- 전략별 -->
+  <div>
+    <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">전략별</h2>
+    <div id="by-strategy-table" class="overflow-x-auto"></div>
+  </div>
+
+  <!-- 종목별 -->
+  <div>
+    <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">종목별</h2>
+    <div id="by-ticker-table" class="overflow-x-auto"></div>
+  </div>
+
+  <!-- 청산 사유 -->
+  <div>
+    <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">청산 사유</h2>
+    <div id="by-reason-table" class="overflow-x-auto"></div>
+  </div>
+
+  <!-- 라이브 슬리피지 (SELL) -->
+  <div class="pt-4 mt-4 border-t border-slate-200 dark:border-slate-700">
+    <h2 class="text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">라이브 슬리피지 (SELL)</h2>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-2">
+      SELL 기준 · <b>음수 bp = 결정가보다 낮게 체결 = 불리</b>.
+      포함 기준: mode=live · decision_exit_price&gt;0 · exit_price&gt;0.
+    </div>
+
+    <div id="slippage-empty" class="hidden rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+      측정 가능한 live 거래가 아직 없습니다.
+    </div>
+
+    <div id="slippage-content" class="hidden space-y-3">
+      <div id="slippage-cards" class="grid grid-cols-2 gap-2"></div>
+
+      <div id="slippage-exact-note" class="hidden rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-xs text-amber-800 dark:text-amber-300"></div>
+
+      <div>
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">청산 사유별</h3>
+        <div id="slippage-by-reason" class="overflow-x-auto"></div>
+      </div>
+
+      <div>
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">종목별</h3>
+        <div id="slippage-by-ticker" class="overflow-x-auto"></div>
+      </div>
+
+      <div>
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">최근 거래</h3>
+        <div id="slippage-recent" class="overflow-x-auto"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+(function(){
+  const els = {
+    loading: document.getElementById("kpi-loading"),
+    error: document.getElementById("kpi-error"),
+    body: document.getElementById("kpi-body"),
+    tradeSummary: document.getElementById("trade-summary"),
+    dailySummary: document.getElementById("daily-summary"),
+    byStrategy: document.getElementById("by-strategy-table"),
+    byTicker: document.getElementById("by-ticker-table"),
+    byReason: document.getElementById("by-reason-table"),
+    slipEmpty: document.getElementById("slippage-empty"),
+    slipContent: document.getElementById("slippage-content"),
+    slipCards: document.getElementById("slippage-cards"),
+    slipExactNote: document.getElementById("slippage-exact-note"),
+    slipByReason: document.getElementById("slippage-by-reason"),
+    slipByTicker: document.getElementById("slippage-by-ticker"),
+    slipRecent: document.getElementById("slippage-recent"),
+  };
+  const period = {{ period | tojson }};
+
+  function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+  function fmtPct(v, d=2){ if (v === null || v === undefined) return "-"; return (Number(v) * 100).toFixed(d) + "%"; }
+  function fmtPctRaw(v, d=2){ if (v === null || v === undefined) return "-"; return Number(v).toFixed(d) + "%"; }
+  function fmtKrw(v){ if (v === null || v === undefined) return "-"; return Math.round(Number(v)).toLocaleString("ko-KR") + " KRW"; }
+  function fmtHold(sec){
+    if (sec === null || sec === undefined) return "-";
+    const s = Math.round(Number(sec));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  }
+  function card(label, value, subtitle=""){
+    return `
+      <div class="rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+        <div class="text-xs text-slate-500 dark:text-slate-400">${esc(label)}</div>
+        <div class="mt-1 font-semibold text-lg">${value}</div>
+        ${subtitle ? `<div class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">${subtitle}</div>` : ""}
+      </div>
+    `;
+  }
+  function table(headers, rows){
+    if (!rows || !rows.length) {
+      return `<div class="text-sm text-slate-500 dark:text-slate-400">데이터 없음</div>`;
+    }
+    const head = headers.map(h => `<th class="text-left text-xs font-medium text-slate-500 dark:text-slate-400 px-2 py-1.5">${esc(h)}</th>`).join("");
+    const body = rows.map(r => `<tr class="border-t border-slate-100 dark:border-slate-700">${r.map(c => `<td class="px-2 py-1.5 text-sm">${c}</td>`).join("")}</tr>`).join("");
+    return `<table class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded"><thead>${head}</thead><tbody>${body}</tbody></table>`;
+  }
+  function pnlClass(v){ return v > 0 ? "text-emerald-600 dark:text-emerald-400" : v < 0 ? "text-red-600 dark:text-red-400" : ""; }
+
+  function renderTradeSummary(t){
+    els.tradeSummary.innerHTML = [
+      card("총 거래", `${t.total_trades}건`, `승 ${t.win_count} / 패 ${t.loss_count}`),
+      card("승률", fmtPctRaw(t.win_rate)),
+      card("평균 수익률", `<span class="${pnlClass(t.avg_pnl_ratio)}">${fmtPct(t.avg_pnl_ratio)}</span>`,
+           `수익 ${fmtPct(t.avg_win_ratio)} · 손실 ${fmtPct(t.avg_loss_ratio)}`),
+      card("평균 보유", fmtHold(t.avg_hold_seconds)),
+      card("거래 총 실현 KRW", `<span class="${pnlClass(t.trade_total_pnl_krw)}">${fmtKrw(t.trade_total_pnl_krw)}</span>`,
+           "누적 수익률 아님 — fee 반영된 거래 실현 KRW 합"),
+      card("총 수수료", fmtKrw(t.total_fee_krw)),
+    ].join("");
+  }
+
+  function renderDailySummary(d){
+    const mddPeriod = (d.estimated_mdd_peak_date && d.estimated_mdd_trough_date)
+      ? `${d.estimated_mdd_peak_date} → ${d.estimated_mdd_trough_date}` : "-";
+    els.dailySummary.innerHTML = [
+      card("기간", `${d.days_count}일`, `win ${d.win_days} / loss ${d.loss_days}`),
+      card("추정 누적 수익률 (근사)",
+           `<span class="${pnlClass(d.estimated_cumulative_return)}">${fmtPct(d.estimated_cumulative_return)}</span>`,
+           "DailySnapshot 합 기반 추정치"),
+      card("추정 MDD (근사)",
+           `<span class="text-red-600 dark:text-red-400">${fmtPct(d.estimated_mdd)}</span>`,
+           mddPeriod),
+      card("평균 일일 수익률", fmtPct(d.avg_daily_pnl_ratio)),
+      card("최고의 날",
+           d.best_day ? `<span class="text-emerald-600 dark:text-emerald-400">${fmtPct(d.best_day.pnl_ratio)}</span>` : "-",
+           d.best_day ? d.best_day.date : ""),
+      card("최악의 날",
+           d.worst_day ? `<span class="text-red-600 dark:text-red-400">${fmtPct(d.worst_day.pnl_ratio)}</span>` : "-",
+           d.worst_day ? d.worst_day.date : ""),
+    ].join("");
+  }
+
+  function renderStrategy(rows){
+    els.byStrategy.innerHTML = table(
+      ["전략", "거래", "승률", "평균", "실현 KRW"],
+      rows.map(r => [
+        esc(r.strategy_name),
+        `${r.trade_count}`,
+        fmtPctRaw(r.win_rate),
+        `<span class="${pnlClass(r.avg_pnl_ratio)}">${fmtPct(r.avg_pnl_ratio)}</span>`,
+        `<span class="${pnlClass(r.trade_total_pnl_krw)}">${fmtKrw(r.trade_total_pnl_krw)}</span>`,
+      ])
+    );
+  }
+
+  function renderTicker(rows){
+    els.byTicker.innerHTML = table(
+      ["종목", "거래", "승률", "평균", "실현 KRW"],
+      rows.map(r => [
+        esc(r.ticker),
+        `${r.trade_count}`,
+        fmtPctRaw(r.win_rate),
+        `<span class="${pnlClass(r.avg_pnl_ratio)}">${fmtPct(r.avg_pnl_ratio)}</span>`,
+        `<span class="${pnlClass(r.trade_total_pnl_krw)}">${fmtKrw(r.trade_total_pnl_krw)}</span>`,
+      ])
+    );
+  }
+
+  function renderReason(rows){
+    els.byReason.innerHTML = table(
+      ["청산 사유", "건수", "비중"],
+      rows.map(r => [esc(r.reason_code), `${r.count}`, fmtPctRaw(r.pct)])
+    );
+  }
+
+  function fmtBp(v, d=2){ if (v === null || v === undefined) return "-"; return Number(v).toFixed(d) + " bp"; }
+  // SELL 기준: 음수 = 불리. 부호 그대로(auto-flip 금지).
+  function bpClass(v){ return v < 0 ? "text-red-600 dark:text-red-400" : v > 0 ? "text-emerald-600 dark:text-emerald-400" : ""; }
+  function fmtTimestamp(iso){
+    if (!iso) return "-";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString("ko-KR", {year:"2-digit", month:"2-digit", day:"2-digit", hour:"2-digit", minute:"2-digit"});
+  }
+
+  function renderSlippage(s){
+    if (!s || !s.measurable_count) {
+      els.slipEmpty.classList.remove("hidden");
+      els.slipContent.classList.add("hidden");
+      return;
+    }
+    els.slipEmpty.classList.add("hidden");
+    els.slipContent.classList.remove("hidden");
+
+    els.slipCards.innerHTML = [
+      card("측정 가능 거래", `${s.measurable_count}건`,
+           "포함: live + decision/exit price > 0"),
+      card("평균 슬리피지", `<span class="${bpClass(s.avg_bp)}">${fmtBp(s.avg_bp)}</span>`,
+           `중앙값 ${fmtBp(s.median_bp)}`),
+      card("최악 슬리피지", `<span class="${bpClass(s.worst_bp)}">${fmtBp(s.worst_bp)}</span>`,
+           "SELL 기준 가장 불리한 1건"),
+      card("최선 슬리피지", `<span class="${bpClass(s.best_bp)}">${fmtBp(s.best_bp)}</span>`,
+           "SELL 기준 가장 유리한 1건"),
+      card("누적 추정 손익 영향",
+           `<span class="${pnlClass(s.estimated_total_slippage_krw)}">${fmtKrw(s.estimated_total_slippage_krw)}</span>`,
+           "결정가 대비 체결가 차이의 추정 합 · 실제 확정 손실액 아님"),
+    ].join("");
+
+    if (s.exact_match_count > 0) {
+      els.slipExactNote.textContent =
+        `exact_match: ${s.exact_match_count}건 — exit_price == decision_exit_price. ` +
+        `fallback(체결가 미확정) 가능성 힌트일 뿐 확정은 아닙니다 (우연 일치도 가능).`;
+      els.slipExactNote.classList.remove("hidden");
+    } else {
+      els.slipExactNote.classList.add("hidden");
+    }
+
+    els.slipByReason.innerHTML = table(
+      ["청산 사유", "건수", "평균", "최악"],
+      s.by_reason.map(r => [
+        esc(r.reason_code),
+        `${r.count}`,
+        `<span class="${bpClass(r.avg_bp)}">${fmtBp(r.avg_bp)}</span>`,
+        `<span class="${bpClass(r.worst_bp)}">${fmtBp(r.worst_bp)}</span>`,
+      ])
+    );
+
+    els.slipByTicker.innerHTML = table(
+      ["종목", "건수", "평균", "최악"],
+      s.by_ticker.map(r => [
+        esc(r.ticker),
+        `${r.count}`,
+        `<span class="${bpClass(r.avg_bp)}">${fmtBp(r.avg_bp)}</span>`,
+        `<span class="${bpClass(r.worst_bp)}">${fmtBp(r.worst_bp)}</span>`,
+      ])
+    );
+
+    els.slipRecent.innerHTML = table(
+      ["체결시각", "종목", "사유", "결정가", "체결가", "bp"],
+      s.recent.map(r => [
+        esc(fmtTimestamp(r.exit_at)),
+        esc(r.ticker),
+        esc(r.exit_reason_code || "-"),
+        Number(r.decision_exit_price).toLocaleString("ko-KR"),
+        Number(r.exit_price).toLocaleString("ko-KR"),
+        `<span class="${bpClass(r.slippage_bp)}">${fmtBp(r.slippage_bp)}</span>`,
+      ])
+    );
+  }
+
+  function renderChart(series){
+    const ctx = document.getElementById("equity-chart").getContext("2d");
+    const labels = series.map(p => p.date);
+    const data = series.map(p => p.estimated_cumulative);
+    new Chart(ctx, {
+      type: "line",
+      data: {labels, datasets: [{
+        label: "추정 누적 equity (근사)",
+        data, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,0.08)",
+        tension: 0.15, fill: true, pointRadius: 0, borderWidth: 2,
+      }]},
+      options: {
+        responsive: true,
+        scales: {
+          x: {ticks: {maxRotation: 0, autoSkip: true, maxTicksLimit: 8}},
+          y: {ticks: {callback: v => Number(v).toFixed(3)}},
+        },
+        plugins: {
+          legend: {position: "bottom", labels: {boxWidth: 14, font: {size: 11}}},
+          tooltip: {callbacks: {label: ctx => `${ctx.dataset.label}: ${Number(ctx.raw).toFixed(4)}`}},
+        },
+      },
+    });
+  }
+
+  async function load(){
+    try {
+      const resp = await fetch(`/kpi/data?period=${encodeURIComponent(period)}`, {headers: {accept: "application/json"}});
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        els.loading.classList.add("hidden");
+        els.error.textContent = data.detail || `요청 실패 (${resp.status})`;
+        els.error.classList.remove("hidden");
+        return;
+      }
+      els.loading.classList.add("hidden");
+      els.body.classList.remove("hidden");
+      renderTradeSummary(data.trade_kpi);
+      renderDailySummary(data.daily_kpi);
+      renderStrategy(data.trade_kpi.by_strategy);
+      renderTicker(data.trade_kpi.by_ticker);
+      renderReason(data.trade_kpi.by_exit_reason);
+      renderChart(data.daily_kpi.daily_series);
+      renderSlippage(data.slippage_kpi);
+    } catch (e) {
+      els.loading.classList.add("hidden");
+      els.error.textContent = e?.message || "데이터를 불러오지 못했습니다.";
+      els.error.classList.remove("hidden");
+    }
+  }
+  load();
+})();
+</script>
+{% endblock %}

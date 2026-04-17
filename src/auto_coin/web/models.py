@@ -103,16 +103,17 @@ class TradeLog(SQLModel, table=True):
     entry_at: datetime
     exit_at: datetime
     entry_price: float
-    exit_price: float                         # paper=exact, live=approximate (decision-time price)
-    quantity: float
+    exit_price: float                         # paper=exact; live=fill avg_price (fallback: decision-time)
+    quantity: float                           # live: fill executed_volume when available
     entry_value_krw: float
     exit_value_krw: float
-    fee_krw: float                            # round-trip fee
+    fee_krw: float                            # live: buy_approx + actual sell paid_fee (when available)
     pnl_ratio: float                          # fee-adjusted return
     pnl_krw: float                            # fee-adjusted P&L in KRW
     hold_seconds: int
     exit_reason_code: str | None = None       # "stop_loss", "signal_sell", "time_exit", etc.
     exit_reason_text: str | None = None       # full reason text for debugging
+    decision_exit_price: float | None = None  # decision-time current_price — slippage analysis용
     created_at: datetime = Field(default_factory=_now)
 
 

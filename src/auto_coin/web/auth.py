@@ -10,6 +10,8 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session
@@ -18,6 +20,8 @@ from auto_coin.web import db as web_db
 from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
 from auto_coin.web.user_service import user_exists
+
+AUTH_DISABLED = os.getenv("DISABLE_AUTH", "").lower() in ("1", "true", "yes")
 
 
 def get_box(request: Request) -> SecretBox:
@@ -35,6 +39,8 @@ def get_session_db() -> Session:
 
 def require_auth(request: Request):
     """미인증 접근은 /login으로 리다이렉트. 의존성에서 raise해 라우터 본문은 실행되지 않음."""
+    if AUTH_DISABLED:
+        return 0  # 인증 비활성 — 더미 user_id
     if request.session.get("user_id") is None:
         raise _redirect("/login")
     return request.session["user_id"]
