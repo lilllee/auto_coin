@@ -106,7 +106,7 @@ reports/               # 운영 분석 (markdown, web에서 렌더됨)
 | 개별 손절 | −2% | 종목별 진입가 기준 |
 | 최소 주문 | 5,000 KRW | 업비트 floor |
 | Kill-switch | `False` | True면 신규 진입 전면 차단, 청산은 허용 |
-| tick 주기 | 60s | `check_interval_seconds` |
+| tick 주기 | 30s | `check_interval_seconds` (floor 30s — 더 짧으면 max_instances 가드로 skip) |
 | 청산 시각 | 08:55 KST | `exit_hour_kst` + `exit_minute_kst` |
 | 일일 리포트 | 08:58 KST | force_exit 이후, reset 이전 |
 | 일일 리셋 | 09:00 KST | `daily_reset_hour_kst` |

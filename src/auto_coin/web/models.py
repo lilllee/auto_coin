@@ -53,7 +53,7 @@ class AppSettings(SQLModel, table=True):
 
     # 스케줄
     paper_initial_krw: float = 1_000_000.0
-    check_interval_seconds: int = 60
+    check_interval_seconds: int = 30
     heartbeat_interval_hours: int = 6
     exit_hour_kst: int = 8
     exit_minute_kst: int = 55

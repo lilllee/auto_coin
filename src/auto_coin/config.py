@@ -55,7 +55,8 @@ class Settings(BaseSettings):
     api_max_retries: int = Field(3, ge=0)
 
     paper_initial_krw: float = Field(1_000_000.0, gt=0)
-    check_interval_seconds: int = Field(60, ge=5)
+    # 30s가 현실적 floor: 5s는 종목 polling/fill polling 누적시 max_instances skip 유발.
+    check_interval_seconds: int = Field(30, ge=30)
     heartbeat_interval_hours: int = Field(6, ge=0, le=24)  # 0 = 비활성
     exit_hour_kst: int = Field(8, ge=0, le=23)   # 다음날 09:00 직전 청산 (8시 55분)
     exit_minute_kst: int = Field(55, ge=0, le=59)

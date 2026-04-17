@@ -26,8 +26,8 @@
               hint="mode + 이 스위치 + kill-switch OFF가 모두 true일 때만 실주문 전송") }}
 
   {{ field("check_interval_seconds", "tick 주기 (초)",
-           s.check_interval_seconds, type="number", min="5", max="3600",
-           hint="시그널 체크 빈도. 기본 60") }}
+           s.check_interval_seconds, type="number", min="30", max="3600",
+           hint="시그널 체크 빈도. 기본 30 — 너무 짧으면 한 사이클이 못 끝나고 max_instances 가드로 skip 발생") }}
   {{ field("heartbeat_interval_hours", "heartbeat 주기 (시간, 0=비활성)",
            s.heartbeat_interval_hours, type="number", min="0", max="24") }}
   {{ field("exit_hour_kst", "청산 시각 — 시 (KST)",

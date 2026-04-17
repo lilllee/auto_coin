@@ -54,7 +54,7 @@
 |------|-----|
 | mode | paper |
 | live_trading | OFF |
-| check_interval_seconds | 60 |
+| check_interval_seconds | 30 |
 | heartbeat_interval_hours | 6 |
 | exit_hour_kst | 8 |
 | exit_minute_kst | 55 |
