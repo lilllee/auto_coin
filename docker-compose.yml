@@ -1,0 +1,49 @@
+services:
+  # V2 웹 콘솔 (권장)
+  web:
+    build: .
+    container_name: auto-coin-web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - STATE_DIR=/data/state
+      - LOG_DIR=/data/logs
+      - HOME=/data
+      - DISABLE_AUTH=true
+    volumes:
+      - ./data:/data            # 호스트 ./data 디렉토리에 모든 영속 데이터 저장
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8080/health').raise_for_status()"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # V1 CLI 봇 (web 대신 사용할 때만 활성화)
+  # docker compose --profile cli up -d cli
+  cli:
+    build: .
+    container_name: auto-coin-cli
+    restart: unless-stopped
+    profiles:
+      - cli
+    command: ["python", "-m", "auto_coin.main"]
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - STATE_DIR=/data/state
+      - LOG_DIR=/data/logs
+      - HOME=/data
+    volumes:
+      - ./data:/data
