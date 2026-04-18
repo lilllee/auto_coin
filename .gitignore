@@ -32,8 +32,9 @@ htmlcov/
 # runtime
 logs/
 *.log
-data/cache/
+data/
 state/
+backups/
 *.sqlite
 *.sqlite3
 *.db
