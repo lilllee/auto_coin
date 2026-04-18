@@ -68,6 +68,26 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_dir: Path = Path("logs")
 
+    # --- V4 portfolio-aware infra (B2 skeleton) ---
+    # CSMOM / RCDB 등 multi-asset 전략이 사용할 sizing · 그룹 태그 입력창.
+    # 아직 DB AppSettings 에 매핑되지 않음 (legacy 단일자산 경로에서는 None/default 유지).
+    active_strategy_group: str = Field(
+        default="legacy_single_ticker",
+        description="실행 중인 전략군 태그. DailySnapshot.active_strategy_group 에 기록.",
+    )
+    risk_budget_krw: float | None = Field(
+        default=None,
+        description="volatility-scaled sizing 시 포지션당 위험 예산 (KRW). None 이면 비활성.",
+    )
+    atr_window_for_sizing: int = Field(
+        default=20, ge=1, le=200,
+        description="vol-scaled sizing 용 ATR 기간 (CSMOM 등 multi-asset 전략).",
+    )
+    portfolio_rebal_days: int = Field(
+        default=7, ge=1, le=90,
+        description="portfolio 리밸런싱 주기 (일). legacy 경로에서는 사용 안 함.",
+    )
+
     @property
     def is_live(self) -> bool:
         return self.mode is Mode.LIVE and self.live_trading and not self.kill_switch

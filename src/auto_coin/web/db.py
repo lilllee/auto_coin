@@ -123,3 +123,20 @@ def _ensure_schema(engine) -> None:
                         "WHERE check_interval_seconds < 30",
                     ),
                 )
+
+    # DailySnapshot: portfolio-aware KPI 컬럼 (B2)
+    if "dailysnapshot" in inspector.get_table_names():
+        snap_columns = {c["name"] for c in inspector.get_columns("dailysnapshot")}
+        with engine.begin() as conn:
+            if "portfolio_equity_krw" not in snap_columns:
+                conn.execute(
+                    text("ALTER TABLE dailysnapshot ADD COLUMN portfolio_equity_krw REAL"),
+                )
+            if "portfolio_excess_vs_bnh" not in snap_columns:
+                conn.execute(
+                    text("ALTER TABLE dailysnapshot ADD COLUMN portfolio_excess_vs_bnh REAL"),
+                )
+            if "active_strategy_group" not in snap_columns:
+                conn.execute(
+                    text("ALTER TABLE dailysnapshot ADD COLUMN active_strategy_group TEXT"),
+                )

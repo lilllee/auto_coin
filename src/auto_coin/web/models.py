@@ -133,6 +133,17 @@ class DailySnapshot(SQLModel, table=True):
     realized_pnl_krw: float
     created_at: datetime = Field(default_factory=_now)
 
+    # --- portfolio-aware KPI (B2 · V4 CSMOM 지원) ---
+    # legacy 단일자산 모드에서는 NULL 로 남음. CSMOM 등 portfolio 전략이 활성일 때만 채워짐.
+    portfolio_equity_krw: float | None = Field(default=None)
+    """스냅샷 시점의 포트폴리오 평가액 (cash + 모든 포지션 mark-to-market KRW)."""
+
+    portfolio_excess_vs_bnh: float | None = Field(default=None)
+    """universe 동등비중 B&H 대비 누적 excess. None = 계산 안 됨 / 미지원 전략."""
+
+    active_strategy_group: str | None = Field(default=None)
+    """실행 중인 전략군 태그. e.g. "legacy_single_ticker", "csmom_v1", "rcdb_v1"."""
+
 
 def default_db_path() -> Path:
     """lazy 평가 — HOME 변경(테스트)을 반영하기 위해 매 호출 시 재계산."""
