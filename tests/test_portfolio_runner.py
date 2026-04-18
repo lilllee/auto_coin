@@ -189,6 +189,40 @@ def test_universe_intersection_handles_mismatched_ranges():
     assert len(r.equity_curve) == 20
 
 
+def test_start_date_warmup_does_not_contaminate_equity():
+    """warmup 기간(start_date 이전) 의 데이터는 signal 에만 쓰이고 equity/trades 에는 기록되지 않아야 함."""
+    candles = _make_synth_candles(["KRW-A", "KRW-B"], n_days=60, seed=0)
+    start = candles["KRW-A"].index[30]
+
+    r = portfolio_backtest(
+        candles, equal_weight_signal,
+        context=PortfolioContext(rebal_days=5, risk_budget=0.6),
+        initial_krw=1_000_000,
+        start_date=start,
+    )
+    # equity curve 는 start_date 이후만
+    assert len(r.equity_curve) == 30
+    assert r.equity_curve.index[0] == start
+    # 첫 날 equity 는 initial_krw (아직 아무 포지션 없음, rebal 직후 슬리피지/fee 차감분 반영)
+    # 단순 대소 비교만: 5% 넘는 손실/이익이 첫 tick 에 나오면 이상
+    assert abs(r.equity_curve.iloc[0] / 1_000_000 - 1) < 0.05
+
+
+def test_end_date_truncates_simulation():
+    candles = _make_synth_candles(["KRW-A"], n_days=30)
+    start = candles["KRW-A"].index[10]
+    end = candles["KRW-A"].index[19]
+    r = portfolio_backtest(
+        candles, equal_weight_signal,
+        context=PortfolioContext(rebal_days=3),
+        initial_krw=1_000_000,
+        start_date=start, end_date=end,
+    )
+    assert len(r.equity_curve) == 10   # idx[10]..idx[19]
+    assert r.equity_curve.index[0] == start
+    assert r.equity_curve.index[-1] == end
+
+
 def test_context_risk_budget_caps_allocation():
     """signal 이 합 1.5 반환해도 risk_budget=0.6 으로 truncate 되어야 함."""
     candles = _make_synth_candles(["KRW-A", "KRW-B", "KRW-C"], n_days=15)

@@ -347,6 +347,8 @@ def portfolio_backtest(
     fee: float = UPBIT_DEFAULT_FEE,
     slippage: float = DEFAULT_SLIPPAGE,
     initial_krw: float = 1_000_000.0,
+    start_date: pd.Timestamp | None = None,
+    end_date: pd.Timestamp | None = None,
 ) -> PortfolioBacktestResult:
     """Universe 전체 시뮬레이션.
 
@@ -362,10 +364,33 @@ def portfolio_backtest(
         fee: 매수·매도 양쪽 수수료율.
         slippage: 슬리피지율.
         initial_krw: 시작 자본.
+        start_date: 시뮬레이션 시작 날짜. None 이면 universe 의 첫 날짜.
+            start_date 이전 데이터는 signal 의 lookback/regime 계산용으로만 쓰이고,
+            equity/trades 에는 기록되지 않는다 (walk-forward 용).
+        end_date: 시뮬레이션 종료 날짜. None 이면 universe 의 마지막 날짜.
     """
     ctx = context or PortfolioContext()
     idx = _align_universe(candles)
     if len(idx) == 0 or initial_krw <= 0:
+        return PortfolioBacktestResult(initial_krw=initial_krw)
+
+    # 시작/종료 position 결정
+    if start_date is not None:
+        mask = idx >= start_date
+        if not mask.any():
+            return PortfolioBacktestResult(initial_krw=initial_krw)
+        start_pos = int(mask.argmax())
+    else:
+        start_pos = 0
+    if end_date is not None:
+        mask_end = idx <= end_date
+        if not mask_end.any():
+            return PortfolioBacktestResult(initial_krw=initial_krw)
+        end_pos = int(len(idx) - mask_end[::-1].argmax())  # exclusive upper
+    else:
+        end_pos = len(idx)
+
+    if start_pos >= end_pos:
         return PortfolioBacktestResult(initial_krw=initial_krw)
 
     cash = initial_krw
@@ -375,8 +400,8 @@ def portfolio_backtest(
     trades: list[PortfolioTrade] = []
     rebal_events: list[RebalanceEvent] = []
 
-    # --- benchmark: equal-weight B&H ---
-    first_date = idx[0]
+    # --- benchmark: equal-weight B&H (시뮬레이션 시작 시점 기준) ---
+    first_date = idx[start_pos]
     bench_available = [t for t in candles if _close_at(candles, t, first_date) is not None]
     bench_positions: dict[str, float] = {}
     if bench_available:
@@ -388,8 +413,9 @@ def portfolio_backtest(
 
     rebal_days = max(1, int(ctx.rebal_days))
 
-    for i, date in enumerate(idx):
-        is_rebal = (i % rebal_days == 0)
+    for rel_i, i in enumerate(range(start_pos, end_pos)):
+        date = idx[i]
+        is_rebal = (rel_i % rebal_days == 0)
 
         if is_rebal:
             sliced = {t: df.loc[:date] for t, df in candles.items() if not df.empty}

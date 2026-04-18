@@ -176,6 +176,8 @@ def portfolio_walk_forward(
     combos = _iter_param_combos(param_grid)
     windows: list[PortfolioWindowResult] = []
 
+    # 시그널 lookback + regime_ma 를 여유있게 커버하기 위해 warmup 슬라이스.
+    # train_days 만큼을 그대로 warmup 으로 재사용 — 어떤 param 조합의 lookback 이든 커버.
     start = 0
     window_id = 0
     while start + train_days + test_days <= len(idx):
@@ -184,8 +186,12 @@ def portfolio_walk_forward(
         test_start_ts = idx[start + train_days]
         test_end_ts = idx[min(start + train_days + test_days - 1, len(idx) - 1)]
 
+        # train: train 기간 전체를 포함 (warmup 없이도 180d 면 충분)
         train_candles = _slice_universe(candles, train_start_ts, train_end_ts)
-        test_candles = _slice_universe(candles, test_start_ts, test_end_ts)
+        # test: train 구간까지 포함한 확장 슬라이스 — signal 이 lookback/regime 를
+        # 충분히 계산할 수 있도록. start_date 로 "실제 시뮬레이션은 test_start 부터"
+        # 를 보장해 train 구간의 trade 가 test 에 누수되지 않음.
+        test_candles_extended = _slice_universe(candles, train_start_ts, test_end_ts)
 
         # --- 1. train 에서 best params 선택 ---
         best_params: dict[str, Any] = {}
@@ -215,12 +221,14 @@ def portfolio_walk_forward(
             window_id += 1
             continue
 
-        # --- 2. test 에서 best params 로 평가 ---
+        # --- 2. test 에서 best params 로 평가 (warmup 포함, start_date 로 경계) ---
         signal, overrides = factory(best_params)
         ctx = _build_context(base_ctx, overrides)
         test_r = portfolio_backtest(
-            test_candles, signal,
+            test_candles_extended, signal,
             context=ctx, fee=fee, slippage=slippage, initial_krw=initial_krw,
+            start_date=test_start_ts,
+            end_date=test_end_ts,
         )
 
         windows.append(PortfolioWindowResult(
