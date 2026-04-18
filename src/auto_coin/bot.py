@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import contextlib
 import json
+import threading
+import time
 
 from loguru import logger
 
@@ -21,6 +23,8 @@ from auto_coin.data.candles import (  # noqa: F401 — fetch_daily used by test 
     recommended_history_days,
 )
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.exchange.ws_client import UpbitWebSocket
+from auto_coin.exchange.ws_private import UpbitPrivateWebSocket
 from auto_coin.executor.order import OrderExecutor
 from auto_coin.executor.store import OrderRecord, OrderStore, State, today_utc
 from auto_coin.formatting import format_price
@@ -42,6 +46,8 @@ class TradingBot:
         stores: dict[str, OrderStore],
         executors: dict[str, OrderExecutor],
         notifier: TelegramNotifier,
+        ws_client: UpbitWebSocket | None = None,
+        ws_private: UpbitPrivateWebSocket | None = None,
         snapshot_writer=None,
         trade_log_query=None,
     ) -> None:
@@ -52,6 +58,8 @@ class TradingBot:
         self._stores = stores
         self._executors = executors
         self._notifier = notifier
+        self._ws = ws_client
+        self._ws_private = ws_private
         self._snapshot_writer = snapshot_writer
         self._trade_log_query = trade_log_query
         self._tickers = list(stores.keys())  # 진입 우선순위는 dict 삽입 순서
@@ -68,6 +76,25 @@ class TradingBot:
         self._execution_mode = STRATEGY_EXECUTION_MODE.get(strategy.name, "intraday")
         self._entry_evaluated: dict[str, str] = {}  # ticker → trading_day (평가 완료 표시)
         self._stop_loss_counts: dict[str, int] = {}  # ticker → 당일 손절 횟수
+
+        # WS 이벤트 드리븐 긴급 손절
+        self._position_cache: dict[str, tuple[float, float]] = {}  # ticker → (avg_entry, volume)
+        self._exit_in_flight: dict[str, bool] = {}
+        self._exit_cooldown: dict[str, float] = {}  # ticker → cooldown 해제 시각
+        self._exit_lock = threading.Lock()
+
+        # 초기 포지션 ��시 구축
+        for _t, _store in self._stores.items():
+            _state = _store.load()
+            if _state.position and _state.position.volume > 0:
+                self._position_cache[_t] = (
+                    _state.position.avg_entry_price,
+                    _state.position.volume,
+                )
+
+        # WS 가격 콜백 등록 — 긴급 손절 판단
+        if self._ws:
+            self._ws.set_price_callback(self._on_ws_price)
 
     # ----- main loop steps -----
 
@@ -90,15 +117,21 @@ class TradingBot:
         open_positions = self._count_open_positions()
         total_daily_pnl = self._total_daily_pnl_ratio()
 
-        # 현재가 일괄 조회 (6종목 → 1회 API 호출)
+        # 현재가 일괄 조회 (WebSocket 우선, REST fallback)
         try:
-            price_map = self._client.get_current_prices(self._tickers)
+            price_map = self._get_prices(self._tickers)
         except UpbitError as exc:
             logger.error("batch price fetch failed: {}", exc)
             self._notifier.send(f"⚠️ batch price fetch failed: {exc}")
             return results
 
         for ticker in self._tickers:
+            # WS 긴급 exit 진행 중이면 해당 종목 건너뜀
+            with self._exit_lock:
+                if self._exit_in_flight.get(ticker):
+                    logger.debug("tick {}: skip — ws emergency exit in progress", ticker)
+                    continue
+
             store = self._stores[ticker]
             executor = self._executors[ticker]
 
@@ -132,6 +165,15 @@ class TradingBot:
             coin_balance = state.position.volume if state.position else 0.0
             avg_entry = state.position.avg_entry_price if state.position else None
             krw_balance = self._krw_slot_budget(executor.live)
+
+            # 포지션 캐시 갱신 (WS 긴급 손절 판단용)
+            if state.position and coin_balance > 0:
+                self._position_cache[ticker] = (
+                    state.position.avg_entry_price,
+                    state.position.volume,
+                )
+            else:
+                self._position_cache.pop(ticker, None)
 
             # daily_confirm 모드: 미보유 시 거래일당 1회만 BUY 평가
             _daily_confirm_pending = False
@@ -280,7 +322,7 @@ class TradingBot:
             return
 
         try:
-            price_map = self._client.get_current_prices(tickers)
+            price_map = self._get_prices(tickers)
         except UpbitError as exc:
             logger.error("watch batch price failed: {}", exc)
             return
@@ -382,12 +424,20 @@ class TradingBot:
             return results
 
         try:
-            price_map = self._client.get_current_prices(holding_tickers)
+            price_map = self._get_prices(holding_tickers)
         except UpbitError as exc:
             logger.error("force_exit batch price failed: {}", exc)
             return results
 
         for ticker in holding_tickers:
+            # WS emergency exit 진행 중이면 중복 SELL 방지
+            with self._exit_lock:
+                if self._exit_in_flight.get(ticker):
+                    logger.warning(
+                        "force_exit skipped for {}: exit already in flight", ticker
+                    )
+                    continue
+
             store = self._stores[ticker]
             executor = self._executors[ticker]
             state = store.load()
@@ -421,6 +471,27 @@ class TradingBot:
 
     # ----- helpers -----
 
+    def _get_prices(self, tickers: list[str]) -> dict[str, float]:
+        """WebSocket 가격 우선, REST fallback."""
+        if self._ws and self._ws.is_connected():
+            ws_prices = self._ws.get_prices()
+            # stale 종목 확인
+            stale = set(self._ws.stale_tickers(max_age_seconds=60.0))
+            available = {t: ws_prices[t] for t in tickers if t in ws_prices and t not in stale}
+            if len(available) == len(tickers):
+                return available
+            # 부분만 있으면 누락분을 REST로 보충
+            missing = [t for t in tickers if t not in available]
+            if missing:
+                try:
+                    rest = self._client.get_current_prices(missing)
+                    available.update(rest)
+                except Exception:  # noqa: BLE001
+                    pass  # 가능한 만큼 반환
+            return available
+        # WebSocket 없음 — 기존 REST 경로
+        return self._client.get_current_prices(tickers)
+
     def _save_daily_snapshot(self) -> None:
         """Persist daily performance snapshot before reset."""
         if self._snapshot_writer is None:
@@ -447,6 +518,7 @@ class TradingBot:
             win_count = 0
             loss_count = 0
             realized_krw = 0.0
+            tradelog_pnl_ratio = None
             if self._trade_log_query:
                 try:
                     stats = self._trade_log_query(snap_date)
@@ -454,8 +526,15 @@ class TradingBot:
                     win_count = stats.get("win_count", 0)
                     loss_count = stats.get("loss_count", 0)
                     realized_krw = stats.get("realized_pnl_krw", 0.0)
+                    tradelog_pnl_ratio = stats.get("total_pnl_ratio")
                 except Exception:
                     logger.warning("trade log query for snapshot failed", exc_info=True)
+
+            # live 모드: state 기반 daily_pnl_ratio는 항상 0이므로
+            # TradeLog 기반 pnl_ratio 합을 사용한다.
+            is_live = self._s.mode.value == "live" if hasattr(self._s.mode, "value") else str(self._s.mode) == "live"
+            if is_live and tradelog_pnl_ratio is not None:
+                total_pnl = tradelog_pnl_ratio
 
             self._snapshot_writer({
                 "snapshot_date": snap_date,
@@ -509,6 +588,136 @@ class TradingBot:
             return datetime.now(UTC) < cooldown_end
         except (ValueError, TypeError):
             return False
+
+    # ----- WS event-driven emergency exit -----
+
+    def _on_ws_price(self, code: str, price: float, ts: int) -> None:
+        """WS 가격 이벤트 콜백 — 긴급 손절 판단. WS 스레드에서 호출된다."""
+        try:
+            self._check_emergency_exit(code, price)
+        except Exception:
+            logger.opt(exception=True).warning("ws emergency check failed for {}", code)
+
+    def _check_emergency_exit(self, ticker: str, price: float) -> None:
+        """포지션 캐시 기반으로 긴급 손절 조건을 확인한다."""
+        # 1. 포지션 캐시 확인 (file I/O 없음)
+        cached = self._position_cache.get(ticker)
+        if not cached:
+            return
+        avg_entry, _ = cached
+        if avg_entry <= 0:
+            return
+
+        # 2. 이미 exit 진행 중이거나 cooldown 중인지
+        with self._exit_lock:
+            if self._exit_in_flight.get(ticker):
+                return
+            cooldown_until = self._exit_cooldown.get(ticker, 0)
+            if time.time() < cooldown_until:
+                return
+
+        # 3. stop-loss 조건 확인
+        pnl_ratio = (price - avg_entry) / avg_entry
+        if pnl_ratio >= self._s.stop_loss_ratio:
+            return
+
+        # 4. 긴급 SELL 트리거
+        self._trigger_emergency_sell(
+            ticker=ticker,
+            price=price,
+            reason_code="ws_stop_loss",
+            reason=f"WS stop-loss ({pnl_ratio:.2%} <= {self._s.stop_loss_ratio:.2%})",
+        )
+
+    def _trigger_emergency_sell(
+        self,
+        ticker: str,
+        price: float,
+        reason_code: str,
+        reason: str,
+    ) -> None:
+        """긴급 SELL을 트리거한다. 중복 방지 + 별도 스레드에서 실행."""
+        with self._exit_lock:
+            if self._exit_in_flight.get(ticker):
+                return
+            self._exit_in_flight[ticker] = True
+
+        # store에서 포지션 재확인 (캐시 stale 방지)
+        state = self._stores[ticker].load()
+        if state.position is None or state.position.volume <= 0:
+            self._position_cache.pop(ticker, None)
+            with self._exit_lock:
+                self._exit_in_flight[ticker] = False
+            return
+
+        volume = state.position.volume
+
+        logger.warning(
+            "🚨 EMERGENCY SELL [{}] price={} volume={} {}",
+            ticker, format_price(price), volume, reason,
+        )
+
+        try:
+            threading.Thread(
+                target=self._execute_emergency_sell,
+                args=(ticker, price, volume, reason_code, reason),
+                daemon=True,
+                name=f"ws-exit-{ticker}",
+            ).start()
+        except Exception:
+            logger.exception("failed to spawn emergency sell thread for {}", ticker)
+            with self._exit_lock:
+                self._exit_in_flight[ticker] = False
+
+    def _execute_emergency_sell(
+        self,
+        ticker: str,
+        price: float,
+        volume: float,
+        reason_code: str,
+        reason: str,
+    ) -> None:
+        """별도 스레드에서 긴급 SELL을 실행한다."""
+        try:
+            executor = self._executors[ticker]
+            decision = Decision(
+                action=Action.SELL,
+                reason=reason,
+                volume=volume,
+                reason_code=reason_code,
+            )
+            record = executor.execute(decision, current_price=price)
+            if record:
+                self._position_cache.pop(ticker, None)
+                self._stop_loss_counts[ticker] = (
+                    self._stop_loss_counts.get(ticker, 0) + 1
+                )
+                sl_count = self._stop_loss_counts[ticker]
+                self._notifier.send(
+                    f"🚨 EMERGENCY {record.side.upper()} {record.market} "
+                    f"@ {format_price(price)} — {reason}"
+                )
+                if sl_count >= self._s.max_daily_stop_losses:
+                    self._notifier.send(
+                        f"🔒 {ticker} locked for today: {sl_count} stop-losses"
+                    )
+                logger.info(
+                    "emergency sell complete [{}] side={} price={}",
+                    ticker, record.side, format_price(price),
+                )
+        except UpbitError as exc:
+            logger.error("emergency sell failed for {}: {}", ticker, exc)
+            self._notifier.send(f"❌ {ticker} emergency sell failed: {exc}")
+            with self._exit_lock:
+                self._exit_cooldown[ticker] = time.time() + 30.0  # 30s cooldown
+        except Exception:
+            logger.exception("emergency sell crashed for {}", ticker)
+            self._notifier.send(f"❌ {ticker} emergency sell crashed (see logs)")
+            with self._exit_lock:
+                self._exit_cooldown[ticker] = time.time() + 30.0
+        finally:
+            with self._exit_lock:
+                self._exit_in_flight[ticker] = False
 
     def _krw_slot_budget(self, is_live: bool) -> float:
         """한 종목 진입 시 "사용 가능한 KRW 잔고"로 리포트할 값.

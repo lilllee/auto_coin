@@ -265,3 +265,25 @@ def test_dashboard_timeline_includes_audit_and_order_events(app_env):
         assert "이벤트 타임라인" in r.text
         assert "BUY KRW-BTC" in r.text
         assert "전략 설정 저장" in r.text
+
+
+# ---- risk_dashboard 라우터 등록 ----
+
+
+def test_risk_dashboard_returns_200(app_env):
+    """GET /risk 가 404가 아닌 200을 반환해야 한다."""
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/risk")
+        assert r.status_code == 200
+
+
+def test_risk_dashboard_requires_auth(app_env):
+    """비인증 상태에서 /risk 접근 시 인증 페이지로 리다이렉트."""
+    app = create_app()
+    with TestClient(app) as client:
+        r = client.get("/risk", follow_redirects=False)
+        assert r.status_code == 303
+        loc = r.headers.get("location", "")
+        assert "/login" in loc or "/setup" in loc

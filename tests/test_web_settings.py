@@ -170,6 +170,133 @@ def test_strategy_post_saves_strategy_params_json(app_env, mocker):
     assert params["ma_window"] == 7
 
 
+def test_strategy_post_composite_params_saved(app_env, mocker):
+    """sma200_ema_adx_composite 파라미터가 sp_* 폼에서 저장된다."""
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "sma200_ema_adx_composite",
+                            "sp_sma_window": "100",
+                            "sp_ema_fast_window": "20",
+                            "sp_ema_slow_window": "60",
+                            "sp_adx_window": "50",
+                            "sp_adx_threshold": "12.5",
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    assert row.strategy_name == "sma200_ema_adx_composite"
+    params = json.loads(row.strategy_params_json)
+    assert params["sma_window"] == 100
+    assert params["ema_fast_window"] == 20
+    assert params["ema_slow_window"] == 60
+    assert params["adx_window"] == 50
+    assert params["adx_threshold"] == 12.5
+
+
+def test_strategy_post_ad_turtle_params_saved(app_env, mocker):
+    """ad_turtle 파라미터가 sp_* 폼에서 저장된다."""
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "ad_turtle",
+                            "sp_entry_window": "30",
+                            "sp_exit_window": "15",
+                            "sp_allow_sell_signal": "on",
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    assert row.strategy_name == "ad_turtle"
+    params = json.loads(row.strategy_params_json)
+    assert params["entry_window"] == 30
+    assert params["exit_window"] == 15
+    assert params["allow_sell_signal"] is True
+
+
+def test_strategy_post_checkbox_unchecked_saves_false(app_env, mocker):
+    """체크박스 미선택 시 False로 저장된다."""
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "sma200_regime",
+                            "sp_ma_window": "200",
+                            "sp_buffer_pct": "0.01",
+                            # sp_allow_sell_signal 미포함 = unchecked
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    params = json.loads(row.strategy_params_json)
+    assert params["allow_sell_signal"] is False
+    assert params["ma_window"] == 200
+    assert params["buffer_pct"] == 0.01
+
+
+def test_strategy_post_invalid_number_uses_default(app_env, mocker):
+    """잘못된 숫자 입력 시 기본값으로 fallback된다."""
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "atr_channel_breakout",
+                            "sp_atr_window": "not_a_number",
+                            "sp_channel_multiplier": "abc",
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    params = json.loads(row.strategy_params_json)
+    # 기본값으로 fallback
+    assert params["atr_window"] == 14
+    assert params["channel_multiplier"] == 1.0
+
+
+def test_strategy_post_vb_with_sp_fields(app_env, mocker):
+    """VB에서도 sp_* 필드가 동작한다 (실제 폼 동작 방식)."""
+    import json
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        mocker.patch("auto_coin.web.bot_manager.BotManager.reload")
+        r = client.post("/settings/strategy",
+                        data=csrf_data(client, {
+                            "strategy_name": "volatility_breakout",
+                            "sp_k": "0.35",
+                            "sp_ma_window": "12",
+                            "sp_require_ma_filter": "on",
+                            "strategy_k": "0.5",  # legacy — sp_ 값이 우선
+                            "ma_filter_window": "5",
+                            "watch_interval_minutes": "15",
+                        }),
+                        follow_redirects=False)
+        assert r.status_code == 303
+    row = _current_row()
+    params = json.loads(row.strategy_params_json)
+    assert params["k"] == 0.35
+    assert params["ma_window"] == 12
+    assert params["require_ma_filter"] is True
+
+
 # ----- risk --------
 
 

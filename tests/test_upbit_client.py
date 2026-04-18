@@ -198,3 +198,40 @@ def test_get_current_prices_retries_on_failure(batch_client, mocker):
     )
     with pytest.raises(UpbitError, match="failed after"):
         batch_client.get_current_prices(["KRW-BTC"])
+
+
+# ---- throttle thread safety ----
+
+
+def test_throttle_lock_exists():
+    """UpbitClient에 _throttle_lock이 존재한다."""
+    c = UpbitClient(access_key="", secret_key="", min_request_interval=0.0)
+    assert hasattr(c, "_throttle_lock")
+
+
+def test_throttle_serializes_concurrent_calls(mocker):
+    """두 스레드가 동시에 _throttle()을 호출해도 _last_request_at이 올바르게 갱신된다."""
+    import threading
+
+    c = UpbitClient(
+        access_key="", secret_key="",
+        max_retries=1, backoff_base=0.0,
+        min_request_interval=0.05,  # 50ms interval
+    )
+
+    timestamps = []
+
+    def call_throttle():
+        c._throttle()
+        timestamps.append(c._last_request_at)
+
+    t1 = threading.Thread(target=call_throttle)
+    t2 = threading.Thread(target=call_throttle)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+
+    # lock으로 직렬화되므로 두 timestamp는 달라야 함 (최소 interval만큼 차이)
+    assert len(timestamps) == 2
+    assert timestamps[0] != timestamps[1]

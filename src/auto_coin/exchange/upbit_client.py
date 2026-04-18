@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -62,6 +63,7 @@ class UpbitClient:
         self._backoff_base = backoff_base
         self._min_request_interval = min_request_interval
         self._last_request_at: float = 0.0
+        self._throttle_lock = threading.Lock()
         self._upbit: pyupbit.Upbit | None = (
             pyupbit.Upbit(access_key, secret_key) if access_key and secret_key else None
         )
@@ -71,11 +73,12 @@ class UpbitClient:
         return self._upbit is not None
 
     def _throttle(self) -> None:
-        elapsed = time.monotonic() - self._last_request_at
-        wait = self._min_request_interval - elapsed
-        if wait > 0:
-            time.sleep(wait)
-        self._last_request_at = time.monotonic()
+        with self._throttle_lock:
+            elapsed = time.monotonic() - self._last_request_at
+            wait = self._min_request_interval - elapsed
+            if wait > 0:
+                time.sleep(wait)
+            self._last_request_at = time.monotonic()
 
     def _call(self, label: str, fn: Callable[[], T]) -> T:
         last_exc: Exception | None = None
@@ -88,6 +91,13 @@ class UpbitClient:
                 wait = self._backoff_base * (2 ** (attempt - 1))
                 logger.warning("{} failed (attempt {}/{}): {} — retrying in {:.2f}s",
                                label, attempt, self._max_retries, exc, wait)
+                time.sleep(wait)
+                continue
+            if result is None:
+                last_exc = UpbitError(f"{label} returned None")
+                wait = self._backoff_base * (2 ** (attempt - 1))
+                logger.warning("{} returned None (attempt {}/{}) — retrying in {:.2f}s",
+                               label, attempt, self._max_retries, wait)
                 time.sleep(wait)
                 continue
             if isinstance(result, dict) and "error" in result:

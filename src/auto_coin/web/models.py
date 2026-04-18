@@ -64,6 +64,9 @@ class AppSettings(SQLModel, table=True):
     log_level: str = "INFO"
     log_dir: str = "logs"
 
+    # 인프라
+    use_websocket: bool = False
+
     # 암호화 필드
     upbit_access_key_enc: str = ""
     upbit_secret_key_enc: str = ""

@@ -65,6 +65,43 @@ def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
         bot_token=settings.telegram_bot_token.get_secret_value(),
         chat_id=settings.telegram_chat_id,
     )
+    # WebSocket 실시간 가격 피드 (opt-in)
+    ws_client = None
+    ws_private = None
+    if settings.use_websocket:
+        from auto_coin.exchange.ws_client import UpbitWebSocket
+        ws_client = UpbitWebSocket(
+            tickers,
+            rest_fetcher=client.get_current_prices,
+            debug_log=(settings.log_level.upper() == "DEBUG"),
+        )
+        ws_client.start()
+
+        # Private WS (myOrder/myAsset) — 인증된 경우에만
+        if client.authenticated:
+            from auto_coin.exchange.ws_private import UpbitPrivateWebSocket
+
+            def _asset_fetcher() -> dict[str, dict]:
+                return {
+                    h.currency: {
+                        "balance": h.balance,
+                        "locked": h.locked,
+                        "avg_buy_price": h.avg_buy_price,
+                        "unit_currency": h.unit_currency,
+                    }
+                    for h in client.get_holdings(include_krw=True)
+                }
+
+            ws_private = UpbitPrivateWebSocket(
+                access_key=settings.upbit_access_key.get_secret_value(),
+                secret_key=settings.upbit_secret_key.get_secret_value(),
+                tickers=tickers,
+                order_fetcher=client.get_order,
+                asset_fetcher=_asset_fetcher,
+                debug_log=(settings.log_level.upper() == "DEBUG"),
+            )
+            ws_private.start()
+
     bot = TradingBot(
         settings=settings,
         client=client,
@@ -73,6 +110,8 @@ def build_bot(settings: Settings) -> tuple[TradingBot, TelegramNotifier]:
         stores=stores,
         executors=executors,
         notifier=notifier,
+        ws_client=ws_client,
+        ws_private=ws_private,
     )
     return bot, notifier
 

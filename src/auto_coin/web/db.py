@@ -105,6 +105,14 @@ def _ensure_schema(engine) -> None:
                         "ADD COLUMN strategy_params_json TEXT DEFAULT ''",
                     ),
                 )
+            # WebSocket 실시간 가격 피드 설정
+            if "use_websocket" not in app_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE appsettings "
+                        "ADD COLUMN use_websocket BOOLEAN DEFAULT 0",
+                    ),
+                )
             # tick 주기 floor 보정: 5s 등 너무 짧은 값은 max_instances skip을 유발하므로
             # 30s 이상으로 강제 (P2-5). 30s 이상은 사용자 설정을 보존.
             if "check_interval_seconds" in app_columns:

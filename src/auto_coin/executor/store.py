@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -61,6 +63,7 @@ class OrderStore:
 
     def __init__(self, path: Path) -> None:
         self._path = path
+        self._lock = threading.Lock()
 
     @property
     def path(self) -> Path:
@@ -103,3 +106,14 @@ class OrderStore:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
             raise
+
+    def atomic_update(self, fn: Callable[[State], State]) -> State:
+        """lock 하에서 load → fn(state) → save를 원자적으로 수행한다.
+
+        같은 프로세스 내 동시 접근에 의한 lost-update를 방지한다.
+        """
+        with self._lock:
+            state = self.load()
+            new_state = fn(state)
+            self.save(new_state)
+            return new_state

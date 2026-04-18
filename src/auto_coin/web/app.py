@@ -34,6 +34,7 @@ from auto_coin.web.routers import kpi as kpi_router
 from auto_coin.web.routers import logs as logs_router
 from auto_coin.web.routers import reports as reports_router
 from auto_coin.web.routers import review as review_router
+from auto_coin.web.routers import risk_dashboard as risk_dashboard_router
 from auto_coin.web.routers import settings as settings_router
 from auto_coin.web.routers import signal_board as signal_board_router
 from auto_coin.web.services import log_stream
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(logs_router.router)
     app.include_router(signal_board_router.router)
     app.include_router(kpi_router.router)
+    app.include_router(risk_dashboard_router.router)
 
     # /health — 인증 없이 헬스체크
     @app.get("/health")

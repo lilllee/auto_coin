@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     # 30s가 현실적 floor: 5s는 종목 polling/fill polling 누적시 max_instances skip 유발.
     check_interval_seconds: int = Field(30, ge=30)
     heartbeat_interval_hours: int = Field(6, ge=0, le=24)  # 0 = 비활성
+    use_websocket: bool = Field(default=False, description="WebSocket 실시간 가격 피드 사용")
     exit_hour_kst: int = Field(8, ge=0, le=23)   # 다음날 09:00 직전 청산 (8시 55분)
     exit_minute_kst: int = Field(55, ge=0, le=59)
     daily_reset_hour_kst: int = Field(9, ge=0, le=23)

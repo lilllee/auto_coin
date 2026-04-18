@@ -184,7 +184,7 @@ def strategy_get(request: Request,
 
 
 @router.post("/strategy", response_class=HTMLResponse)
-def strategy_post(
+async def strategy_post(
     request: Request,
     strategy_name: str = Form(...),
     watch_interval_minutes: int = Form(...),
@@ -211,29 +211,42 @@ def strategy_post(
             status_code=400,
         )
 
-    # Collect strategy-specific params from form
+    # Read raw form data for dynamic sp_* fields
+    form_data = await request.form()
+
+    # Collect strategy-specific params from form using STRATEGY_PARAMS metadata
     param_defs = STRATEGY_PARAMS.get(strategy_name, [])
     strategy_params: dict = {}
     for p in param_defs:
-        # checkbox: absent = off, "on" = on
-        if p["type"] == "checkbox":
-            # Form(...) doesn't receive unchecked checkboxes, so we parse manually
-            # The form data is already parsed by FastAPI — use defaults
-            strategy_params[p["name"]] = False  # will be overridden below if present
-        elif p["type"] == "number":
-            strategy_params[p["name"]] = p.get("default")
-        else:
-            strategy_params[p["name"]] = p.get("default", "")
+        field_name = f"sp_{p['name']}"
+        raw_value = form_data.get(field_name)
 
-    # Override from actual form data — we need to re-parse from query string
-    # FastAPI already parsed named Form params, but dynamic sp_* fields need raw access
-    # Use a sync approach: rely on the Form params we declared + the known param_defs
-    # For VB specifically, map from the declared Form params
+        if p["type"] == "checkbox":
+            # checkbox: absent = False, "on" = True
+            strategy_params[p["name"]] = raw_value == "on"
+        elif p["type"] == "number":
+            default = p.get("default")
+            if raw_value is None or raw_value == "":
+                strategy_params[p["name"]] = default
+            else:
+                try:
+                    # int vs float: step이 정수면 int, 아니면 float
+                    step = p.get("step", "1")
+                    if "." in str(step):
+                        strategy_params[p["name"]] = float(raw_value)
+                    else:
+                        strategy_params[p["name"]] = int(raw_value)
+                except (ValueError, TypeError):
+                    strategy_params[p["name"]] = default
+        else:
+            strategy_params[p["name"]] = raw_value if raw_value else p.get("default", "")
+
+    # VB 하위 호환: sp_k/sp_ma_window가 없으면 legacy Form param에서 가져옴
     if strategy_name == "volatility_breakout":
-        strategy_params = {
-            "k": strategy_k,
-            "ma_window": ma_filter_window,
-        }
+        if form_data.get("sp_k") is None:
+            strategy_params["k"] = strategy_k
+        if form_data.get("sp_ma_window") is None:
+            strategy_params["ma_window"] = ma_filter_window
 
     # Validate by creating strategy
     try:
@@ -432,6 +445,7 @@ def api_keys_post(
     upbit_secret_key: str = Form(default=""),
     telegram_bot_token: str = Form(default=""),
     telegram_chat_id: str = Form(default=""),
+    use_websocket: str = Form(default=""),
     db: Session = Depends(get_session_db),
     box: SecretBox = Depends(get_box),
     manager: BotManager = Depends(get_manager),
@@ -450,6 +464,7 @@ def api_keys_post(
         "upbit_secret_key": SecretStr(new_secret),
         "telegram_bot_token": SecretStr(new_tg_token),
         "telegram_chat_id": new_tg_chat,
+        "use_websocket": use_websocket.lower() in ("true", "on", "1"),
     })
     new, err = _validate_settings(candidate)
     if new is None:

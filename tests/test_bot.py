@@ -558,3 +558,93 @@ def test_daily_reset_clears_stop_loss_counts(store, mocker):
     bot.daily_reset()
 
     assert bot._stop_loss_counts == {}
+
+
+# ---- DailySnapshot: live 모드 TradeLog 기반 total_pnl_ratio ----
+
+
+def test_save_snapshot_live_uses_tradelog_pnl_ratio(store, mocker):
+    """live 모드에서는 TradeLog 기반 total_pnl_ratio가 snapshot에 저장되어야 한다."""
+    s = _settings(mode="live", live_trading=True)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    captured = {}
+    bot._snapshot_writer = lambda data: captured.update(data)
+    bot._trade_log_query = lambda snap_date: {
+        "closed_count": 2,
+        "win_count": 1,
+        "loss_count": 1,
+        "realized_pnl_krw": -3500.0,
+        "total_pnl_ratio": -0.07,
+    }
+    # state.daily_pnl_ratio는 live에서 항상 0
+    assert store.load().daily_pnl_ratio == 0.0
+
+    bot._save_daily_snapshot()
+
+    assert captured["total_pnl_ratio"] == pytest.approx(-0.07)
+    assert captured["realized_pnl_krw"] == -3500.0
+    assert captured["win_count"] == 1
+    assert captured["loss_count"] == 1
+
+
+def test_save_snapshot_paper_uses_state_pnl_ratio(store, mocker):
+    """paper 모드에서는 기존처럼 state.daily_pnl_ratio가 snapshot에 저장되어야 한다."""
+    s = _settings()
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    captured = {}
+    bot._snapshot_writer = lambda data: captured.update(data)
+    bot._trade_log_query = lambda snap_date: {
+        "closed_count": 1,
+        "win_count": 1,
+        "loss_count": 0,
+        "realized_pnl_krw": 500.0,
+        "total_pnl_ratio": 0.05,
+    }
+    # paper에서는 state 기반 pnl이 사용됨 (기존 동작)
+    state = store.load()
+    from dataclasses import replace
+    state = replace(state, daily_pnl_ratio=0.03)
+    store.save(state)
+
+    bot._save_daily_snapshot()
+
+    # paper 모드에서는 state 기반 값 (0.03) 사용, TradeLog 값 (0.05) 무시
+    assert captured["total_pnl_ratio"] == pytest.approx(0.03)
+
+
+def test_save_snapshot_live_no_trades_returns_zero(store, mocker):
+    """live 모드에서 당일 거래가 없으면 total_pnl_ratio는 0이어야 한다."""
+    s = _settings(mode="live", live_trading=True)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    captured = {}
+    bot._snapshot_writer = lambda data: captured.update(data)
+    bot._trade_log_query = lambda snap_date: {
+        "closed_count": 0,
+        "win_count": 0,
+        "loss_count": 0,
+        "realized_pnl_krw": 0.0,
+        "total_pnl_ratio": 0.0,
+    }
+
+    bot._save_daily_snapshot()
+
+    assert captured["total_pnl_ratio"] == 0.0
+    assert captured["realized_pnl_krw"] == 0.0
+
+
+def test_save_snapshot_live_without_query_falls_back(store, mocker):
+    """live 모드에서 trade_log_query가 없으면 state 기반 fallback (0)."""
+    s = _settings(mode="live", live_trading=True)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    captured = {}
+    bot._snapshot_writer = lambda data: captured.update(data)
+    bot._trade_log_query = None  # query 미제공
+
+    bot._save_daily_snapshot()
+
+    # trade_log_query 없으면 tradelog_pnl_ratio=None → state fallback
+    assert captured["total_pnl_ratio"] == 0.0

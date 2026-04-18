@@ -289,21 +289,23 @@ class OrderExecutor:
     def _record_and_open_position(
         self, record: OrderRecord, *, current_price: float, volume: float
     ) -> None:
-        state = self._store.load()
-        if any(o.uuid == record.uuid for o in state.orders):
-            logger.warning("duplicate order uuid {} — skipping", record.uuid)
-            return
-        state.orders.append(record)
-        # 페이퍼는 즉시 체결 가정 → 포지션 생성.
-        # 실거래는 체결 확인 후 실제 volume/price로 기록 (폴링 타임아웃 시 추정치 사용).
-        state.position = Position(
-            ticker=self._ticker,
-            volume=volume,
-            avg_entry_price=current_price,
-            entry_uuid=record.uuid,
-            entry_at=record.placed_at,
-        )
-        self._store.save(state)
+        def _update(state):
+            if any(o.uuid == record.uuid for o in state.orders):
+                logger.warning("duplicate order uuid {} — skipping", record.uuid)
+                return state
+            state.orders.append(record)
+            # 페이퍼는 즉시 체결 가정 → 포지션 생성.
+            # 실거래는 체결 확인 후 실제 volume/price로 기록 (폴링 타임아웃 시 추정치 사용).
+            state.position = Position(
+                ticker=self._ticker,
+                volume=volume,
+                avg_entry_price=current_price,
+                entry_uuid=record.uuid,
+                entry_at=record.placed_at,
+            )
+            return state
+
+        self._store.atomic_update(_update)
 
     def _record_and_close_position(
         self, record: OrderRecord, *, current_price: float,
@@ -322,74 +324,75 @@ class OrderExecutor:
             decision_exit_price: 의사결정 시점의 current_price. TradeLog에 원본 보존 →
                 나중에 슬리피지(decision vs fill) 계산 가능.
         """
-        state = self._store.load()
-        if any(o.uuid == record.uuid for o in state.orders):
-            logger.warning("duplicate order uuid {} — skipping", record.uuid)
-            return
-        state.orders.append(record)
-        # 일일 손익 누적 (fee-adjusted) — paper 전용 기존 동작 유지
-        if state.position is not None and state.position.avg_entry_price > 0:
-            fee_rate = UPBIT_FEE_RATE
-            ret_legacy = (
-                current_price * (1 - fee_rate)
-            ) / (state.position.avg_entry_price * (1 + fee_rate)) - 1
-            if not self._live:
-                state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret_legacy)
+        with self._store._lock:
+            state = self._store.load()
+            if any(o.uuid == record.uuid for o in state.orders):
+                logger.warning("duplicate order uuid {} — skipping", record.uuid)
+                return
+            state.orders.append(record)
+            # 일일 손익 누적 (fee-adjusted) — paper 전용 기존 동작 유지
+            if state.position is not None and state.position.avg_entry_price > 0:
+                fee_rate = UPBIT_FEE_RATE
+                ret_legacy = (
+                    current_price * (1 - fee_rate)
+                ) / (state.position.avg_entry_price * (1 + fee_rate)) - 1
+                if not self._live:
+                    state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret_legacy)
 
-            # Fire trade-closed callback (before position is cleared)
-            if self._on_trade_closed is not None:
-                try:
-                    from datetime import datetime as _dt
+                # Fire trade-closed callback (before position is cleared)
+                if self._on_trade_closed is not None:
+                    try:
+                        from datetime import datetime as _dt
 
-                    actual_volume = (
-                        fill_volume
-                        if (fill_volume is not None and fill_volume > 0)
-                        else state.position.volume
-                    )
-                    entry_val = state.position.avg_entry_price * actual_volume
-                    exit_val = current_price * actual_volume
+                        actual_volume = (
+                            fill_volume
+                            if (fill_volume is not None and fill_volume > 0)
+                            else state.position.volume
+                        )
+                        entry_val = state.position.avg_entry_price * actual_volume
+                        exit_val = current_price * actual_volume
 
-                    # fee 우선순위:
-                    #   1) live + 실제 paid_fee → sell_fee = paid_fee, buy_fee ≈ entry_val*rate
-                    #   2) fallback (paper 및 live-no-paid_fee) → 기존 공식 유지
-                    if self._live and paid_fee is not None and paid_fee > 0:
-                        buy_fee_approx = entry_val * fee_rate
-                        fee_krw = buy_fee_approx + float(paid_fee)
-                        pnl_krw = exit_val - entry_val - fee_krw
-                        pnl_ratio = pnl_krw / entry_val if entry_val > 0 else 0.0
-                    else:
-                        fee_krw = (entry_val + exit_val) * fee_rate
-                        pnl_krw = exit_val - entry_val - fee_krw
-                        pnl_ratio = ret_legacy
+                        # fee 우선순위:
+                        #   1) live + 실제 paid_fee → sell_fee = paid_fee, buy_fee ≈ entry_val*rate
+                        #   2) fallback (paper 및 live-no-paid_fee) → 기존 공식 유지
+                        if self._live and paid_fee is not None and paid_fee > 0:
+                            buy_fee_approx = entry_val * fee_rate
+                            fee_krw = buy_fee_approx + float(paid_fee)
+                            pnl_krw = exit_val - entry_val - fee_krw
+                            pnl_ratio = pnl_krw / entry_val if entry_val > 0 else 0.0
+                        else:
+                            fee_krw = (entry_val + exit_val) * fee_rate
+                            pnl_krw = exit_val - entry_val - fee_krw
+                            pnl_ratio = ret_legacy
 
-                    entry_dt = _dt.fromisoformat(state.position.entry_at)
-                    exit_dt = _dt.fromisoformat(record.placed_at)
-                    hold_sec = max(int((exit_dt - entry_dt).total_seconds()), 0)
-                    self._on_trade_closed({
-                        "ticker": self._ticker,
-                        "strategy_name": self._strategy_name,
-                        "mode": "live" if self._live else "paper",
-                        "entry_at": entry_dt,
-                        "exit_at": exit_dt,
-                        "entry_price": state.position.avg_entry_price,
-                        "exit_price": current_price,
-                        "decision_exit_price": decision_exit_price,
-                        "quantity": actual_volume,
-                        "entry_value_krw": entry_val,
-                        "exit_value_krw": exit_val,
-                        "fee_krw": fee_krw,
-                        "pnl_ratio": pnl_ratio,
-                        "pnl_krw": pnl_krw,
-                        "hold_seconds": hold_sec,
-                        "exit_reason_code": reason_code,
-                        "exit_reason_text": reason_text,
-                    })
-                except Exception:
-                    logger.warning("on_trade_closed callback failed", exc_info=True)
+                        entry_dt = _dt.fromisoformat(state.position.entry_at)
+                        exit_dt = _dt.fromisoformat(record.placed_at)
+                        hold_sec = max(int((exit_dt - entry_dt).total_seconds()), 0)
+                        self._on_trade_closed({
+                            "ticker": self._ticker,
+                            "strategy_name": self._strategy_name,
+                            "mode": "live" if self._live else "paper",
+                            "entry_at": entry_dt,
+                            "exit_at": exit_dt,
+                            "entry_price": state.position.avg_entry_price,
+                            "exit_price": current_price,
+                            "decision_exit_price": decision_exit_price,
+                            "quantity": actual_volume,
+                            "entry_value_krw": entry_val,
+                            "exit_value_krw": exit_val,
+                            "fee_krw": fee_krw,
+                            "pnl_ratio": pnl_ratio,
+                            "pnl_krw": pnl_krw,
+                            "hold_seconds": hold_sec,
+                            "exit_reason_code": reason_code,
+                            "exit_reason_text": reason_text,
+                        })
+                    except Exception:
+                        logger.warning("on_trade_closed callback failed", exc_info=True)
 
-        state.last_exit_at = now_iso()
-        state.position = None
-        self._store.save(state)
+            state.last_exit_at = now_iso()
+            state.position = None
+            self._store.save(state)
 
     @staticmethod
     def _new_uuid() -> str:

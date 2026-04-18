@@ -35,6 +35,7 @@ _SCALAR_FIELDS = (
     "exit_hour_kst", "exit_minute_kst", "daily_reset_hour_kst",
     "state_dir", "log_level", "log_dir",
     "telegram_chat_id",
+    "use_websocket",
 )
 
 

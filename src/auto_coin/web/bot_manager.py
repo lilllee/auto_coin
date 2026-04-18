@@ -43,6 +43,8 @@ class BotManager:
         self._bot: TradingBot | None = None
         self._settings: Settings | None = None
         self._started_at: datetime | None = None
+        self._ws_client = None
+        self._ws_private = None
 
     # ----- public API --------------------------------------------------
 
@@ -87,6 +89,12 @@ class BotManager:
             self._scheduler = None
             if notify and self._bot is not None:
                 self._bot._notifier.send("🛑 auto_coin stopped")
+            if self._ws_client is not None:
+                self._ws_client.stop()
+                self._ws_client = None
+            if self._ws_private is not None:
+                self._ws_private.stop()
+                self._ws_private = None
             self._bot = None
             self._started_at = None
             logger.info("BotManager stopped")
@@ -157,11 +165,13 @@ class BotManager:
                 win = sum(1 for t in trades if t.pnl_ratio > 0)
                 loss = sum(1 for t in trades if t.pnl_ratio <= 0)
                 realized = sum(t.pnl_krw for t in trades)
+                ratio_sum = sum(t.pnl_ratio for t in trades)
                 return {
                     "closed_count": len(trades),
                     "win_count": win,
                     "loss_count": loss,
                     "realized_pnl_krw": realized,
+                    "total_pnl_ratio": ratio_sum,
                 }
         return query_trade_stats
 
@@ -203,12 +213,62 @@ class BotManager:
         # Backward compat: if no params_json, use legacy fields for VB
         if not strategy_params and settings.strategy_name == "volatility_breakout":
             strategy_params = {"k": settings.strategy_k, "ma_window": settings.ma_filter_window}
+        # WebSocket 실시간 가격 피드 (opt-in, DB 설정)
+        # 기존 연결 정리 (reload 시 중복 방지)
+        if self._ws_client is not None:
+            self._ws_client.stop()
+            self._ws_client = None
+        if self._ws_private is not None:
+            self._ws_private.stop()
+            self._ws_private = None
+
+        ws_client = None
+        ws_private = None
+        if settings.use_websocket:
+            from auto_coin.exchange.ws_client import UpbitWebSocket
+            ws_client = UpbitWebSocket(
+                tickers,
+                rest_fetcher=client.get_current_prices,
+                debug_log=(settings.log_level.upper() == "DEBUG"),
+            )
+            ws_client.start()
+
+            # Private WS (myOrder/myAsset) — 인증된 경우에만
+            if client.authenticated:
+                from auto_coin.exchange.ws_private import UpbitPrivateWebSocket
+
+                def _asset_fetcher() -> dict[str, dict]:
+                    return {
+                        h.currency: {
+                            "balance": h.balance,
+                            "locked": h.locked,
+                            "avg_buy_price": h.avg_buy_price,
+                            "unit_currency": h.unit_currency,
+                        }
+                        for h in client.get_holdings(include_krw=True)
+                    }
+
+                ws_private = UpbitPrivateWebSocket(
+                    access_key=settings.upbit_access_key.get_secret_value(),
+                    secret_key=settings.upbit_secret_key.get_secret_value(),
+                    tickers=tickers,
+                    order_fetcher=client.get_order,
+                    asset_fetcher=_asset_fetcher,
+                    debug_log=(settings.log_level.upper() == "DEBUG"),
+                )
+                ws_private.start()
+
+        self._ws_client = ws_client
+        self._ws_private = ws_private
+
         self._bot = TradingBot(
             settings=settings, client=client,
             strategy=create_strategy(settings.strategy_name, strategy_params),
             risk_manager=RiskManager(settings),
             stores=stores, executors=executors,
             notifier=notifier,
+            ws_client=ws_client,
+            ws_private=ws_private,
             snapshot_writer=self._make_snapshot_writer(),
             trade_log_query=self._make_trade_log_query(),
         )
