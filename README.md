@@ -272,7 +272,7 @@ cp my-analysis.md reports/2026-04-14-manual.md
 ```
 
 이 한 줄로:
-- `~/Library/LaunchAgents/com.sj9608.auto_coin.plist` 설치
+- `~/Library/LaunchAgents/auto_coin.plist` 설치
 - `RunAtLoad` + `KeepAlive` → 부팅 시 자동 기동 + 프로세스 크래시 시 10초 후 재시작
 - stdout/stderr → `logs/launchd.*.log`
 - V2 웹이 실행 중이면 V1 CLI는 시작을 거부하고, 반대도 동일
@@ -280,8 +280,8 @@ cp my-analysis.md reports/2026-04-14-manual.md
 ### 관리
 ```bash
 launchctl list | grep auto_coin             # PID 확인
-launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist   # 정지
-launchctl load   ~/Library/LaunchAgents/com.sj9608.auto_coin.plist   # 재시작
+launchctl unload ~/Library/LaunchAgents/auto_coin.plist   # 정지
+launchctl load   ~/Library/LaunchAgents/auto_coin.plist   # 재시작
 ```
 
 자세한 내용은 [deploy/README.md](deploy/README.md).
@@ -329,7 +329,7 @@ tail -50 logs/launchd.err.log
 - 대시보드에서 **재시작(reload)** 수동 클릭
 - 그래도 안 되면 launchd 재시작:
   ```bash
-  launchctl kickstart -k gui/$(id -u)/com.sj9608.auto_coin
+  launchctl kickstart -k gui/$(id -u)/auto_coin
   ```
 
 ### `another auto_coin runtime is already active` 오류가 뜸
@@ -341,7 +341,7 @@ V1 CLI와 V2 웹은 `.env`와 `state/*.json`를 공유하므로 동시에 실행
 예시:
 ```bash
 pkill -f auto_coin.main
-launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+launchctl unload ~/Library/LaunchAgents/auto_coin.plist
 ```
 
 ### SSE 로그가 계속 "재연결 중"
@@ -444,7 +444,7 @@ python -m auto_coin.backtest.runner --ticker KRW-BTC --days 365 --sweep 0.3 0.7 
 ├── CLAUDE.md            # Claude Code 작업 지침
 ├── deploy/
 │   ├── README.md                    # launchd 설치/검증
-│   ├── com.sj9608.auto_coin.plist   # launchd 템플릿
+│   ├── auto_coin.plist   # launchd 템플릿
 │   └── install_launchd.sh           # 경로 치환 + load
 ├── docs/
 │   ├── v1/

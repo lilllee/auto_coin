@@ -8,7 +8,7 @@
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-LABEL="com.sj9608.auto_coin"
+LABEL="auto_coin"
 SRC="$PROJECT_DIR/deploy/$LABEL.plist"
 DST="$HOME/Library/LaunchAgents/$LABEL.plist"
 

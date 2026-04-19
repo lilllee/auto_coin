@@ -16,7 +16,6 @@ services:
       - STATE_DIR=/data/state
       - LOG_DIR=/data/logs
       - HOME=/data
-      - DISABLE_AUTH=true
     volumes:
       - ./data:/data            # 호스트 ./data 디렉토리에 모든 영속 데이터 저장
     healthcheck:

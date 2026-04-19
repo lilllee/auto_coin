@@ -271,7 +271,7 @@ class AuditLog(SQLModel, table=True):
 
 ### V2.8 — Tailscale 배포 + launchd `[x]` (2026-04-14)
 
-- [x] `deploy/com.sj9608.auto_coin.plist` — launchd 템플릿 (RunAtLoad + KeepAlive + ThrottleInterval=10)
+- [x] `deploy/auto_coin.plist` — launchd 템플릿 (RunAtLoad + KeepAlive + ThrottleInterval=10)
 - [x] `deploy/install_launchd.sh` — 경로 치환 + 로드 자동화
 - [x] `deploy/README.md` — 설치/검증/제거 명령, HOME 파일 3종 백업 주의
 - [x] `docs/tailscale-setup.md` — 맥 OS / iPhone 앱 설치, MagicDNS, ACL, 보안 체크 3종, 트러블슈팅
@@ -291,7 +291,7 @@ class AuditLog(SQLModel, table=True):
 - [x] `CHANGELOG.md` — V1 M1~M9a + V2.0~V2.8 전체 이력 + 누적 테스트 카운트 표
 - [x] `docs/v2/PLAN.md` (구 `PLAN_V2.md`) — 각 마일스톤 `[x]` + 완료 일자
 - [x] `.env` → SQLite 자동 마이그레이션 동작 확인 (V2.0 부트스트랩 테스트 + 실 기동 smoke)
-- [x] `main` PR 생성 — [#1](https://github.com/sj9608/auto_coin/pull/1)
+- [x] `main` PR 생성 · 리뷰 · 머지 완료
 - [x] `main` 머지 (2026-04-14 merge commit `ed30556`)
 - [x] 문서 재편: `docs/v1/` · `docs/v2/` · 최상위는 README 통합본
 - [ ] launchd 등록 + V1 페이퍼 봇 정지 → V2 전환 — **사용자 액션**
@@ -393,7 +393,7 @@ class AuditLog(SQLModel, table=True):
 
 ### 최종 머지 대기 (사용자 액션)
 
-1. **PR #1 리뷰 & 머지** — https://github.com/sj9608/auto_coin/pull/1
+1. **PR #1 리뷰 & 머지** — main 머지 완료
 2. **launchd 등록** — `./deploy/install_launchd.sh`
 3. **V1 페이퍼 봇 정지** — `kill $(cat .bot.pid)` (선택)
 4. **Tailscale 설정** — docs/tailscale-setup.md 참고 (선택, 외부 접근 시)

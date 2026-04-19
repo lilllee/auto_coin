@@ -5,26 +5,26 @@
 
     설치:
         1) 이 파일을 홈 LaunchAgents로 복사:
-             cp deploy/com.sj9608.auto_coin.plist ~/Library/LaunchAgents/
+             cp deploy/auto_coin.plist ~/Library/LaunchAgents/
         2) WorkingDirectory / 사용자 홈 경로를 본인 환경에 맞게 수정
              (이 파일의 __PROJECT_DIR__ 과 __HOME__ 자리표시자를 실제 값으로 교체)
              예) sed -i '' "s|__PROJECT_DIR__|$HOME/IdeaProjects/auto_coin|g; s|__HOME__|$HOME|g" \
-                     ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+                     ~/Library/LaunchAgents/auto_coin.plist
         3) 부팅 시 자동 시작 + 즉시 로드:
-             launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist 2>/dev/null
-             launchctl load   ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+             launchctl unload ~/Library/LaunchAgents/auto_coin.plist 2>/dev/null
+             launchctl load   ~/Library/LaunchAgents/auto_coin.plist
 
     확인:
         launchctl list | grep auto_coin
         tail -f __PROJECT_DIR__/logs/launchd.out.log
 
     정지 / 제거:
-        launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+        launchctl unload ~/Library/LaunchAgents/auto_coin.plist
 -->
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.sj9608.auto_coin</string>
+    <string>auto_coin</string>
 
     <key>ProgramArguments</key>
     <array>

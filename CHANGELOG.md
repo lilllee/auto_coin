@@ -101,7 +101,7 @@ auto_coin의 버전/마일스톤별 주요 변경 이력.
 ### V2.8 — launchd 서비스 + Tailscale 가이드 (2026-04-14)
 
 **추가**
-- `deploy/com.sj9608.auto_coin.plist` — macOS launchd 템플릿 (`RunAtLoad`, `KeepAlive`, `ThrottleInterval=10`)
+- `deploy/auto_coin.plist` — macOS launchd 템플릿 (`RunAtLoad`, `KeepAlive`, `ThrottleInterval=10`)
 - `deploy/install_launchd.sh` — 프로젝트 경로 자동 치환 후 `~/Library/LaunchAgents/`에 로드
 - `deploy/README.md` — 설치/검증/제거 명령, 3개 HOME 파일 백업 주의
 - `docs/tailscale-setup.md` — Tailscale 설정 전체 흐름, `--host 0.0.0.0` 바인딩 + macOS 방화벽 + Tailscale ACL 3중 방어

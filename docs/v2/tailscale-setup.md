@@ -118,7 +118,7 @@ http://<맥 호스트명>.<tailnet>.ts.net:8080
 1. `tailscale status`에서 상대 기기 online 확인
 2. `curl -v http://<macbook ts.net name>:8080/health` (폰 대신 맥→맥 테스트)
 3. macOS 방화벽에서 Python 프로세스 허용 확인
-4. `launchctl list | grep auto_coin` — PID가 있어야 함. 없으면 `launchctl load ~/Library/LaunchAgents/com.sj9608.auto_coin.plist`
+4. `launchctl list | grep auto_coin` — PID가 있어야 함. 없으면 `launchctl load ~/Library/LaunchAgents/auto_coin.plist`
 
 ### 맥이 잠자기 모드에 들어가면 연결 끊김
 - `sudo pmset -a sleep 0`으로 자동 잠자기 끄거나,

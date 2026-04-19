@@ -4,7 +4,7 @@
 
 | 파일 | 용도 |
 |---|---|
-| `com.sj9608.auto_coin.plist` | macOS launchd 서비스 정의 (템플릿) |
+| `auto_coin.plist` | macOS launchd 서비스 정의 (템플릿) |
 | `install_launchd.sh` | 템플릿을 현재 프로젝트 경로로 치환해 `~/Library/LaunchAgents/`에 로드 |
 
 ## 한 줄 설치
@@ -24,8 +24,8 @@ tail -f logs/launchd.out.log
 ## 정지 / 제거
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
-rm ~/Library/LaunchAgents/com.sj9608.auto_coin.plist
+launchctl unload ~/Library/LaunchAgents/auto_coin.plist
+rm ~/Library/LaunchAgents/auto_coin.plist
 ```
 
 ## 외부(폰) 접근
