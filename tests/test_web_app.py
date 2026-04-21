@@ -40,6 +40,32 @@ def test_health_endpoint_running(app_env):
         assert "KRW-BTC" in data["tickers"]
 
 
+def test_web_defaults_to_authless_entry(app_env, monkeypatch):
+    monkeypatch.delenv("ENABLE_AUTH", raising=False)
+    monkeypatch.delenv("DISABLE_AUTH", raising=False)
+
+    app = create_app()
+    with TestClient(app) as client:
+        r = client.get("/", follow_redirects=False)
+        assert r.status_code == 200
+        assert "대시보드" in r.text
+
+        login = client.get("/login", follow_redirects=False)
+        assert login.status_code == 303
+        assert login.headers["location"] == "/"
+
+
+def test_legacy_disable_auth_still_bypasses_login(app_env, monkeypatch):
+    monkeypatch.setenv("ENABLE_AUTH", "0")
+    monkeypatch.setenv("DISABLE_AUTH", "1")
+
+    app = create_app()
+    with TestClient(app) as client:
+        r = client.get("/", follow_redirects=False)
+        assert r.status_code == 200
+        assert "대시보드" in r.text
+
+
 def test_web_main_exits_when_cli_runtime_is_active(mocker):
     mocker.patch(
         "auto_coin.web.__main__.acquire_runtime_guard",

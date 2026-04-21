@@ -1,7 +1,9 @@
 """FastAPI 인증 dependency.
 
-- `require_auth(request)` : 세션에 user_id가 없으면 /login 리다이렉트
-- `require_no_setup(request)` : 최초 설정 전이면 /setup, 이미 되어 있으면 /login (혹은 / 가드)
+- 기본 웹 동작은 로그인 없이 바로 진입한다.
+- `ENABLE_AUTH=1`이면 기존 setup/login/TOTP 보호 흐름을 다시 켠다.
+- 레거시 `DISABLE_AUTH=1`도 계속 지원한다.
+- `require_auth(request)` : 인증 활성 시 세션에 user_id가 없으면 /login 리다이렉트
 - `get_box(request)` / `get_manager(request)` : app.state 접근 헬퍼
 
 /login, /setup, /health, /static은 public. middleware가 아니라 라우터 레벨 guard로 관리 →
@@ -21,7 +23,36 @@ from auto_coin.web.bot_manager import BotManager
 from auto_coin.web.crypto import SecretBox
 from auto_coin.web.user_service import user_exists
 
-AUTH_DISABLED = os.getenv("DISABLE_AUTH", "").lower() in ("1", "true", "yes")
+
+def _env_flag(name: str) -> bool | None:
+    raw = os.getenv(name)
+    if raw is None:
+        return None
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off", ""}:
+        return False
+    return False
+
+
+def is_auth_enabled() -> bool:
+    """웹 인증 사용 여부.
+
+    기본값은 False(로그인 없이 바로 진입)이며, 필요할 때만 ENABLE_AUTH로 opt-in 한다.
+    기존 DISABLE_AUTH 플래그도 하위호환으로 존중한다.
+    """
+    enable_auth = _env_flag("ENABLE_AUTH")
+    if enable_auth is not None:
+        return enable_auth
+    disable_auth = _env_flag("DISABLE_AUTH")
+    if disable_auth:
+        return False
+    return False
+
+
+def is_auth_disabled() -> bool:
+    return not is_auth_enabled()
 
 
 def get_box(request: Request) -> SecretBox:
@@ -39,7 +70,7 @@ def get_session_db() -> Session:
 
 def require_auth(request: Request):
     """미인증 접근은 /login으로 리다이렉트. 의존성에서 raise해 라우터 본문은 실행되지 않음."""
-    if AUTH_DISABLED:
+    if is_auth_disabled():
         return 0  # 인증 비활성 — 더미 user_id
     if request.session.get("user_id") is None:
         raise _redirect("/login")

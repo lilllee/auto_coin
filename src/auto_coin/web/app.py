@@ -160,13 +160,13 @@ def create_app() -> FastAPI:
             )
         return JSONResponse({"detail": "Not Found"}, status_code=404)
 
-    # 최초 기동 가이드: /로 오되 setup 필요하면 /setup
-    from auto_coin.web.auth import AUTH_DISABLED
+    # 최초 기동 가이드: 기본은 바로 진입, ENABLE_AUTH=1일 때만 setup/login 보호 적용
+    from auto_coin.web.auth import is_auth_disabled
 
     @app.middleware("http")
     async def setup_first(request: Request, call_next):
         path = request.url.path
-        if AUTH_DISABLED:
+        if is_auth_disabled():
             # 템플릿이 인증 상태를 감지할 수 있도록 플래그 노출 (scope에 기록 — Jinja 접근 용이)
             request.scope["auth_disabled_flag"] = True
             # 인증 비활성 모드에서는 인증 관련 페이지 자체를 노출하지 않음
