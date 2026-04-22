@@ -9,9 +9,9 @@ import pytest
 from auto_coin.bot import TradingBot
 from auto_coin.config import Settings
 from auto_coin.data.candles import recommended_history_days
-from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.exchange.upbit_client import AssetBalance, UpbitClient, UpbitError
 from auto_coin.executor.order import OrderExecutor
-from auto_coin.executor.store import OrderStore, Position
+from auto_coin.executor.store import OrderRecord, OrderStore, Position
 from auto_coin.main import main
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.risk.manager import RiskManager
@@ -165,6 +165,114 @@ def test_stop_loss_overrides_signal_in_tick(store, mocker):
     assert len(recs) == 1
     assert recs[0].side == "sell"
     assert store.load().position is None
+
+
+def test_tick_sell_clears_stale_local_position_when_exchange_balance_empty(tmp_path, mocker):
+    s = _settings(mode="live", live_trading=True)
+    store = OrderStore(tmp_path / "KRW-BTC.json")
+    state = store.load()
+    state.position = Position(
+        ticker="KRW-BTC",
+        volume=0.2,
+        avg_entry_price=120.0,
+        entry_uuid="prev-uuid",
+        entry_at="2026-04-13T00:00:00+00:00",
+    )
+    store.save(state)
+
+    client = UpbitClient(access_key="ak", secret_key="sk", max_retries=1, backoff_base=0.0,
+                         min_request_interval=0.0)
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily", return_value=_enriched_df(False))
+    mocker.patch.object(client, "get_current_prices", return_value={"KRW-BTC": 120.0})
+    mocker.patch.object(client, "get_holdings", return_value=[])
+
+    strategy = mocker.Mock()
+    strategy.name = "volatility_breakout"
+    strategy.generate_signal.return_value = Signal.SELL
+
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    executor = mocker.Mock(spec=OrderExecutor)
+    executor.live = True
+
+    bot = TradingBot(
+        settings=s,
+        client=client,
+        strategy=strategy,
+        risk_manager=RiskManager(s),
+        stores={"KRW-BTC": store},
+        executors={"KRW-BTC": executor},
+        notifier=notifier,
+    )
+
+    assert bot.tick() == []
+    executor.execute.assert_not_called()
+    assert store.load().position is None
+
+
+def test_tick_sell_uses_exchange_available_volume_when_local_position_is_stale(tmp_path, mocker):
+    s = _settings(mode="live", live_trading=True)
+    store = OrderStore(tmp_path / "KRW-BTC.json")
+    state = store.load()
+    state.position = Position(
+        ticker="KRW-BTC",
+        volume=0.2,
+        avg_entry_price=120.0,
+        entry_uuid="prev-uuid",
+        entry_at="2026-04-13T00:00:00+00:00",
+    )
+    store.save(state)
+
+    client = UpbitClient(access_key="ak", secret_key="sk", max_retries=1, backoff_base=0.0,
+                         min_request_interval=0.0)
+    mocker.patch("auto_coin.data.candle_cache.fetch_daily", return_value=_enriched_df(False))
+    mocker.patch.object(client, "get_current_prices", return_value={"KRW-BTC": 120.0})
+    mocker.patch.object(
+        client,
+        "get_holdings",
+        return_value=[
+            AssetBalance(
+                currency="BTC",
+                unit_currency="KRW",
+                balance=0.05,
+                locked=0.0,
+                avg_buy_price=119.0,
+            )
+        ],
+    )
+
+    strategy = mocker.Mock()
+    strategy.name = "volatility_breakout"
+    strategy.generate_signal.return_value = Signal.SELL
+
+    notifier = TelegramNotifier(bot_token="", chat_id="")
+    executor = mocker.Mock(spec=OrderExecutor)
+    executor.live = True
+    executor.execute.return_value = OrderRecord(
+        uuid="sell-uuid",
+        side="sell",
+        market="KRW-BTC",
+        krw_amount=6000.0,
+        volume=0.05,
+        price=120.0,
+        placed_at="2026-04-13T00:01:00+00:00",
+        status="filled",
+    )
+
+    bot = TradingBot(
+        settings=s,
+        client=client,
+        strategy=strategy,
+        risk_manager=RiskManager(s),
+        stores={"KRW-BTC": store},
+        executors={"KRW-BTC": executor},
+        notifier=notifier,
+    )
+
+    bot.tick()
+
+    decision = executor.execute.call_args.args[0]
+    assert decision.volume == pytest.approx(0.05)
+    assert store.load().position.volume == pytest.approx(0.05)
 
 
 def test_heartbeat_sends_status(store, mocker):

@@ -7,6 +7,7 @@ import threading
 import time
 from unittest.mock import MagicMock
 
+from auto_coin.exchange.upbit_client import AssetBalance
 from auto_coin.exchange.ws_client import UpbitWebSocket
 from auto_coin.executor.store import OrderRecord, Position, State
 
@@ -217,6 +218,28 @@ def test_exit_in_flight_cleared_on_failure():
     bot._check_emergency_exit("KRW-BTC", 97_000_000.0)
     time.sleep(0.3)
 
+    assert bot._exit_in_flight.get("KRW-BTC") is False
+
+
+def test_emergency_exit_skips_when_exchange_balance_is_locked():
+    """거래소 가용 수량이 0이고 locked만 있으면 추가 긴급 SELL을 보내지 않아야 한다."""
+    pos = {"KRW-BTC": _position(avg_entry=100_000_000.0)}
+    bot = _make_bot(position=pos, stop_loss_ratio=-0.02, executor_live=True)
+    bot._client.authenticated = True
+    bot._client.get_holdings.return_value = [
+        AssetBalance(
+            currency="BTC",
+            unit_currency="KRW",
+            balance=0.0,
+            locked=0.01,
+            avg_buy_price=100_000_000.0,
+        )
+    ]
+
+    bot._check_emergency_exit("KRW-BTC", 97_000_000.0)
+    time.sleep(0.3)
+
+    bot._executors["KRW-BTC"].execute.assert_not_called()
     assert bot._exit_in_flight.get("KRW-BTC") is False
 
 

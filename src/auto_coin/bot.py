@@ -22,11 +22,11 @@ from auto_coin.data.candles import (  # noqa: F401 — fetch_daily used by test 
     fetch_daily,
     recommended_history_days,
 )
-from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
+from auto_coin.exchange.upbit_client import AssetBalance, UpbitClient, UpbitError
 from auto_coin.exchange.ws_client import UpbitWebSocket
 from auto_coin.exchange.ws_private import UpbitPrivateWebSocket
 from auto_coin.executor.order import OrderExecutor
-from auto_coin.executor.store import OrderRecord, OrderStore, State, today_utc
+from auto_coin.executor.store import OrderRecord, OrderStore, Position, State, now_iso, today_utc
 from auto_coin.formatting import format_price
 from auto_coin.notifier.telegram import TelegramNotifier
 from auto_coin.reporter import build_daily_report
@@ -235,8 +235,16 @@ class TradingBot:
             if decision.action is Action.HOLD:
                 continue
 
+            effective_decision = self._prepare_live_sell_decision(
+                ticker,
+                decision,
+                source="tick",
+            )
+            if effective_decision is None:
+                continue
+
             try:
-                record = executor.execute(decision, current_price=price)
+                record = executor.execute(effective_decision, current_price=price)
             except UpbitError as exc:
                 logger.error("order failed for {}: {}", ticker, exc)
                 self._notifier.send(f"❌ {ticker} order failed: {exc}")
@@ -252,7 +260,7 @@ class TradingBot:
                 open_positions = max(0, open_positions - 1)
 
             # 손절 카운트
-            if record.side == "sell" and decision.reason_code == "stop_loss":
+            if record.side == "sell" and effective_decision.reason_code == "stop_loss":
                 self._stop_loss_counts[ticker] = self._stop_loss_counts.get(ticker, 0) + 1
                 sl_count = self._stop_loss_counts[ticker]
                 logger.warning(
@@ -629,6 +637,145 @@ class TradingBot:
             reason=f"WS stop-loss ({pnl_ratio:.2%} <= {self._s.stop_loss_ratio:.2%})",
         )
 
+    def _get_exchange_asset_balance(self, ticker: str) -> AssetBalance | None:
+        """실거래 SELL 직전에 거래소 기준 잔고를 조회한다."""
+        executor = self._executors[ticker]
+        if not executor.live or not self._client.authenticated:
+            return None
+        holdings = self._client.get_holdings(include_zero=True, include_krw=False)
+        for holding in holdings:
+            if holding.market == ticker:
+                return holding
+        return None
+
+    def _sync_local_position_from_exchange(
+        self,
+        ticker: str,
+        asset: AssetBalance | None,
+        *,
+        reason: str,
+    ) -> None:
+        """거래소 잔고 기준으로 로컬 포지션 상태를 보정한다."""
+        store = self._stores[ticker]
+        epsilon = 1e-12
+
+        def _update(state: State) -> State:
+            position = state.position
+            if position is None:
+                return state
+
+            total_volume = asset.total_volume if asset else 0.0
+            if total_volume <= epsilon:
+                state.position = None
+                state.last_exit_at = now_iso()
+                return state
+
+            avg_entry_price = (
+                asset.avg_buy_price
+                if asset is not None and asset.avg_buy_price > 0
+                else position.avg_entry_price
+            )
+            volume_close = abs(position.volume - total_volume) <= max(1e-12, position.volume * 1e-6)
+            price_close = (
+                abs(position.avg_entry_price - avg_entry_price)
+                <= max(1e-9, position.avg_entry_price * 1e-6)
+            )
+            if volume_close and price_close:
+                return state
+
+            state.position = Position(
+                ticker=position.ticker,
+                volume=total_volume,
+                avg_entry_price=avg_entry_price,
+                entry_uuid=position.entry_uuid,
+                entry_at=position.entry_at,
+            )
+            return state
+
+        new_state = store.atomic_update(_update)
+        if new_state.position is None:
+            self._position_cache.pop(ticker, None)
+            logger.warning(
+                "position reconciled [{}]: local position cleared after {} (exchange balance empty)",
+                ticker,
+                reason,
+            )
+            return
+
+        self._position_cache[ticker] = (
+            new_state.position.avg_entry_price,
+            new_state.position.volume,
+        )
+        logger.warning(
+            "position reconciled [{}]: volume={:.8f} avg_entry={} after {}",
+            ticker,
+            new_state.position.volume,
+            format_price(new_state.position.avg_entry_price),
+            reason,
+        )
+
+    def _prepare_live_sell_decision(
+        self,
+        ticker: str,
+        decision: Decision,
+        *,
+        source: str,
+    ) -> Decision | None:
+        """실거래 SELL 전에 거래소 가용 수량 기준으로 의사결정을 보정한다."""
+        if decision.action is not Action.SELL:
+            return decision
+        executor = self._executors[ticker]
+        if not executor.live or not self._client.authenticated:
+            return decision
+
+        try:
+            asset = self._get_exchange_asset_balance(ticker)
+        except UpbitError as exc:
+            logger.warning("sell preflight holdings fetch failed for {} ({}): {}", ticker, source, exc)
+            return decision
+
+        if asset is None or asset.total_volume <= 1e-12:
+            self._sync_local_position_from_exchange(
+                ticker,
+                asset,
+                reason=f"{source} sell preflight",
+            )
+            return None
+
+        available_volume = asset.balance
+        if available_volume <= 1e-12 and asset.locked > 1e-12:
+            logger.warning(
+                "sell skipped for {} ({}): exchange available balance empty, locked={:.8f}",
+                ticker,
+                source,
+                asset.locked,
+            )
+            return None
+
+        desired_volume = decision.volume or 0.0
+        if desired_volume > 0 and available_volume + 1e-12 < desired_volume:
+            self._sync_local_position_from_exchange(
+                ticker,
+                asset,
+                reason=f"{source} sell volume adjustment",
+            )
+            logger.warning(
+                "sell volume adjusted for {} ({}): local={:.8f} -> exchange_available={:.8f}",
+                ticker,
+                source,
+                desired_volume,
+                available_volume,
+            )
+            return Decision(
+                action=decision.action,
+                reason=decision.reason,
+                volume=available_volume,
+                krw_amount=decision.krw_amount,
+                reason_code=decision.reason_code,
+            )
+
+        return decision
+
     def _trigger_emergency_sell(
         self,
         ticker: str,
@@ -686,7 +833,14 @@ class TradingBot:
                 volume=volume,
                 reason_code=reason_code,
             )
-            record = executor.execute(decision, current_price=price)
+            effective_decision = self._prepare_live_sell_decision(
+                ticker,
+                decision,
+                source="emergency",
+            )
+            if effective_decision is None:
+                return
+            record = executor.execute(effective_decision, current_price=price)
             if record:
                 self._position_cache.pop(ticker, None)
                 self._stop_loss_counts[ticker] = (
