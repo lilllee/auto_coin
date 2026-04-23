@@ -6,7 +6,7 @@
        stop-loss, time-exit 옵션 제공.
 
 공통 가정 (단순화):
-    - 일봉 단위. 09:00 KST에 일봉이 갱신된다.
+    - 기본은 일봉이지만, P0부터 `day`와 `minute60`(1H)을 공통 runner에서 지원한다.
     - 수수료는 매수·매도 양쪽에 동일 적용. 슬리피지는 진입가에 +, 청산가에 -.
 """
 
@@ -23,7 +23,13 @@ import numpy as np
 import pandas as pd
 import pyupbit
 
-from auto_coin.data.candles import enrich_daily, enrich_for_strategy
+from auto_coin.data.candles import (
+    candle_bar_seconds,
+    enrich_daily,
+    enrich_for_strategy,
+    history_days_to_candles,
+    normalize_candle_interval,
+)
 from auto_coin.strategy import STRATEGY_REGISTRY, create_strategy
 from auto_coin.strategy.base import (
     MarketSnapshot,
@@ -64,7 +70,7 @@ class BacktestResult:
     avg_win: float = 0.0
     avg_loss: float = 0.0
     annualized_return: float = 0.0
-    total_days: int = 0
+    total_days: float = 0.0
     # P1: benchmark
     benchmark_return: float = 0.0
     excess_return: float = 0.0
@@ -129,7 +135,7 @@ def _to_dt(idx_val) -> datetime:
 def _build_result(
     trades: list[Trade],
     *,
-    total_days: int = 0,
+    total_days: float = 0.0,
     benchmark_return: float = 0.0,
 ) -> BacktestResult:
     if not trades:
@@ -169,7 +175,10 @@ def _build_result(
     pf = gross_wins / gross_losses if gross_losses > 1e-10 else 99.99 if gross_wins > 0 else 0.0
 
     # Average hold days
-    hold_days_list = [(t.exit_date - t.entry_date).days for t in trades]
+    hold_days_list = [
+        (t.exit_date - t.entry_date).total_seconds() / (24 * 60 * 60)
+        for t in trades
+    ]
     avg_hold = float(np.mean(hold_days_list)) if hold_days_list else 0.0
 
     # Avg win / avg loss
@@ -295,6 +304,7 @@ def backtest(
     stop_loss_ratio: float | None = None,
     enable_time_exit: bool = False,
     mark_to_market: bool = True,
+    interval: str = "day",
 ) -> BacktestResult:
     """범용 시그널 기반 백테스트.
 
@@ -302,16 +312,18 @@ def backtest(
     매 row의 close를 현재가로 사용하여 전략 시그널을 생성한다.
 
     Args:
-        df: 보조 컬럼이 채워진 일봉 DataFrame.
+        df: 보조 컬럼이 채워진 candle DataFrame.
         strategy: generate_signal(snap) → Signal 을 구현한 전략 객체.
         fee: 매수·매도 수수료율 (양쪽 동일).
         slippage: 슬리피지 비율.
         stop_loss_ratio: 손절 비율 (예: -0.02). None이면 비활성.
-        enable_time_exit: True면 보유 1일 후 다음날 시가에 청산.
+        enable_time_exit: True면 보유 1 bar 후 다음 bar 시가에 청산.
     """
     if df.empty:
         return BacktestResult()
 
+    interval = normalize_candle_interval(interval)
+    bar_seconds = candle_bar_seconds(interval)
     trades: list[Trade] = []
     state = _SimState()
 
@@ -373,6 +385,8 @@ def backtest(
             df=df.iloc[: i + 1],
             current_price=close,
             has_position=state.has_position,
+            interval=interval,
+            bar_seconds=bar_seconds,
         )
 
         # --- Phase 3a: Strategy-defined exit ---
@@ -382,6 +396,9 @@ def backtest(
                 hold_days=state.hold_days,
                 highest_close=state.highest_close,
                 highest_high=state.highest_high,
+                interval=interval,
+                bar_seconds=bar_seconds,
+                hold_bars=state.hold_days,
             )
             exit_decision = strategy.generate_exit(snap, position)
             if exit_decision is not None:
@@ -469,7 +486,11 @@ def backtest(
             last_close_val = float(c)
 
     benchmark = (last_close_val / first_close - 1.0) if (first_close and last_close_val and first_close > 0) else 0.0
-    total_days = (df.index[-1] - df.index[0]).days if len(df) > 1 else 0
+    total_days = (
+        (df.index[-1] - df.index[0]).total_seconds() / (24 * 60 * 60)
+        if len(df) > 1
+        else 0
+    )
 
     return _build_result(trades, total_days=total_days, benchmark_return=benchmark)
 
@@ -479,8 +500,10 @@ def backtest(
 # ---------------------------------------------------------------------------
 
 
-def _fetch_candles(ticker: str, days: int) -> pd.DataFrame:
-    df = pyupbit.get_ohlcv(ticker, interval="day", count=days)
+def _fetch_candles(ticker: str, days: int, interval: str = "day") -> pd.DataFrame:
+    interval = normalize_candle_interval(interval)
+    count = history_days_to_candles(days, interval)
+    df = pyupbit.get_ohlcv(ticker, interval=interval, count=count)
     if df is None or df.empty:
         raise SystemExit(f"failed to fetch candles for {ticker}")
     return df
@@ -501,7 +524,9 @@ def _run_generic(
     slippage: float,
     stop_loss: float | None,
     enable_time_exit: bool,
+    interval: str = "day",
     regime_df: pd.DataFrame | None = None,
+    hourly_setup_df: pd.DataFrame | None = None,
 ) -> BacktestResult:
     """범용 전략 백테스트 실행."""
     enriched = enrich_for_strategy(
@@ -509,6 +534,8 @@ def _run_generic(
         k=params.get("k", 0.5),
         ma_window=params.get("ma_window", 5),
         regime_df=regime_df,
+        hourly_setup_df=hourly_setup_df,
+        interval=interval,
     )
     strategy = create_strategy(strategy_name, params)
     return backtest(
@@ -518,6 +545,7 @@ def _run_generic(
         slippage=slippage,
         stop_loss_ratio=stop_loss,
         enable_time_exit=enable_time_exit,
+        interval=interval,
     )
 
 
@@ -531,6 +559,8 @@ def cli(argv: list[str] | None = None) -> int:
                                 description="Strategy backtest on Upbit daily candles.")
     p.add_argument("--ticker", default="KRW-BTC")
     p.add_argument("--days", type=int, default=365)
+    p.add_argument("--interval", default="day",
+                   help="Candle interval: day | minute60 | minute30 (aliases: 1h, 60m, hourly, 30m, 30min)")
     p.add_argument("--k", type=float, default=0.5)
     p.add_argument("--ma-window", type=int, default=5)
     p.add_argument("--fee", type=float, default=UPBIT_DEFAULT_FEE)
@@ -551,7 +581,8 @@ def cli(argv: list[str] | None = None) -> int:
                    help="전략의 SELL 시그널 활성화 (지원 전략만)")
     args = p.parse_args(argv)
 
-    raw = _fetch_candles(args.ticker, args.days)
+    interval = normalize_candle_interval(args.interval)
+    raw = _fetch_candles(args.ticker, args.days, interval)
 
     # --- 범용 전략 모드 ---
     if args.strategy is not None:
@@ -563,10 +594,19 @@ def cli(argv: list[str] | None = None) -> int:
         params: dict = json.loads(args.params)
         slippage = args.slippage if args.slippage is not None else DEFAULT_SLIPPAGE
         regime_df = None
-        if args.strategy in {"rcdb", "rcdb_v2"}:
+        hourly_setup_df = None
+        if args.strategy in {"regime_reclaim_30m", "regime_pullback_continuation_30m"}:
             regime_ticker = params.get("regime_ticker", "KRW-BTC")
-            if regime_ticker and regime_ticker != args.ticker:
-                regime_df = _fetch_candles(regime_ticker, args.days)
+            setup_ticker = params.get("setup_ticker", args.ticker)
+            if regime_ticker:
+                regime_df = _fetch_candles(regime_ticker, args.days, "day")
+            if setup_ticker:
+                hourly_setup_df = _fetch_candles(setup_ticker, args.days, "minute60")
+        elif args.strategy in {"rcdb", "rcdb_v2", "regime_reclaim_1h"}:
+            regime_ticker = params.get("regime_ticker", "KRW-BTC")
+            regime_interval = normalize_candle_interval(params.get("regime_interval", interval))
+            if regime_ticker and (regime_ticker != args.ticker or regime_interval != interval):
+                regime_df = _fetch_candles(regime_ticker, args.days, regime_interval)
 
         # --enable-sell → allow_sell_signal 주입 (전략이 지원하는 경우에만)
         if args.enable_sell:
@@ -576,19 +616,22 @@ def cli(argv: list[str] | None = None) -> int:
                 params.setdefault("allow_sell_signal", True)
 
         print(
-            f"# {args.ticker}  strategy={args.strategy}  candles={len(raw)}  "
+            f"# {args.ticker}  strategy={args.strategy}  interval={interval}  candles={len(raw)}  "
             f"fee={args.fee}  slippage={slippage}  stop_loss={args.stop_loss}"
         )
         r = _run_generic(
             raw, args.strategy, params, args.fee, slippage,
-            args.stop_loss, args.enable_time_exit, regime_df=regime_df,
+            args.stop_loss, args.enable_time_exit,
+            interval=interval,
+            regime_df=regime_df,
+            hourly_setup_df=hourly_setup_df,
         )
         print(r.report())
         return 0
 
     # --- 레거시 VB 모드 ---
     slippage = args.slippage if args.slippage is not None else 0.0
-    print(f"# {args.ticker}  candles={len(raw)}  fee={args.fee}  slippage={slippage}  "
+    print(f"# {args.ticker}  interval={interval}  candles={len(raw)}  fee={args.fee}  slippage={slippage}  "
           f"ma_filter={not args.no_ma_filter}")
 
     if args.sweep:

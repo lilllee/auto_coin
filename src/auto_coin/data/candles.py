@@ -8,10 +8,142 @@ import pyupbit
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
 
 REQUIRED_COLUMNS = ("open", "high", "low", "close", "volume")
+_CANDLE_INTERVAL_ALIASES = {
+    "day": "day",
+    "daily": "day",
+    "1d": "day",
+    "d": "day",
+    "minute60": "minute60",
+    "60m": "minute60",
+    "1h": "minute60",
+    "hour": "minute60",
+    "hourly": "minute60",
+    "minute30": "minute30",
+    "30m": "minute30",
+    "30min": "minute30",
+}
+_CANDLE_INTERVAL_SECONDS = {
+    "day": 24 * 60 * 60,
+    "minute60": 60 * 60,
+    "minute30": 30 * 60,
+}
 
 
 class _EmptyCandleResponse(UpbitError):
     """pyupbit가 일시적으로 빈 OHLCV 응답을 돌려줄 때의 내부 재시도용 예외."""
+
+
+def normalize_candle_interval(interval: str) -> str:
+    """프로젝트 내부 candle interval alias를 Upbit/pyupbit canonical 값으로 정규화."""
+    normalized = _CANDLE_INTERVAL_ALIASES.get(str(interval).strip().lower())
+    if normalized is None:
+        supported = ", ".join(sorted(set(_CANDLE_INTERVAL_ALIASES.keys())))
+        raise ValueError(f"unsupported candle interval: {interval!r} (supported: {supported})")
+    return normalized
+
+
+def candle_bar_seconds(interval: str) -> int:
+    """캔들 하나가 대표하는 시간(초)."""
+    return _CANDLE_INTERVAL_SECONDS[normalize_candle_interval(interval)]
+
+
+def history_days_to_candles(days: int, interval: str = "day") -> int:
+    """일수 기반 lookback을 interval별 candle 수로 변환.
+
+    - day: N일 -> N candles
+    - minute60: N일 -> N*24 candles
+    - minute30: N일 -> N*48 candles
+    """
+    if days < 1:
+        raise ValueError("days must be >= 1")
+    bar_seconds = candle_bar_seconds(interval)
+    return max(int(days * (24 * 60 * 60) / bar_seconds), 1)
+
+
+def project_higher_timeframe_features(
+    feature_df: pd.DataFrame,
+    target_index: pd.Index,
+    *,
+    columns: list[str] | tuple[str, ...] | None = None,
+) -> pd.DataFrame:
+    """상위 프레임 feature를 하위 프레임 인덱스로 forward-fill 투영.
+
+    멀티 타임프레임 전략의 핵심 빌딩 블록:
+    - daily → minute60 (1H): regime_on / regime SMA 투영
+    - daily → minute30 (30m): regime_on / regime SMA 투영
+    - minute60 → minute30: 1H setup feature → 30m trigger 투영
+
+    예: 일봉에서 계산한 regime_on / regime_sma120을 1H 또는 30m 인덱스에 맞춰 펼친다.
+    """
+    if feature_df.empty:
+        raise ValueError("feature_df must not be empty")
+    if len(target_index) == 0:
+        raise ValueError("target_index must not be empty")
+
+    projected = feature_df.copy()
+    if columns is not None:
+        projected = projected.loc[:, list(columns)]
+    projected = projected.sort_index()
+    union_index = projected.index.union(target_index)
+    with pd.option_context("future.no_silent_downcasting", True):
+        projected = projected.reindex(union_index).sort_index().ffill().infer_objects(copy=False)
+    return projected.reindex(target_index)
+
+
+def project_features(
+    source_df: pd.DataFrame,
+    target_index: pd.Index,
+    *,
+    source_interval: str,
+    target_interval: str,
+    columns: list[str] | tuple[str, ...] | None = None,
+) -> pd.DataFrame:
+    """상위/동일/하위 프레임 간 feature projection.
+
+    멀티 타임프레임 전략(daily regime + 1H setup + 30m trigger)을 위한
+    일반화 projection helper.
+
+    - source_interval > target_interval: ffill (예: daily→1H, 1H→30m)
+    - source_interval == target_interval: 단순 reindex
+    - source_interval < target_interval: bfill (예: 30m→1H, 드묾)
+
+    Args:
+        source_df: feature가 있는 DataFrame (index는 해당 타임프레임 timestamp).
+        target_index: feature를 투영할 하위/동일 프레임 인덱스.
+        source_interval: source_df의 interval (canonical).
+        target_interval: target_index의 interval (canonical).
+        columns: 투영할 컬럼 목록. None이면 전체.
+
+    Returns:
+        target_index에 맞춰 reindex + forward-fill 된 DataFrame.
+    """
+    if source_df.empty:
+        raise ValueError("source_df must not be empty")
+    if len(target_index) == 0:
+        raise ValueError("target_index must not be empty")
+
+    src_norm = normalize_candle_interval(source_interval)
+    tgt_norm = normalize_candle_interval(target_interval)
+    src_secs = candle_bar_seconds(src_norm)
+    tgt_secs = candle_bar_seconds(tgt_norm)
+
+    projected = source_df.copy()
+    if columns is not None:
+        projected = projected.loc[:, list(columns)]
+    projected = projected.sort_index()
+
+    union_index = projected.index.union(target_index)
+    projected = projected.reindex(union_index).sort_index().infer_objects(copy=False)
+
+    # 상위 → 하위: ffill (더 새로운 상위 값을 하위에 전파)
+    # 동일: 그냥 reindex
+    # 하위 → 상위: bfill (더 오래된 하위 값을 상위에 전파 — 드묾)
+    if src_secs > tgt_secs:
+        projected = projected.ffill()
+    elif src_secs < tgt_secs:
+        projected = projected.bfill()
+
+    return projected.reindex(target_index)
 
 
 def enrich_daily(df: pd.DataFrame, ma_window: int = 5, k: float = 0.5) -> pd.DataFrame:
@@ -359,6 +491,489 @@ def enrich_rcdb_v2(
     return out
 
 
+def enrich_regime_reclaim_1h(
+    df: pd.DataFrame,
+    *,
+    daily_regime_ma_window: int = 120,
+    dip_lookback_bars: int = 8,
+    pullback_threshold_pct: float = -0.025,
+    rsi_window: int = 14,
+    reclaim_ema_window: int = 6,
+    atr_window: int = 14,
+    regime_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Daily regime + 1H reclaim mean reversion용 보조 컬럼 추가.
+
+    P0 이후 첫 1H 전략 발판:
+    - regime_df가 일봉이면 regime_on / regime SMA를 1H 인덱스로 투영
+    - entry는 1H dip + RSI + reclaim 조건으로 판단
+    - exit는 reversion baseline / trailing / regime_off / time_exit를 사용
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if daily_regime_ma_window < 2:
+        raise ValueError("daily_regime_ma_window must be >= 2")
+    if dip_lookback_bars < 1:
+        raise ValueError("dip_lookback_bars must be >= 1")
+    if pullback_threshold_pct >= 0:
+        raise ValueError("pullback_threshold_pct must be < 0")
+    if rsi_window < 2:
+        raise ValueError("rsi_window must be >= 2")
+    if reclaim_ema_window < 1:
+        raise ValueError("reclaim_ema_window must be >= 1")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if regime_df is not None:
+        regime_missing = [c for c in REQUIRED_COLUMNS if c not in regime_df.columns]
+        if regime_missing:
+            raise ValueError(f"regime_df missing required columns: {regime_missing}")
+
+    out = df.copy()
+
+    if regime_df is None:
+        regime_source = out[["close"]].rename(columns={"close": "regime_close"})
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["regime_close"]
+            .rolling(window=daily_regime_ma_window)
+            .mean()
+            .shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["regime_close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        projected = regime_source[[
+            "regime_close",
+            f"daily_regime_sma{daily_regime_ma_window}",
+            "daily_regime_on",
+        ]]
+    else:
+        regime_source = regime_df.copy()
+        regime_source["regime_close"] = regime_source["close"]
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["close"].rolling(window=daily_regime_ma_window).mean().shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        projected = project_higher_timeframe_features(
+            regime_source,
+            out.index,
+            columns=[
+                "regime_close",
+                f"daily_regime_sma{daily_regime_ma_window}",
+                "daily_regime_on",
+            ],
+        )
+
+    out = out.join(projected, how="left")
+
+    pullback_col = f"pullback_return_{dip_lookback_bars}"
+    out[pullback_col] = out["close"] / out["close"].shift(dip_lookback_bars) - 1.0
+    out[f"pullback_threshold_{dip_lookback_bars}"] = pullback_threshold_pct
+
+    delta = out["close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / rsi_window, adjust=False, min_periods=rsi_window).mean()
+    avg_loss = loss.ewm(alpha=1 / rsi_window, adjust=False, min_periods=rsi_window).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    out[f"rsi{rsi_window}"] = 100 - (100 / (1 + rs))
+
+    out[f"reclaim_ema{reclaim_ema_window}"] = (
+        out["close"].ewm(span=reclaim_ema_window, adjust=False).mean().shift(1)
+    )
+    out[f"reversion_sma{dip_lookback_bars}"] = (
+        out["close"].rolling(window=dip_lookback_bars).mean().shift(1)
+    )
+
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out[f"atr{atr_window}"] = tr.rolling(window=atr_window).mean().shift(1)
+    return out
+
+
+def enrich_regime_reclaim_30m(
+    df: pd.DataFrame,
+    *,
+    daily_regime_df: pd.DataFrame | None = None,
+    daily_regime_ma_window: int = 120,
+    hourly_setup_df: pd.DataFrame | None = None,
+    hourly_pullback_bars: int = 8,
+    hourly_pullback_threshold_pct: float = -0.025,
+    dip_lookback_bars: int = 8,
+    pullback_threshold_pct: float = -0.025,
+    rsi_window: int = 14,
+    reclaim_ema_window: int = 6,
+    reversion_sma_window: int | None = None,
+    atr_window: int = 14,
+) -> pd.DataFrame:
+    """Daily regime + 1H setup + 30m trigger 전략용 보조 컬럼 추가.
+
+    멀티 타임프레임 구조:
+    - Daily: regime_on / regime SMA (daily_regime_df 또는 df 자체에서 계산)
+    - 1H: pullback / oversold setup (hourly_setup_df 에서 계산 후 30m 인덱스로 투영)
+    - 30m: reclaim trigger (df 자체에서 계산)
+
+    Args:
+        df: 30m candle DataFrame (trigger 기준).
+        daily_regime_df: 일봉 DataFrame. None이면 df 자체에서 regime 계산.
+        hourly_setup_df: 1H candle DataFrame. None이면 30m df 로 fallback.
+        daily_regime_ma_window: 일봉 regime SMA 윈도우.
+        hourly_pullback_bars: 1H pullback lookback 바 수.
+        hourly_pullback_threshold_pct: 1H pullback 임계값.
+        dip_lookback_bars: 30m dip lookback 바 수.
+        pullback_threshold_pct: 30m pullback 임계값.
+        rsi_window: RSI 윈도우.
+        reclaim_ema_window: reclaim EMA 윈도우.
+        reversion_sma_window: reversion_exit 목표 SMA 윈도우. None이면 dip_lookback_bars 사용.
+        atr_window: ATR 윈도우.
+
+    Added columns (30m df 기준):
+        - daily_regime_close / daily_regime_sma{N} / daily_regime_on (daily→30m 투영)
+        - hourly_pullback_return_{N} / hourly_pullback_threshold (1H setup→30m 투영)
+        - pullback_return_{N} / pullback_threshold (30m 자체)
+        - rsi{N}, reclaim_ema{N}, reversion_sma{N}, atr{N}
+
+    Usage pattern for next-turn strategy:
+        # fetch 30m candles (trigger), daily candles (regime), 1H candles (setup)
+        df30 = fetch_candles(client, ticker, interval="minute30", ...)
+        df_daily = fetch_candles(client, ticker, interval="day", ...)
+        df_1h = fetch_candles(client, ticker, interval="minute60", ...)
+        # enrich 30m with multi-TF features
+        enriched = enrich_regime_reclaim_30m(
+            df30,
+            daily_regime_df=df_daily,
+            hourly_setup_df=df_1h,
+            daily_regime_ma_window=120,
+            hourly_pullback_bars=8,
+            ...
+        )
+        # strategy generates signal from enriched 30m df
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if daily_regime_ma_window < 2:
+        raise ValueError("daily_regime_ma_window must be >= 2")
+    if dip_lookback_bars < 1:
+        raise ValueError("dip_lookback_bars must be >= 1")
+    if pullback_threshold_pct >= 0:
+        raise ValueError("pullback_threshold_pct must be < 0")
+    if rsi_window < 2:
+        raise ValueError("rsi_window must be >= 2")
+    if reclaim_ema_window < 1:
+        raise ValueError("reclaim_ema_window must be >= 1")
+    if reversion_sma_window is not None and reversion_sma_window < 1:
+        raise ValueError("reversion_sma_window must be >= 1 when set")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if daily_regime_df is not None:
+        regime_missing = [c for c in REQUIRED_COLUMNS if c not in daily_regime_df.columns]
+        if regime_missing:
+            raise ValueError(f"daily_regime_df missing required columns: {regime_missing}")
+    if hourly_setup_df is not None:
+        setup_missing = [c for c in REQUIRED_COLUMNS if c not in hourly_setup_df.columns]
+        if setup_missing:
+            raise ValueError(f"hourly_setup_df missing required columns: {setup_missing}")
+
+    out = df.copy()
+
+    # --- Daily regime projection onto 30m index ---
+    if daily_regime_df is not None:
+        regime_source = daily_regime_df.copy()
+        regime_source["regime_close"] = regime_source["close"]
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["close"].rolling(window=daily_regime_ma_window).mean().shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        daily_features = project_higher_timeframe_features(
+            regime_source,
+            out.index,
+            columns=[
+                "regime_close",
+                f"daily_regime_sma{daily_regime_ma_window}",
+                "daily_regime_on",
+            ],
+        )
+    else:
+        # Fallback: compute regime from 30m df itself (same-asset, no cross-TF)
+        regime_source = out[["close"]].rename(columns={"close": "regime_close"})
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["regime_close"]
+            .rolling(window=daily_regime_ma_window)
+            .mean()
+            .shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["regime_close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        daily_features = regime_source[[
+            "regime_close",
+            f"daily_regime_sma{daily_regime_ma_window}",
+            "daily_regime_on",
+        ]]
+
+    out = out.join(daily_features, how="left")
+
+    # --- 1H setup projection onto 30m index ---
+    if hourly_setup_df is not None:
+        # Compute 1H pullback features
+        setup = hourly_setup_df.copy()
+        setup["regime_close"] = setup["close"]
+        setup[f"hourly_pullback_return_{hourly_pullback_bars}"] = (
+            setup["close"] / setup["close"].shift(hourly_pullback_bars) - 1.0
+        )
+        setup[f"hourly_pullback_threshold_{hourly_pullback_bars}"] = hourly_pullback_threshold_pct
+        setup_cols = [
+            f"hourly_pullback_return_{hourly_pullback_bars}",
+            f"hourly_pullback_threshold_{hourly_pullback_bars}",
+        ]
+        hourly_features = project_higher_timeframe_features(
+            setup,
+            out.index,
+            columns=setup_cols,
+        )
+        out = out.join(hourly_features, how="left")
+    else:
+        # Fallback: use 30m df's own pullback features as 1H setup proxy
+        # out 에 직접 추가 (join 불필요 — 이미 같은 index)
+        pullback_col = f"hourly_pullback_return_{hourly_pullback_bars}"
+        threshold_col = f"hourly_pullback_threshold_{hourly_pullback_bars}"
+        if pullback_col not in out.columns:
+            out[pullback_col] = out["close"] / out["close"].shift(hourly_pullback_bars) - 1.0
+        if threshold_col not in out.columns:
+            out[threshold_col] = hourly_pullback_threshold_pct
+
+    # --- 30m trigger features ---
+    pullback_col = f"pullback_return_{dip_lookback_bars}"
+    out[pullback_col] = out["close"] / out["close"].shift(dip_lookback_bars) - 1.0
+    out[f"pullback_threshold_{dip_lookback_bars}"] = pullback_threshold_pct
+
+    delta = out["close"].diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / rsi_window, adjust=False, min_periods=rsi_window).mean()
+    avg_loss = loss.ewm(alpha=1 / rsi_window, adjust=False, min_periods=rsi_window).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    out[f"rsi{rsi_window}"] = 100 - (100 / (1 + rs))
+
+    out[f"reclaim_ema{reclaim_ema_window}"] = (
+        out["close"].ewm(span=reclaim_ema_window, adjust=False).mean().shift(1)
+    )
+    reversion_window = reversion_sma_window or dip_lookback_bars
+    out[f"reversion_sma{reversion_window}"] = (
+        out["close"].rolling(window=reversion_window).mean().shift(1)
+    )
+
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out[f"atr{atr_window}"] = tr.rolling(window=atr_window).mean().shift(1)
+    return out
+
+
+def _rsi(close: pd.Series, window: int) -> pd.Series:
+    """Wilder-style EWM RSI used by intraday strategy enrichers."""
+    delta = close.diff()
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+    avg_gain = gain.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+    avg_loss = loss.ewm(alpha=1 / window, adjust=False, min_periods=window).mean()
+    rs = avg_gain / avg_loss.replace(0, float("nan"))
+    return 100 - (100 / (1 + rs))
+
+
+def enrich_regime_pullback_continuation_30m(
+    df: pd.DataFrame,
+    *,
+    daily_regime_df: pd.DataFrame | None = None,
+    daily_regime_ma_window: int = 100,
+    hourly_setup_df: pd.DataFrame | None = None,
+    trend_ema_fast_1h: int = 20,
+    trend_ema_slow_1h: int = 60,
+    trend_slope_lookback_1h: int = 3,
+    pullback_lookback_1h: int = 8,
+    setup_rsi_window: int = 14,
+    setup_rsi_recent_window_1h: int | None = None,
+    trigger_ema_fast_30m: int = 8,
+    trigger_ema_slow_30m: int = 21,
+    trigger_breakout_lookback_30m: int = 6,
+    trigger_volume_window_30m: int = 20,
+    atr_window: int = 14,
+) -> pd.DataFrame:
+    """Daily regime + 1H pullback + 30m continuation strategy features.
+
+    This enricher is intentionally separate from ``regime_reclaim_30m`` because
+    the thesis is continuation, not shallow mean reversion.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if daily_regime_ma_window < 2:
+        raise ValueError("daily_regime_ma_window must be >= 2")
+    if trend_ema_fast_1h < 1:
+        raise ValueError("trend_ema_fast_1h must be >= 1")
+    if trend_ema_slow_1h <= trend_ema_fast_1h:
+        raise ValueError("trend_ema_slow_1h must be > trend_ema_fast_1h")
+    if trend_slope_lookback_1h < 1:
+        raise ValueError("trend_slope_lookback_1h must be >= 1")
+    if pullback_lookback_1h < 1:
+        raise ValueError("pullback_lookback_1h must be >= 1")
+    if setup_rsi_window < 2:
+        raise ValueError("setup_rsi_window must be >= 2")
+    if trigger_ema_fast_30m < 1:
+        raise ValueError("trigger_ema_fast_30m must be >= 1")
+    if trigger_ema_slow_30m <= trigger_ema_fast_30m:
+        raise ValueError("trigger_ema_slow_30m must be > trigger_ema_fast_30m")
+    if trigger_breakout_lookback_30m < 1:
+        raise ValueError("trigger_breakout_lookback_30m must be >= 1")
+    if trigger_volume_window_30m < 1:
+        raise ValueError("trigger_volume_window_30m must be >= 1")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if daily_regime_df is not None:
+        regime_missing = [c for c in REQUIRED_COLUMNS if c not in daily_regime_df.columns]
+        if regime_missing:
+            raise ValueError(f"daily_regime_df missing required columns: {regime_missing}")
+    if hourly_setup_df is not None:
+        setup_missing = [c for c in REQUIRED_COLUMNS if c not in hourly_setup_df.columns]
+        if setup_missing:
+            raise ValueError(f"hourly_setup_df missing required columns: {setup_missing}")
+
+    out = df.copy()
+    rsi_recent_window = setup_rsi_recent_window_1h or pullback_lookback_1h
+
+    # --- Daily/BTC regime projection ---
+    if daily_regime_df is not None:
+        regime_source = daily_regime_df.copy()
+        regime_source["regime_close"] = regime_source["close"]
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["close"].rolling(window=daily_regime_ma_window).mean().shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        daily_features = project_higher_timeframe_features(
+            regime_source,
+            out.index,
+            columns=[
+                "regime_close",
+                f"daily_regime_sma{daily_regime_ma_window}",
+                "daily_regime_on",
+            ],
+        )
+    else:
+        regime_source = out[["close"]].rename(columns={"close": "regime_close"})
+        regime_source[f"daily_regime_sma{daily_regime_ma_window}"] = (
+            regime_source["regime_close"].rolling(window=daily_regime_ma_window).mean().shift(1)
+        )
+        regime_source["daily_regime_on"] = (
+            regime_source["regime_close"] >= regime_source[f"daily_regime_sma{daily_regime_ma_window}"]
+        )
+        daily_features = regime_source[
+            ["regime_close", f"daily_regime_sma{daily_regime_ma_window}", "daily_regime_on"]
+        ]
+    out = out.join(daily_features, how="left")
+
+    # --- 1H trend / pullback setup projection ---
+    setup = hourly_setup_df.copy() if hourly_setup_df is not None else out.copy()
+    setup["hourly_close"] = setup["close"]
+    setup[f"hourly_ema_fast{trend_ema_fast_1h}"] = (
+        setup["close"].ewm(span=trend_ema_fast_1h, adjust=False).mean().shift(1)
+    )
+    setup[f"hourly_ema_slow{trend_ema_slow_1h}"] = (
+        setup["close"].ewm(span=trend_ema_slow_1h, adjust=False).mean().shift(1)
+    )
+    setup[f"hourly_ema_fast_slope{trend_slope_lookback_1h}"] = (
+        setup[f"hourly_ema_fast{trend_ema_fast_1h}"]
+        - setup[f"hourly_ema_fast{trend_ema_fast_1h}"].shift(trend_slope_lookback_1h)
+    )
+    setup["hourly_trend_on"] = (
+        setup[f"hourly_ema_fast{trend_ema_fast_1h}"]
+        > setup[f"hourly_ema_slow{trend_ema_slow_1h}"]
+    )
+    setup[f"hourly_pullback_return_{pullback_lookback_1h}"] = (
+        setup["close"] / setup["close"].shift(pullback_lookback_1h) - 1.0
+    )
+    setup[f"hourly_rsi{setup_rsi_window}"] = _rsi(setup["close"], setup_rsi_window)
+    setup[f"hourly_rsi_recent_min{rsi_recent_window}"] = (
+        setup[f"hourly_rsi{setup_rsi_window}"]
+        .rolling(window=rsi_recent_window)
+        .min()
+        .shift(1)
+    )
+    hourly_cols = [
+        "hourly_close",
+        f"hourly_ema_fast{trend_ema_fast_1h}",
+        f"hourly_ema_slow{trend_ema_slow_1h}",
+        f"hourly_ema_fast_slope{trend_slope_lookback_1h}",
+        "hourly_trend_on",
+        f"hourly_pullback_return_{pullback_lookback_1h}",
+        f"hourly_rsi{setup_rsi_window}",
+        f"hourly_rsi_recent_min{rsi_recent_window}",
+    ]
+    if hourly_setup_df is not None:
+        out = out.join(
+            project_higher_timeframe_features(setup, out.index, columns=hourly_cols),
+            how="left",
+        )
+    else:
+        out = out.join(setup[hourly_cols], how="left", rsuffix="_setup")
+
+    # --- 30m momentum trigger features ---
+    out[f"trigger_ema_fast{trigger_ema_fast_30m}"] = (
+        out["close"].ewm(span=trigger_ema_fast_30m, adjust=False).mean().shift(1)
+    )
+    out[f"trigger_ema_slow{trigger_ema_slow_30m}"] = (
+        out["close"].ewm(span=trigger_ema_slow_30m, adjust=False).mean().shift(1)
+    )
+    out[f"trigger_recent_high{trigger_breakout_lookback_30m}"] = (
+        out["high"].rolling(window=trigger_breakout_lookback_30m).max().shift(1)
+    )
+    out[f"trigger_volume_mean{trigger_volume_window_30m}"] = (
+        out["volume"].rolling(window=trigger_volume_window_30m).mean().shift(1)
+    )
+    candle_range = out["high"] - out["low"]
+    out["close_location_value"] = (
+        (out["close"] - out["low"]) / candle_range.where(candle_range != 0)
+    ).fillna(0.5)
+    out[f"rsi{setup_rsi_window}"] = _rsi(out["close"], setup_rsi_window)
+
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out[f"atr{atr_window}"] = tr.rolling(window=atr_window).mean().shift(1)
+    return out
+
+
 def enrich_for_strategy(
     df: pd.DataFrame,
     strategy_name: str,
@@ -367,6 +982,8 @@ def enrich_for_strategy(
     ma_window: int = 5,
     k: float = 0.5,
     regime_df: pd.DataFrame | None = None,
+    hourly_setup_df: pd.DataFrame | None = None,
+    interval: str = "day",
 ) -> pd.DataFrame:
     """전략에 맞는 보조 컬럼 추가."""
     if strategy_name == "volatility_breakout":
@@ -440,6 +1057,52 @@ def enrich_for_strategy(
             atr_window=atr_window,
             regime_df=regime_df,
         )
+    elif strategy_name == "regime_reclaim_1h":
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_regime_reclaim_1h(
+            enriched,
+            daily_regime_ma_window=strategy_params.get("daily_regime_ma_window", 120),
+            dip_lookback_bars=strategy_params.get("dip_lookback_bars", 8),
+            pullback_threshold_pct=strategy_params.get("pullback_threshold_pct", -0.025),
+            rsi_window=strategy_params.get("rsi_window", 14),
+            reclaim_ema_window=strategy_params.get("reclaim_ema_window", 6),
+            atr_window=strategy_params.get("atr_window", 14),
+            regime_df=regime_df,
+        )
+    elif strategy_name == "regime_reclaim_30m":
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_regime_reclaim_30m(
+            enriched,
+            daily_regime_df=regime_df,
+            daily_regime_ma_window=strategy_params.get("daily_regime_ma_window", 120),
+            hourly_setup_df=hourly_setup_df,
+            hourly_pullback_bars=strategy_params.get("hourly_pullback_bars", 8),
+            hourly_pullback_threshold_pct=strategy_params.get("hourly_pullback_threshold_pct", -0.025),
+            dip_lookback_bars=strategy_params.get("hourly_pullback_bars", 8),
+            pullback_threshold_pct=strategy_params.get("hourly_pullback_threshold_pct", -0.025),
+            rsi_window=strategy_params.get("setup_rsi_window", strategy_params.get("rsi_window", 14)),
+            reclaim_ema_window=strategy_params.get("trigger_reclaim_ema_window", strategy_params.get("reclaim_ema_window", 6)),
+            reversion_sma_window=strategy_params.get("reversion_sma_window_override"),
+            atr_window=strategy_params.get("atr_window", 14),
+        )
+    elif strategy_name == "regime_pullback_continuation_30m":
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_regime_pullback_continuation_30m(
+            enriched,
+            daily_regime_df=regime_df,
+            daily_regime_ma_window=strategy_params.get("daily_regime_ma_window", 100),
+            hourly_setup_df=hourly_setup_df,
+            trend_ema_fast_1h=strategy_params.get("trend_ema_fast_1h", 20),
+            trend_ema_slow_1h=strategy_params.get("trend_ema_slow_1h", 60),
+            trend_slope_lookback_1h=strategy_params.get("trend_slope_lookback_1h", 3),
+            pullback_lookback_1h=strategy_params.get("pullback_lookback_1h", 8),
+            setup_rsi_window=strategy_params.get("setup_rsi_window", 14),
+            trigger_ema_fast_30m=strategy_params.get("trigger_ema_fast_30m", 8),
+            trigger_ema_slow_30m=strategy_params.get("trigger_ema_slow_30m", 21),
+            trigger_breakout_lookback_30m=strategy_params.get("trigger_breakout_lookback_30m", 6),
+            trigger_volume_window_30m=strategy_params.get("trigger_volume_window_30m", 20),
+            atr_window=strategy_params.get("atr_window", 14),
+        )
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)
@@ -500,6 +1163,39 @@ def recommended_history_days(
             int(params.get("atr_window", 14)),
             base_window,
         )
+    elif strategy_name == "regime_reclaim_1h":
+        window = max(
+            int(params.get("daily_regime_ma_window", 120)),
+            int(params.get("dip_lookback_bars", 8)),
+            int(params.get("rsi_window", 14)),
+            int(params.get("reclaim_ema_window", 6)),
+            int(params.get("atr_window", 14)),
+            base_window,
+        )
+    elif strategy_name == "regime_reclaim_30m":
+        window = max(
+            int(params.get("daily_regime_ma_window", 120)),
+            int(params.get("hourly_pullback_bars", 8)),
+            int(params.get("dip_lookback_bars", 8)),
+            int(params.get("setup_rsi_window", params.get("rsi_window", 14))),
+            int(params.get("trigger_reclaim_ema_window", 6)),
+            int(params.get("reversion_sma_window_override") or params.get("dip_lookback_bars", 8)),
+            int(params.get("atr_window", 14)),
+            base_window,
+        )
+    elif strategy_name == "regime_pullback_continuation_30m":
+        window = max(
+            int(params.get("daily_regime_ma_window", 100)),
+            int(params.get("trend_ema_slow_1h", 60)),
+            int(params.get("trend_slope_lookback_1h", 3)),
+            int(params.get("pullback_lookback_1h", 8)),
+            int(params.get("setup_rsi_window", 14)),
+            int(params.get("trigger_ema_slow_30m", 21)),
+            int(params.get("trigger_breakout_lookback_30m", 6)),
+            int(params.get("trigger_volume_window_30m", 20)),
+            int(params.get("atr_window", 14)),
+            base_window,
+        )
     else:
         window = base_window
 
@@ -516,20 +1212,56 @@ def fetch_daily(
     strategy_name: str = "volatility_breakout",
     strategy_params: dict | None = None,
     to: datetime | str | None = None,
+    interval: str = "day",
 ) -> pd.DataFrame:
-    """업비트 일봉 조회 → 보조 컬럼 추가된 DataFrame 반환.
+    """업비트 candle 조회 → 보조 컬럼 추가된 DataFrame 반환.
 
     `client`는 throttle/retry 이점을 위해 받지만, `pyupbit.get_ohlcv`는 공개 엔드포인트라
     인증 없이도 동작한다.
     """
+    return fetch_candles(
+        client,
+        ticker,
+        count=count,
+        ma_window=ma_window,
+        k=k,
+        strategy_name=strategy_name,
+        strategy_params=strategy_params,
+        to=to,
+        interval=interval,
+    )
+
+
+def fetch_candles(
+    client: UpbitClient,
+    ticker: str,
+    *,
+    count: int = 200,
+    ma_window: int = 5,
+    k: float = 0.5,
+    strategy_name: str = "volatility_breakout",
+    strategy_params: dict | None = None,
+    to: datetime | str | None = None,
+    interval: str = "day",
+) -> pd.DataFrame:
+    """업비트 candle 조회 → 보조 컬럼 추가된 DataFrame 반환.
+
+    기존 daily 경로와 공존하도록 `interval="day"`가 기본이며,
+    P0에서는 `minute60`(1H)까지 공식 지원한다.
+    P1에서는 `minute30`(30m)도 지원하며,
+    `regime_reclaim_30m` 전략은 daily + 1H + 30m 멀티 TF 자동 fetch 한다.
+    """
+    interval = normalize_candle_interval(interval)
+    params = strategy_params or {}
+    regime_interval = normalize_candle_interval(params.get("regime_interval", interval))
 
     def _fetch() -> pd.DataFrame:
-        df = pyupbit.get_ohlcv(ticker, interval="day", count=count, to=to)
+        df = pyupbit.get_ohlcv(ticker, interval=interval, count=count, to=to)
         if df is None or df.empty:
             raise _EmptyCandleResponse(f"no candles returned for {ticker}")
         return df
 
-    label = f"get_ohlcv({ticker}, day, {count})"
+    label = f"get_ohlcv({ticker}, {interval}, {count})"
     if to is not None:
         label = f"{label}, to={to}"
 
@@ -542,17 +1274,72 @@ def fetch_daily(
         raise
 
     regime_df = None
-    params = strategy_params or {}
-    if strategy_name in {"rcdb", "rcdb_v2"}:
+    hourly_setup_df = None
+
+    # 30m multi-TF strategies: daily regime + 1H setup + 30m trigger
+    if strategy_name in {"regime_reclaim_30m", "regime_pullback_continuation_30m"}:
+        regime_ticker = params.get("regime_ticker", ticker)
+        daily_count = history_days_to_candles(count // 48 + 3, "day") if count < 500 else count // 48 + 3
+        # daily regime fetch
+        if regime_ticker:
+            def _fetch_daily() -> pd.DataFrame:
+                rdf = pyupbit.get_ohlcv(regime_ticker, interval="day", count=daily_count, to=to)
+                if rdf is None or rdf.empty:
+                    raise _EmptyCandleResponse(f"no candles returned for {regime_ticker} day")
+                return rdf
+            daily_label = f"get_ohlcv({regime_ticker}, day, {daily_count})"
+            if to is not None:
+                daily_label = f"{daily_label}, to={to}"
+            try:
+                regime_df = client._call(daily_label, _fetch_daily)
+            except UpbitError as exc:
+                cause = exc.__cause__
+                if isinstance(cause, _EmptyCandleResponse):
+                    raise UpbitError(f"no candles returned for {regime_ticker} day") from exc
+                raise
+        # 1H setup fetch
+        hour_count = history_days_to_candles(count // 48 + 3, "minute60") if count < 500 else count // 24 + 3
+        setup_ticker = params.get("setup_ticker", ticker)
+        if setup_ticker:
+            def _fetch_hourly() -> pd.DataFrame:
+                rdf = pyupbit.get_ohlcv(setup_ticker, interval="minute60", count=hour_count, to=to)
+                if rdf is None or rdf.empty:
+                    raise _EmptyCandleResponse(f"no candles returned for {setup_ticker} 1H")
+                return rdf
+            hourly_label = f"get_ohlcv({setup_ticker}, minute60, {hour_count})"
+            if to is not None:
+                hourly_label = f"{hourly_label}, to={to}"
+            try:
+                hourly_setup_df = client._call(hourly_label, _fetch_hourly)
+            except UpbitError as exc:
+                cause = exc.__cause__
+                if isinstance(cause, _EmptyCandleResponse):
+                    raise UpbitError(f"no candles returned for {setup_ticker} 1H") from exc
+                raise
+
+    # regime strategies: rcdb, rcdb_v2, regime_reclaim_1h
+    elif strategy_name in {"rcdb", "rcdb_v2", "regime_reclaim_1h"}:
         regime_ticker = params.get("regime_ticker", "KRW-BTC")
-        if regime_ticker and regime_ticker != ticker:
+        regime_count = count
+        if regime_interval != interval:
+            ratio = candle_bar_seconds(interval) / candle_bar_seconds(regime_interval)
+            regime_count = max(int((count * ratio) + 0.999999), 1)
+        needs_regime_fetch = bool(regime_ticker) and (
+            regime_ticker != ticker or regime_interval != interval
+        )
+        if needs_regime_fetch:
             def _fetch_regime() -> pd.DataFrame:
-                rdf = pyupbit.get_ohlcv(regime_ticker, interval="day", count=count, to=to)
+                rdf = pyupbit.get_ohlcv(
+                    regime_ticker,
+                    interval=regime_interval,
+                    count=regime_count,
+                    to=to,
+                )
                 if rdf is None or rdf.empty:
                     raise _EmptyCandleResponse(f"no candles returned for {regime_ticker}")
                 return rdf
 
-            regime_label = f"get_ohlcv({regime_ticker}, day, {count})"
+            regime_label = f"get_ohlcv({regime_ticker}, {regime_interval}, {regime_count})"
             if to is not None:
                 regime_label = f"{regime_label}, to={to}"
             try:
@@ -566,4 +1353,6 @@ def fetch_daily(
         df, strategy_name, params,
         ma_window=ma_window, k=k,
         regime_df=regime_df,
+        hourly_setup_df=hourly_setup_df,
+        interval=interval,
     )

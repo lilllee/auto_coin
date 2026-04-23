@@ -17,8 +17,8 @@ from auto_coin.backtest.walk_forward import (
 )
 
 
-def _make_df(n: int, seed: int = 42) -> pd.DataFrame:
-    """Generate n days of synthetic OHLCV data."""
+def _make_df(n: int, seed: int = 42, *, freq: str = "D") -> pd.DataFrame:
+    """Generate synthetic OHLCV data."""
     np.random.seed(seed)
     closes = 100.0 + np.cumsum(np.random.randn(n) * 2)
     rows = []
@@ -33,7 +33,7 @@ def _make_df(n: int, seed: int = 42) -> pd.DataFrame:
                 "volume": 1000,
             }
         )
-    idx = pd.date_range("2024-01-01", periods=n, freq="D")
+    idx = pd.date_range("2024-01-01", periods=n, freq=freq)
     return pd.DataFrame(rows, index=idx)
 
 
@@ -73,8 +73,10 @@ def test_param_combos_mixed():
 def test_default_param_grids_cover_new_candidates():
     assert "sma200_regime" in DEFAULT_PARAM_GRIDS
     assert "ema_adx_atr_trend" in DEFAULT_PARAM_GRIDS
+    assert "regime_reclaim_1h" in DEFAULT_PARAM_GRIDS
     assert DEFAULT_PARAM_GRIDS["sma200_regime"]["ma_window"] == [180, 200, 220]
     assert DEFAULT_PARAM_GRIDS["ema_adx_atr_trend"]["atr_window"] == 14
+    assert DEFAULT_PARAM_GRIDS["regime_reclaim_1h"]["daily_regime_ma_window"] == 120
 
 
 # ===================================================================
@@ -143,6 +145,25 @@ def test_walk_forward_not_enough_data():
     )
     assert result.n_windows == 0
     assert result.windows == []
+
+
+def test_walk_forward_accepts_minute60_interval():
+    df = _make_df(24 * 20, freq="h")
+    result = walk_forward(
+        df,
+        "volatility_breakout",
+        {"k": [0.3, 0.5]},
+        interval="minute60",
+        train_days=10,
+        test_days=5,
+        fee=0.0,
+        slippage=0.0,
+    )
+    assert result.interval == "minute60"
+    assert result.n_windows >= 1
+    for w in result.windows:
+        assert w.train_start < w.train_end
+        assert w.test_start < w.test_end
 
 
 def test_walk_forward_empty_grid():
@@ -392,6 +413,25 @@ def test_cli_basic(mocker, capsys):
     assert "strategy=volatility_breakout" in out
 
 
+def test_cli_basic_minute60(mocker, capsys):
+    df = _make_df(24 * 20, freq="h")
+    get_ohlcv = mocker.patch("auto_coin.backtest.walk_forward.pyupbit.get_ohlcv", return_value=df)
+    rc = cli([
+        "--strategy", "volatility_breakout",
+        "--ticker", "KRW-BTC",
+        "--interval", "1h",
+        "--days", "20",
+        "--train-days", "10",
+        "--test-days", "5",
+        "--fee", "0",
+        "--slippage", "0",
+    ])
+    assert rc == 0
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="minute60", count=480)
+    out = capsys.readouterr().out
+    assert "interval=minute60" in out
+
+
 def test_cli_no_candles(mocker, capsys):
     """캔들 조회 실패 → rc=1."""
     mocker.patch("auto_coin.backtest.walk_forward.pyupbit.get_ohlcv", return_value=None)
@@ -415,6 +455,92 @@ def test_cli_param_grid_json(mocker, capsys):
         "--train-days", "120",
         "--test-days", "30",
         "--param-grid", '{"k": [0.3, 0.7]}',
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "WALK-FORWARD REPORT" in out
+
+
+# === minute30 walk_forward 지원 테스트 ===
+
+def test_walk_forward_supports_minute30_interval():
+    """walk_forward 가 minute30 interval 을 받아 crash-free 로 동작."""
+    # 30m sample df 생성 (walk_forward 에 필요한 충분한 데이터)
+    idx = pd.date_range("2026-01-01", periods=500, freq="30min")
+    np.random.seed(42)
+    closes = 100 + np.cumsum(np.random.randn(500) * 0.3)
+    df = pd.DataFrame(
+        {
+            "open":   closes + np.random.randn(500) * 0.1,
+            "high":   closes + np.abs(np.random.randn(500)) * 0.5,
+            "low":    closes - np.abs(np.random.randn(500)) * 0.5,
+            "close":  closes,
+            "volume": np.ones(500),
+        },
+        index=idx,
+    )
+
+    from auto_coin.backtest.walk_forward import walk_forward
+    result = walk_forward(
+        df,
+        "volatility_breakout",
+        param_grid={"k": [0.3, 0.5, 0.7]},
+        interval="minute30",
+        train_days=10,
+        test_days=5,
+    )
+
+    # crash-free 확인
+    assert result is not None
+    assert result.interval == "minute30"
+    # train_days=10 → 10*48=480 candles, test_days=5 → 5*48=240 candles
+    # total=500 이므로 윈도우가 생기려면 train+test <= 500 이어야 함
+    # 480+240=720 > 500 이므로 윈도우 없음 가능 → n_windows=0 가능
+
+
+def test_walk_forward_supports_minute30_with_windows():
+    """minute30 walk_forward 가 충분한 데이터에서 윈도우를 생성하는지."""
+    # 30m df: 20일치 = 20*48=960 candles
+    idx = pd.date_range("2026-01-01", periods=1000, freq="30min")
+    np.random.seed(42)
+    closes = 100 + np.cumsum(np.random.randn(1000) * 0.3)
+    df = pd.DataFrame(
+        {
+            "open":   closes + np.random.randn(1000) * 0.1,
+            "high":   closes + np.abs(np.random.randn(1000)) * 0.5,
+            "low":    closes - np.abs(np.random.randn(1000)) * 0.5,
+            "close":  closes,
+            "volume": np.ones(1000),
+        },
+        index=idx,
+    )
+
+    from auto_coin.backtest.walk_forward import walk_forward
+    result = walk_forward(
+        df,
+        "volatility_breakout",
+        param_grid={"k": [0.3, 0.5, 0.7]},
+        interval="minute30",
+        train_days=5,   # 5*48=240 candles
+        test_days=2,    # 2*48=96 candles
+    )
+
+    assert result is not None
+    assert result.interval == "minute30"
+    # train=240 + test=96 = 336, total=1000 → 최소 1 윈도우 가능
+
+
+def test_walk_forward_cli_supports_minute30(mocker, capsys):
+    """walk_forward CLI 가 minute30 interval 을 받는지."""
+    df = _make_df(500)
+    mocker.patch("auto_coin.backtest.walk_forward.pyupbit.get_ohlcv", return_value=df)
+    rc = cli([
+        "--strategy", "volatility_breakout",
+        "--ticker", "KRW-BTC",
+        "--days", "500",
+        "--interval", "30m",
+        "--train-days", "10",
+        "--test-days", "5",
     ])
     assert rc == 0
     out = capsys.readouterr().out

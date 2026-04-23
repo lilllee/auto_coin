@@ -12,6 +12,9 @@ from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
 from auto_coin.strategy.rcdb import RcdbStrategy
 from auto_coin.strategy.rcdb_v2 import RcdbV2Strategy
+from auto_coin.strategy.regime_reclaim_1h import RegimeReclaim1HStrategy
+from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
+from auto_coin.strategy.regime_pullback_continuation_30m import RegimePullbackContinuation30mStrategy
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -26,6 +29,9 @@ STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "sma200_ema_adx_composite": Sma200EmaAdxCompositeStrategy,
     "rcdb": RcdbStrategy,
     "rcdb_v2": RcdbV2Strategy,
+    "regime_reclaim_1h": RegimeReclaim1HStrategy,
+    "regime_reclaim_30m": RegimeReclaim30mStrategy,
+    "regime_pullback_continuation_30m": RegimePullbackContinuation30mStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -431,6 +437,255 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "highest_high - ATR × 배수 아래면 보호성 청산",
         },
     ],
+    "regime_reclaim_1h": [
+        {
+            "name": "regime_ticker",
+            "label": "Daily regime 기준 티커",
+            "type": "text",
+            "default": "KRW-BTC",
+            "hint": "상위 daily regime 판단에 사용할 기준 자산",
+        },
+        {
+            "name": "daily_regime_ma_window",
+            "label": "Daily regime SMA (일)",
+            "type": "number",
+            "min": "2",
+            "max": "300",
+            "default": 120,
+            "hint": "daily close가 이 SMA 위일 때만 신규 진입",
+        },
+        {
+            "name": "dip_lookback_bars",
+            "label": "1H pullback 기간 (bars)",
+            "type": "number",
+            "min": "1",
+            "max": "72",
+            "default": 8,
+            "hint": "최근 N시간 pullback 수익률 기준",
+        },
+        {
+            "name": "pullback_threshold_pct",
+            "label": "1H pullback 임계값",
+            "type": "number",
+            "step": "0.005",
+            "min": "-0.20",
+            "max": "-0.005",
+            "default": -0.025,
+            "hint": "예: -0.025 = 최근 N시간 -2.5% 이상 눌림",
+        },
+        {
+            "name": "rsi_window",
+            "label": "1H RSI 기간",
+            "type": "number",
+            "min": "2",
+            "max": "50",
+            "default": 14,
+            "hint": "1H 과매도 확인용 RSI 기간",
+        },
+        {
+            "name": "rsi_threshold",
+            "label": "1H RSI 임계값",
+            "type": "number",
+            "step": "0.1",
+            "min": "1",
+            "max": "99",
+            "default": 35,
+            "hint": "RSI가 이 값 이하일 때만 reclaim 진입 검토",
+        },
+        {
+            "name": "reclaim_ema_window",
+            "label": "1H reclaim EMA 기간",
+            "type": "number",
+            "min": "1",
+            "max": "30",
+            "default": 6,
+            "hint": "close > prev_close and close > EMA 일 때 reclaim 확인",
+        },
+        {
+            "name": "max_hold_bars",
+            "label": "최대 보유 bars",
+            "type": "number",
+            "min": "1",
+            "max": "240",
+            "default": 36,
+            "hint": "reversion 실패 시 safety only 시간 청산",
+        },
+        {
+            "name": "atr_window",
+            "label": "1H ATR 기간",
+            "type": "number",
+            "min": "1",
+            "max": "100",
+            "default": 14,
+            "hint": "보호성 ATR trailing 계산 기간",
+        },
+          {
+              "name": "atr_trailing_mult",
+              "label": "ATR trailing 배수",
+              "type": "number",
+             "step": "0.1",
+             "min": "0.5",
+             "max": "10.0",
+             "default": 2.0,
+             "hint": "highest_high - ATR × 배수 아래면 trailing exit",
+          },
+     ],
+    "regime_reclaim_30m": [
+        {
+            "name": "regime_ticker",
+            "label": "Daily regime 기준 티커",
+            "type": "text",
+            "default": "KRW-BTC",
+            "hint": "상위 daily regime 판단에 사용할 기준 자산",
+        },
+        {
+            "name": "daily_regime_ma_window",
+            "label": "Daily regime SMA (일)",
+            "type": "number",
+            "min": "2",
+            "max": "300",
+            "default": 100,
+            "hint": "daily close가 이 SMA 위일 때만 신규 진입. 기본 100일",
+        },
+         {
+             "name": "hourly_pullback_bars",
+             "label": "1H pullback 기간 (bars)",
+             "type": "number",
+             "min": "1",
+             "max": "72",
+             "default": 8,
+             "hint": "1H timeframe 기준 N시간 pullback 수익률 확인",
+         },
+         {
+             "name": "hourly_pullback_threshold_pct",
+             "label": "1H pullback 임계값",
+             "type": "number",
+             "step": "0.005",
+             "min": "-0.20",
+             "max": "-0.005",
+             "default": -0.025,
+             "hint": "1H pullback 수익률이 이 값 이하일 때 setup",
+         },
+         {
+             "name": "setup_rsi_window",
+             "label": "1H RSI 기간",
+             "type": "number",
+             "min": "2",
+             "max": "50",
+             "default": 14,
+             "hint": "1H 과매도 확인용 RSI 기간",
+         },
+         {
+             "name": "setup_rsi_threshold",
+             "label": "1H RSI 임계값",
+             "type": "number",
+             "step": "0.1",
+             "min": "1",
+             "max": "99",
+             "default": 35,
+             "hint": "1H RSI 가 이 값 이하일 때만 setup",
+         },
+         {
+             "name": "trigger_reclaim_ema_window",
+             "label": "30m reclaim EMA 기간",
+             "type": "number",
+             "min": "1",
+             "max": "30",
+             "default": 6,
+             "hint": "30m close > EMA 일 때 reclaim 확인",
+         },
+         {
+             "name": "trigger_rsi_rebound_threshold",
+             "label": "30m RSI 반등 임계값",
+             "type": "number",
+             "step": "0.1",
+             "min": "1",
+             "max": "99",
+             "default": 30,
+             "hint": "Trigger B: RSI 가 이 값 이상 + 전 봉보다 3 이상 상승",
+         },
+         {
+             "name": "max_hold_bars_30m",
+             "label": "최대 보유 bars (30분)",
+             "type": "number",
+             "min": "1",
+             "max": "240",
+             "default": 36,
+             "hint": "reversion 실패 시 safety only 시간 청산 (36 bars = 18시간)",
+         },
+         {
+             "name": "atr_window",
+             "label": "30m ATR 기간",
+             "type": "number",
+             "min": "1",
+             "max": "100",
+             "default": 14,
+             "hint": "trailing 계산용 ATR 기간",
+         },
+         {
+             "name": "atr_trailing_mult",
+             "label": "ATR trailing 배수",
+             "type": "number",
+            "step": "0.1",
+            "min": "0.5",
+            "max": "10.0",
+            "default": 2.0,
+            "hint": "highest_high - ATR × 배수 아래면 trailing exit",
+        },
+        {
+            "name": "reversion_sma_window_override",
+            "label": "Reversion SMA 기간 override",
+            "type": "number",
+            "min": "1",
+            "max": "96",
+            "default": None,
+            "hint": "None이면 hourly_pullback_bars 사용. v1.1 후보: 12/24/36/48 bars",
+        },
+        {
+            "name": "min_hold_bars_30m",
+            "label": "최소 보유 bars (reversion)",
+            "type": "number",
+            "min": "0",
+            "max": "20",
+            "default": 0,
+            "hint": "진입 후 최소 N bars 동안 reversion_exit만 금지. 0 = 비활성. v1.1 후보: 2~4",
+        },
+        {
+            "name": "reversion_min_profit_pct",
+            "label": "Reversion 최소 이익률",
+            "type": "number",
+            "step": "0.001",
+            "min": "0",
+            "max": "0.05",
+            "default": 0.0,
+            "hint": "ratio 단위. 0.003 = 0.3%, 0.005 = 0.5%, 0.008 = 0.8%",
+        },
+        {
+            "name": "reversion_confirmation_type",
+            "label": "Reversion 확인 유형",
+            "type": "select",
+            "options": ["none", "rsi", "consecutive"],
+            "default": "none",
+            "hint": "none=SMA touch, rsi=SMA touch+RSI>=50, consecutive=현재/전 bar SMA 위",
+        },
+    ],
+    "regime_pullback_continuation_30m": [
+        {"name": "regime_ticker", "label": "Daily regime 기준 티커", "type": "text", "default": "KRW-BTC", "hint": "상위 risk-on 판단 기준"},
+        {"name": "daily_regime_ma_window", "label": "Daily regime SMA", "type": "number", "min": "2", "max": "300", "default": 100, "hint": "BTC daily close > SMA"},
+        {"name": "trend_ema_fast_1h", "label": "1H trend EMA fast", "type": "number", "min": "1", "max": "100", "default": 20, "hint": "1H 추세 fast EMA"},
+        {"name": "trend_ema_slow_1h", "label": "1H trend EMA slow", "type": "number", "min": "2", "max": "200", "default": 60, "hint": "1H 추세 slow EMA"},
+        {"name": "pullback_lookback_1h", "label": "1H pullback bars", "type": "number", "min": "1", "max": "48", "default": 8, "hint": "눌림 수익률 측정 기간"},
+        {"name": "pullback_min_pct", "label": "Pullback deep bound", "type": "number", "step": "0.001", "min": "-0.20", "max": "-0.001", "default": -0.045, "hint": "이보다 깊으면 추세 훼손으로 간주"},
+        {"name": "pullback_max_pct", "label": "Pullback shallow bound", "type": "number", "step": "0.001", "min": "-0.10", "max": "-0.001", "default": -0.012, "hint": "이보다 얕으면 기회 부족"},
+        {"name": "setup_rsi_recovery", "label": "1H RSI recovery", "type": "number", "step": "0.1", "min": "1", "max": "99", "default": 40.0, "hint": "눌림 후 RSI 회복 확인"},
+        {"name": "trigger_required_votes", "label": "30m trigger votes", "type": "number", "min": "1", "max": "5", "default": 2, "hint": "30m 재가속 조건 최소 통과 수"},
+        {"name": "trigger_breakout_lookback_30m", "label": "30m breakout lookback", "type": "number", "min": "1", "max": "48", "default": 6, "hint": "최근 고점 돌파 확인"},
+        {"name": "trigger_volume_mult", "label": "30m volume multiplier", "type": "number", "step": "0.05", "min": "0.1", "max": "5.0", "default": 1.1, "hint": "평균 거래량 대비 trigger volume"},
+        {"name": "atr_window", "label": "ATR window", "type": "number", "min": "1", "max": "100", "default": 14, "hint": "stop/trailing 계산"},
+        {"name": "initial_stop_atr_mult", "label": "Initial stop ATR", "type": "number", "step": "0.1", "min": "0.5", "max": "10.0", "default": 1.5, "hint": "진입가 - ATR×배수"},
+        {"name": "atr_trailing_mult", "label": "ATR trailing", "type": "number", "step": "0.1", "min": "0.5", "max": "10.0", "default": 2.5, "hint": "highest_high - ATR×배수"},
+        {"name": "max_hold_bars_30m", "label": "Max hold bars", "type": "number", "min": "1", "max": "240", "default": 96, "hint": "safety only 최대 보유"},
+    ],
 }
 
 # Human-readable names
@@ -443,9 +698,18 @@ STRATEGY_LABELS: dict[str, str] = {
     "sma200_ema_adx_composite": "SMA200 필터 + EMA+ADX 추세추종 (권장)",
     "rcdb": "RCDB (Regime-Conditioned Dip Buy)",
     "rcdb_v2": "RCDB v2 (Vol-normalized Dip + Reversal)",
+    "regime_reclaim_1h": "Daily Regime + 1H Reclaim Mean Reversion",
+    "regime_reclaim_30m": "Daily Regime + 1H Setup + 30m Trigger Reclaim",
+    "regime_pullback_continuation_30m": "Daily/1H Trend Pullback + 30m Continuation",
 }
 
-EXPERIMENTAL_STRATEGIES: set[str] = {"rcdb", "rcdb_v2"}
+EXPERIMENTAL_STRATEGIES: set[str] = {
+    "rcdb",
+    "rcdb_v2",
+    "regime_reclaim_1h",
+    "regime_reclaim_30m",
+    "regime_pullback_continuation_30m",
+}
 
 
 def create_strategy(name: str, params: dict | None = None) -> Strategy:
@@ -478,6 +742,9 @@ STRATEGY_ENTRY_CONFIRMATION: dict[str, int] = {
     "sma200_regime": 0,              # daily_confirm이 debounce를 대체
     "rcdb": 0,                       # 일봉 확정 기반 mean reversion
     "rcdb_v2": 0,                    # 일봉 확정 기반 normalized mean reversion
+    "regime_reclaim_1h": 0,          # 1H 봉 확정 reclaim 진입
+    "regime_reclaim_30m": 0,         # 30m 봉 확정 reclaim 진입
+    "regime_pullback_continuation_30m": 0,  # 30m 봉 확정 continuation 진입
 }
 
 # 전략별 실행 모드.
@@ -492,4 +759,7 @@ STRATEGY_EXECUTION_MODE: dict[str, str] = {
     "sma200_regime": "daily_confirm",
     "rcdb": "daily_confirm",
     "rcdb_v2": "daily_confirm",
+    "regime_reclaim_1h": "intraday",
+    "regime_reclaim_30m": "intraday",
+    "regime_pullback_continuation_30m": "intraday",
 }

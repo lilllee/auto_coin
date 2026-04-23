@@ -5,6 +5,7 @@ import pandas as pd
 import pytest
 
 from auto_coin.data.candles import (
+    candle_bar_seconds,
     enrich_atr_channel,
     enrich_daily,
     enrich_donchian,
@@ -12,8 +13,14 @@ from auto_coin.data.candles import (
     enrich_for_strategy,
     enrich_rcdb,
     enrich_rcdb_v2,
+    enrich_regime_reclaim_30m,
     enrich_sma,
+    fetch_candles,
     fetch_daily,
+    history_days_to_candles,
+    normalize_candle_interval,
+    project_features,
+    project_higher_timeframe_features,
     recommended_history_days,
 )
 from auto_coin.exchange.upbit_client import UpbitClient, UpbitError
@@ -90,6 +97,19 @@ def test_fetch_daily_forwards_to_param(mocker):
 
     assert len(out) == 20
     get_ohlcv.assert_called_once_with("KRW-BTC", interval="day", count=20, to="2026-04-15")
+
+
+def test_fetch_candles_supports_minute60_interval(mocker):
+    df = _sample_df(48)
+    get_ohlcv = mocker.patch("auto_coin.data.candles.pyupbit.get_ohlcv", return_value=df)
+    client = UpbitClient(access_key="", secret_key="", max_retries=1,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_candles(client, "KRW-BTC", count=48, interval="1h", ma_window=5, k=0.5)
+
+    assert len(out) == 48
+    assert "target" in out.columns
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="minute60", count=48, to=None)
 
 
 def test_fetch_daily_empty_raises(mocker):
@@ -174,6 +194,36 @@ def test_recommended_history_days_unknown_strategy_falls_back_to_safe_minimum():
     assert days == 60
 
 
+def test_history_days_to_candles_respects_interval():
+    assert history_days_to_candles(10, "day") == 10
+    assert history_days_to_candles(10, "minute60") == 240
+    assert history_days_to_candles(2, "1h") == 48
+    assert candle_bar_seconds("minute60") == 3600
+
+
+def test_project_higher_timeframe_features_forward_fills_to_hourly():
+    regime_idx = pd.date_range("2026-01-01", periods=2, freq="D")
+    regime = pd.DataFrame(
+        {
+            "regime_on": [False, True],
+            "regime_sma120": [100.0, 101.0],
+        },
+        index=regime_idx,
+    )
+    target_idx = pd.date_range("2026-01-01", periods=48, freq="h")
+
+    projected = project_higher_timeframe_features(
+        regime,
+        target_idx,
+        columns=["regime_on", "regime_sma120"],
+    )
+
+    assert list(projected.columns) == ["regime_on", "regime_sma120"]
+    assert projected.loc["2026-01-01 12:00:00", "regime_on"] == False  # noqa: E712
+    assert projected.loc["2026-01-02 12:00:00", "regime_on"] == True  # noqa: E712
+    assert projected.loc["2026-01-02 03:00:00", "regime_sma120"] == pytest.approx(101.0)
+
+
 def test_recommended_history_days_rcdb_uses_regime_window():
     days = recommended_history_days(
         "rcdb",
@@ -197,6 +247,21 @@ def test_recommended_history_days_rcdb_v2_uses_all_windows():
             "vol_window": 20,
             "rsi_window": 14,
             "reversal_ema_window": 5,
+            "atr_window": 14,
+        },
+        ma_window=5,
+    )
+    assert days == 170
+
+
+def test_recommended_history_days_regime_reclaim_1h_uses_daily_regime_window():
+    days = recommended_history_days(
+        "regime_reclaim_1h",
+        {
+            "daily_regime_ma_window": 120,
+            "dip_lookback_bars": 8,
+            "rsi_window": 14,
+            "reclaim_ema_window": 6,
             "atr_window": 14,
         },
         ma_window=5,
@@ -433,6 +498,40 @@ def test_fetch_daily_rcdb_v2_fetches_regime_reference_when_ticker_differs(mocker
     assert get_ohlcv.call_count == 2
 
 
+def test_fetch_candles_regime_reclaim_1h_fetches_daily_regime_even_for_same_ticker(mocker):
+    hourly_df = _sample_df(48)
+    daily_df = _sample_df(200)
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[hourly_df, daily_df],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=1,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_candles(
+        client,
+        "KRW-BTC",
+        count=48,
+        interval="minute60",
+        strategy_name="regime_reclaim_1h",
+        strategy_params={
+            "regime_ticker": "KRW-BTC",
+            "regime_interval": "day",
+            "daily_regime_ma_window": 120,
+            "dip_lookback_bars": 8,
+            "pullback_threshold_pct": -0.025,
+            "rsi_window": 14,
+            "reclaim_ema_window": 6,
+            "atr_window": 14,
+        },
+    )
+
+    assert "daily_regime_on" in out.columns
+    assert get_ohlcv.call_count == 2
+    assert get_ohlcv.call_args_list[0].kwargs["interval"] == "minute60"
+    assert get_ohlcv.call_args_list[1].kwargs["interval"] == "day"
+
+
 # --- enrich_atr_channel tests ---
 
 
@@ -639,3 +738,389 @@ def test_enrich_for_strategy_ad_turtle():
     assert "range" in out.columns
     assert "donchian_high_20" in out.columns
     assert "donchian_low_10" in out.columns
+
+
+# === minute30 지원 테스트 ===
+
+def test_normalize_candle_interval_minute30():
+    """minute30, 30m, 30min 모두 'minute30'로 정규화."""
+    assert normalize_candle_interval("minute30") == "minute30"
+    assert normalize_candle_interval("30m") == "minute30"
+    assert normalize_candle_interval("30min") == "minute30"
+    assert normalize_candle_interval("MINUTE30") == "minute30"
+    assert normalize_candle_interval("  30m  ") == "minute30"
+
+
+def test_candle_bar_seconds_minute30():
+    """minute30 bar_seconds == 1800 (30분)."""
+    assert candle_bar_seconds("minute30") == 1800
+    assert candle_bar_seconds("30m") == 1800
+    assert candle_bar_seconds("30min") == 1800
+
+
+def test_history_days_to_candles_minute30():
+    """minute30: 10일 = 480 candles (10 * 48)."""
+    assert history_days_to_candles(1, "minute30") == 48
+    assert history_days_to_candles(10, "minute30") == 480
+    assert history_days_to_candles(1, "30m") == 48
+    # day와 비교: 10일 = 10 candles (day) vs 480 candles (minute30)
+    assert history_days_to_candles(10, "day") == 10
+    assert history_days_to_candles(10, "minute30") == 480
+
+
+def test_fetch_candles_supports_minute30_interval(mocker):
+    """fetch_candles 가 minute30 interval 을 받아 crash-free 로 동작."""
+    df = _sample_df(48)
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv", return_value=df
+    )
+    client = UpbitClient(
+        access_key="", secret_key="", max_retries=1,
+        backoff_base=0.0, min_request_interval=0.0,
+    )
+
+    out = fetch_candles(
+        client, "KRW-BTC", count=48, interval="30m", ma_window=5, k=0.5,
+    )
+
+    assert len(out) == 48
+    assert "target" in out.columns
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="minute30", count=48, to=None)
+
+
+def test_fetch_candles_minute30_with_regime_reclaim_30m(mocker):
+    """fetch_candles 가 regime_reclaim_30m 전략 시 daily + 1H + 30m 자동 fetch."""
+    df_30m = _sample_df(96)
+    df_daily = _sample_df(30)
+    df_1h = _sample_df(720)
+
+    def side_effect(ticker, interval, count, to=None):
+        if interval == "minute30":
+            return df_30m
+        elif interval == "day":
+            return df_daily
+        elif interval == "minute60":
+            return df_1h
+        return pd.DataFrame()
+
+    mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv", side_effect=side_effect
+    )
+    client = UpbitClient(
+        access_key="", secret_key="", max_retries=1,
+        backoff_base=0.0, min_request_interval=0.0,
+    )
+
+    out = fetch_candles(
+        client, "KRW-ETH", count=96, interval="30m",
+        strategy_name="regime_reclaim_30m",
+        strategy_params={},
+    )
+
+    assert len(out) == 96
+    # daily regime columns 가 30m 인덱스에 투영되어야 함
+    assert "daily_regime_on" in out.columns
+    assert "daily_regime_sma120" in out.columns
+    # 1H setup columns 도 투영
+    assert "hourly_pullback_return_8" in out.columns
+    # 30m trigger columns
+    assert "pullback_return_8" in out.columns
+    assert "rsi14" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_project_features_daily_to_30m():
+    """daily → 30m projection: ffill 로 상위 feature 전파."""
+    # daily index (1일 간격)
+    daily_idx = pd.date_range("2026-01-01", periods=5, freq="D")
+    daily_df = pd.DataFrame(
+        {"regime_on": [True, True, False, True, True]},
+        index=daily_idx,
+    )
+
+    # 30m index (30분 간격, 1일 중 몇 개 바)
+    thirty_idx = pd.date_range("2026-01-01", periods=20, freq="30min")
+
+    result = project_features(
+        daily_df, thirty_idx,
+        source_interval="day",
+        target_interval="minute30",
+        columns=["regime_on"],
+    )
+
+    # daily > 30m 이므로 ffill 적용
+    assert result["regime_on"].iloc[0]
+    # 3일차에 False 가 나오므로 그 이후는 False
+    # 실제로는 index union + ffill 이므로 day3 의 False 가 그 이후에 전파
+    assert result["regime_on"].iloc[-1]
+
+
+def test_project_features_1h_to_30m():
+    """1H → 30m projection: ffill 로 상위 feature 전파."""
+    # 1H index
+    hourly_idx = pd.date_range("2026-01-01", periods=10, freq="h")
+    hourly_df = pd.DataFrame(
+        {"setup": [False, False, True, True, False, True, False, False, True, True]},
+        index=hourly_idx,
+    )
+
+    # 30m index (10시간 = 20바)
+    thirty_idx = pd.date_range("2026-01-01", periods=20, freq="30min")
+
+    result = project_features(
+        hourly_df, thirty_idx,
+        source_interval="minute60",
+        target_interval="minute30",
+        columns=["setup"],
+    )
+
+    assert len(result) == 20
+    # 1H > 30m 이므로 ffill
+    assert not result["setup"].iloc[0]
+    assert not result["setup"].iloc[2]  # 1시간째 feature 가 30m 바 2개에 전파
+
+
+def test_project_features_same_interval():
+    """동일 interval: bfill 도 ffill 도 아닌 단순 reindex."""
+    idx = pd.date_range("2026-01-01", periods=5, freq="D")
+    df = pd.DataFrame({"v": [1, 2, 3, 4, 5]}, index=idx)
+
+    # target에서 일부만
+    target = idx[[0, 2, 4]]
+    result = project_features(
+        df, target,
+        source_interval="day",
+        target_interval="day",
+        columns=["v"],
+    )
+
+    assert len(result) == 3
+    assert list(result["v"]) == [1, 3, 5]
+
+
+def test_enrich_regime_reclaim_30m_basic():
+    """enrich_regime_reclaim_30m 이 기본 컬럼을 추가하는지."""
+    # 30m sample df 생성
+    idx = pd.date_range("2026-01-01", periods=50, freq="30min")
+    df = pd.DataFrame(
+        {
+            "open":   np.arange(100, 100 + 50, dtype=float),
+            "high":   np.arange(110, 110 + 50, dtype=float),
+            "low":    np.arange(90,  90  + 50, dtype=float),
+            "close":  np.arange(105, 105 + 50, dtype=float),
+            "volume": np.ones(50),
+        },
+        index=idx,
+    )
+
+    out = enrich_regime_reclaim_30m(df)
+
+    # 30m trigger features
+    assert "pullback_return_8" in out.columns
+    assert "pullback_threshold_8" in out.columns
+    assert "rsi14" in out.columns
+    assert "reclaim_ema6" in out.columns
+    assert "reversion_sma8" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_enrich_regime_reclaim_30m_with_daily_regime():
+    """enrich_regime_reclaim_30m 이 daily_regime_df 를 받아 투영하는지."""
+    # 30m df
+    idx_30m = pd.date_range("2026-01-01", periods=100, freq="30min")
+    df_30m = pd.DataFrame(
+        {
+            "open":   np.arange(100, 100 + 100, dtype=float),
+            "high":   np.arange(110, 110 + 100, dtype=float),
+            "low":    np.arange(90,  90  + 100, dtype=float),
+            "close":  np.arange(105, 105 + 100, dtype=float),
+            "volume": np.ones(100),
+        },
+        index=idx_30m,
+    )
+
+    # daily regime df
+    idx_daily = pd.date_range("2026-01-01", periods=5, freq="D")
+    df_daily = pd.DataFrame(
+        {
+            "open":   np.arange(200, 200 + 5, dtype=float),
+            "high":   np.arange(210, 210 + 5, dtype=float),
+            "low":    np.arange(190, 190  + 5, dtype=float),
+            "close":  np.arange(205, 205 + 5, dtype=float),
+            "volume": np.ones(5),
+        },
+        index=idx_daily,
+    )
+
+    out = enrich_regime_reclaim_30m(
+        df_30m,
+        daily_regime_df=df_daily,
+        daily_regime_ma_window=3,
+    )
+
+    # daily regime 가 30m 인덱스에 투영되어야 함
+    assert "regime_close" in out.columns
+    assert "daily_regime_sma3" in out.columns
+    assert "daily_regime_on" in out.columns
+    # daily → 30m projection 이므로 ffill 적용됨
+    assert not out["daily_regime_on"].isna().all()
+
+
+def test_enrich_regime_reclaim_30m_with_hourly_setup():
+    """enrich_regime_reclaim_30m 이 hourly_setup_df 를 받아 투영하는지."""
+    # 30m df
+    idx_30m = pd.date_range("2026-01-01", periods=100, freq="30min")
+    df_30m = pd.DataFrame(
+        {
+            "open":   np.arange(100, 100 + 100, dtype=float),
+            "high":   np.arange(110, 110 + 100, dtype=float),
+            "low":    np.arange(90,  90  + 100, dtype=float),
+            "close":  np.arange(105, 105 + 100, dtype=float),
+            "volume": np.ones(100),
+        },
+        index=idx_30m,
+    )
+
+    # 1H setup df
+    idx_1h = pd.date_range("2026-01-01", periods=10, freq="h")
+    df_1h = pd.DataFrame(
+        {
+            "open":   np.arange(300, 300 + 10, dtype=float),
+            "high":   np.arange(310, 310 + 10, dtype=float),
+            "low":    np.arange(290, 290  + 10, dtype=float),
+            "close":  np.arange(305, 305 + 10, dtype=float),
+            "volume": np.ones(10),
+        },
+        index=idx_1h,
+    )
+
+    out = enrich_regime_reclaim_30m(
+        df_30m,
+        daily_regime_df=None,  # fallback 사용
+        hourly_setup_df=df_1h,
+        hourly_pullback_bars=4,
+        hourly_pullback_threshold_pct=-0.03,
+    )
+
+    # 1H setup 가 30m 인덱스에 투영되어야 함
+    assert "hourly_pullback_return_4" in out.columns
+    assert "hourly_pullback_threshold_4" in out.columns
+    # 1H → 30m projection 이므로 ffill 적용
+    assert not out["hourly_pullback_return_4"].isna().all()
+
+
+def test_enrich_for_strategy_regime_reclaim_30m():
+    """enrich_for_strategy 가 regime_reclaim_30m 전략을 올바르게 라우팅."""
+    idx = pd.date_range("2026-01-01", periods=50, freq="30min")
+    df = pd.DataFrame(
+        {
+            "open":   np.arange(100, 100 + 50, dtype=float),
+            "high":   np.arange(110, 110 + 50, dtype=float),
+            "low":    np.arange(90,  90  + 50, dtype=float),
+            "close":  np.arange(105, 105 + 50, dtype=float),
+            "volume": np.ones(50),
+        },
+        index=idx,
+    )
+
+    out = enrich_for_strategy(
+        df,
+        "regime_reclaim_30m",
+        {
+            "daily_regime_ma_window": 120,
+            "dip_lookback_bars": 8,
+            "pullback_threshold_pct": -0.025,
+            "rsi_window": 14,
+            "reclaim_ema_window": 6,
+            "atr_window": 14,
+        },
+        ma_window=5,
+        k=0.5,
+    )
+
+    assert "daily_regime_on" in out.columns
+    assert "hourly_pullback_return_8" in out.columns
+    assert "pullback_return_8" in out.columns
+    assert "rsi14" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_recommended_history_days_regime_reclaim_30m():
+    """regime_reclaim_30m 의 권장 히스토리 days 가 합리적인지."""
+    days = recommended_history_days(
+        "regime_reclaim_30m",
+        {
+            "daily_regime_ma_window": 120,
+            "hourly_pullback_bars": 8,
+            "dip_lookback_bars": 8,
+            "rsi_window": 14,
+            "reclaim_ema_window": 6,
+            "atr_window": 14,
+        },
+        ma_window=5,
+    )
+    # daily_regime_ma_window=120 이 가장 큼 → 120 + 50 = 170
+    assert days >= 170
+
+
+def test_existing_day_path_unchanged():
+    """기존 day 경로가 여전히 정상 동작."""
+    df = _sample_df(20)
+    out = enrich_for_strategy(
+        df, "volatility_breakout", {}, ma_window=5, k=0.5, interval="day",
+    )
+    assert "target" in out.columns
+    assert "range" in out.columns
+
+
+def test_existing_minute60_path_unchanged():
+    """기존 minute60 경로가 여전히 정상 동작."""
+    df = _sample_df(48)
+    out = enrich_for_strategy(
+        df, "volatility_breakout", {}, ma_window=5, k=0.5, interval="minute60",
+    )
+    assert "target" in out.columns
+    assert "range" in out.columns
+
+
+def test_existing_regime_reclaim_1h_path_unchanged():
+    """기존 regime_reclaim_1h 경로가 여전히 정상 동작."""
+    # 1H df
+    idx_1h = pd.date_range("2026-01-01", periods=200, freq="h")
+    df_1h = pd.DataFrame(
+        {
+            "open":   np.arange(100, 100 + 200, dtype=float),
+            "high":   np.arange(110, 110 + 200, dtype=float),
+            "low":    np.arange(90,  90  + 200, dtype=float),
+            "close":  np.arange(105, 105 + 200, dtype=float),
+            "volume": np.ones(200),
+        },
+        index=idx_1h,
+    )
+
+    # daily regime df
+    idx_daily = pd.date_range("2026-01-01", periods=10, freq="D")
+    df_daily = pd.DataFrame(
+        {
+            "open":   np.arange(200, 200 + 10, dtype=float),
+            "high":   np.arange(210, 210 + 10, dtype=float),
+            "low":    np.arange(190, 190  + 10, dtype=float),
+            "close":  np.arange(205, 205 + 10, dtype=float),
+            "volume": np.ones(10),
+        },
+        index=idx_daily,
+    )
+
+    out = enrich_for_strategy(
+        df_1h,
+        "regime_reclaim_1h",
+        {"daily_regime_ma_window": 5},
+        regime_df=df_daily,
+        ma_window=5,
+        k=0.5,
+        interval="minute60",
+    )
+
+    assert "daily_regime_on" in out.columns
+    assert "daily_regime_sma5" in out.columns
+    assert "pullback_return_8" in out.columns

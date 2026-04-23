@@ -15,6 +15,7 @@ from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
 from auto_coin.strategy.rcdb import RcdbStrategy
 from auto_coin.strategy.rcdb_v2 import RcdbV2Strategy
+from auto_coin.strategy.regime_reclaim_1h import RegimeReclaim1HStrategy
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -48,6 +49,8 @@ def test_get_strategy_names():
     names = get_strategy_names()
     assert isinstance(names, list)
     assert "volatility_breakout" in names
+    assert "regime_reclaim_1h" not in names
+    assert "regime_reclaim_1h" in get_strategy_names(include_experimental=True)
 
 
 def test_strategy_params_has_all_registry_entries():
@@ -68,6 +71,20 @@ def test_created_strategy_is_strategy_abc_subclass():
 def test_create_strategy_vb_invalid_k_raises():
     with pytest.raises(ValueError):
         create_strategy("volatility_breakout", {"k": 2.0})
+
+
+def test_registry_contains_regime_reclaim_1h():
+    assert "regime_reclaim_1h" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["regime_reclaim_1h"] is RegimeReclaim1HStrategy
+
+
+def test_create_strategy_regime_reclaim_1h_defaults():
+    s = create_strategy("regime_reclaim_1h")
+    assert isinstance(s, RegimeReclaim1HStrategy)
+    assert s.regime_interval == "day"
+    assert s.daily_regime_ma_window == 120
+    assert s.dip_lookback_bars == 8
+    assert s.max_hold_bars == 36
 
 
 # --- SMA200 Regime ---
@@ -382,3 +399,192 @@ def test_rcdb_v2_hidden_from_default_strategy_names():
 
 def test_rcdb_v2_available_when_including_experimental():
     assert "rcdb_v2" in get_strategy_names(include_experimental=True)
+
+
+# --- regime_reclaim_30m ---
+
+
+def test_registry_contains_regime_reclaim_30m():
+    from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
+    assert "regime_reclaim_30m" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["regime_reclaim_30m"] is RegimeReclaim30mStrategy
+
+
+def test_create_strategy_regime_reclaim_30m_defaults():
+    from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
+    s = create_strategy("regime_reclaim_30m")
+    assert isinstance(s, RegimeReclaim30mStrategy)
+    assert s.regime_ticker == "KRW-BTC"
+    assert s.daily_regime_ma_window == 100
+    assert s.hourly_pullback_bars == 8
+    assert s.hourly_pullback_threshold_pct == -0.025
+    assert s.setup_rsi_window == 14
+    assert s.setup_rsi_threshold == 35.0
+    assert s.trigger_reclaim_ema_window == 6
+    assert s.trigger_rsi_rebound_threshold == 30.0
+    assert s.max_hold_bars_30m == 36
+    assert s.atr_window == 14
+    assert s.atr_trailing_mult == 2.0
+    assert s.reversion_sma_window_override is None
+    assert s.min_hold_bars_30m == 0
+    assert s.reversion_min_profit_pct == 0.0
+    assert s.reversion_confirmation_type == "none"
+
+
+def test_create_strategy_regime_reclaim_30m_custom_params():
+    from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
+    s = create_strategy(
+        "regime_reclaim_30m",
+        {
+            "regime_ticker": "KRW-ETH",
+            "daily_regime_ma_window": 200,
+            "hourly_pullback_bars": 12,
+            "hourly_pullback_threshold_pct": -0.03,
+            "setup_rsi_window": 10,
+            "setup_rsi_threshold": 40.0,
+            "trigger_reclaim_ema_window": 8,
+            "trigger_rsi_rebound_threshold": 35.0,
+            "max_hold_bars_30m": 48,
+            "atr_window": 10,
+            "atr_trailing_mult": 3.0,
+            "reversion_sma_window_override": 24,
+            "min_hold_bars_30m": 3,
+            "reversion_min_profit_pct": 0.005,
+            "reversion_confirmation_type": "rsi",
+        },
+    )
+    assert isinstance(s, RegimeReclaim30mStrategy)
+    assert s.regime_ticker == "KRW-ETH"
+    assert s.daily_regime_ma_window == 200
+    assert s.hourly_pullback_bars == 12
+    assert s.hourly_pullback_threshold_pct == -0.03
+    assert s.setup_rsi_window == 10
+    assert s.setup_rsi_threshold == 40.0
+    assert s.trigger_reclaim_ema_window == 8
+    assert s.trigger_rsi_rebound_threshold == 35.0
+    assert s.max_hold_bars_30m == 48
+    assert s.atr_window == 10
+    assert s.atr_trailing_mult == 3.0
+    assert s.reversion_sma_window_override == 24
+    assert s.min_hold_bars_30m == 3
+    assert s.reversion_min_profit_pct == 0.005
+    assert s.reversion_confirmation_type == "rsi"
+
+
+def test_regime_reclaim_30m_hidden_from_default_strategy_names():
+    assert "regime_reclaim_30m" not in get_strategy_names()
+
+
+def test_regime_reclaim_30m_available_when_including_experimental():
+    assert "regime_reclaim_30m" in get_strategy_names(include_experimental=True)
+
+
+def test_regime_reclaim_30m_is_strategy_subclass():
+    from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
+    s = create_strategy("regime_reclaim_30m")
+    assert isinstance(s, Strategy)
+    assert isinstance(s, RegimeReclaim30mStrategy)
+
+
+def test_regime_reclaim_30m_invalid_empty_regime_ticker():
+    with pytest.raises(ValueError, match="regime_ticker must be non-empty"):
+        create_strategy("regime_reclaim_30m", {"regime_ticker": ""})
+
+
+def test_regime_reclaim_30m_invalid_ma_window():
+    with pytest.raises(ValueError, match="daily_regime_ma_window must be >= 2"):
+        create_strategy("regime_reclaim_30m", {"daily_regime_ma_window": 1})
+
+
+def test_regime_reclaim_30m_invalid_pullback_threshold():
+    with pytest.raises(ValueError, match="hourly_pullback_threshold_pct must be < 0"):
+        create_strategy("regime_reclaim_30m", {"hourly_pullback_threshold_pct": 0.0})
+
+
+def test_strategy_params_has_regime_reclaim_30m():
+    assert "regime_reclaim_30m" in STRATEGY_PARAMS
+    param_names = [p["name"] for p in STRATEGY_PARAMS["regime_reclaim_30m"]]
+    assert "daily_regime_ma_window" in param_names
+    assert "hourly_pullback_bars" in param_names
+    assert "trigger_reclaim_ema_window" in param_names
+    assert "max_hold_bars_30m" in param_names
+    assert "reversion_sma_window_override" in param_names
+    assert "min_hold_bars_30m" in param_names
+    assert "reversion_min_profit_pct" in param_names
+    assert "reversion_confirmation_type" in param_names
+
+
+def test_strategy_params_regime_reclaim_1h_has_no_30m_v11_exit_params():
+    param_names = [p["name"] for p in STRATEGY_PARAMS["regime_reclaim_1h"]]
+    assert "reversion_sma_window_override" not in param_names
+    assert "min_hold_bars_30m" not in param_names
+    assert "reversion_min_profit_pct" not in param_names
+    assert "reversion_confirmation_type" not in param_names
+
+
+def test_strategy_labels_has_regime_reclaim_30m():
+    assert "regime_reclaim_30m" in STRATEGY_LABELS
+    assert "30m" in STRATEGY_LABELS["regime_reclaim_30m"]
+
+
+# --- regime_pullback_continuation_30m ---
+
+
+def test_registry_contains_regime_pullback_continuation_30m():
+    from auto_coin.strategy.regime_pullback_continuation_30m import (
+        RegimePullbackContinuation30mStrategy,
+    )
+
+    assert "regime_pullback_continuation_30m" in STRATEGY_REGISTRY
+    assert (
+        STRATEGY_REGISTRY["regime_pullback_continuation_30m"]
+        is RegimePullbackContinuation30mStrategy
+    )
+
+
+def test_create_strategy_regime_pullback_continuation_30m_defaults():
+    s = create_strategy("regime_pullback_continuation_30m")
+    assert s.name == "regime_pullback_continuation_30m"
+    assert s.regime_ticker == "KRW-BTC"
+    assert s.trend_ema_fast_1h == 20
+    assert s.trend_ema_slow_1h == 60
+    assert s.trigger_required_votes == 2
+    assert s.atr_trailing_mult == 2.5
+
+
+def test_create_strategy_regime_pullback_continuation_30m_custom_params():
+    s = create_strategy(
+        "regime_pullback_continuation_30m",
+        {
+            "trend_ema_fast_1h": 12,
+            "trend_ema_slow_1h": 48,
+            "trigger_required_votes": 1,
+            "atr_trailing_mult": 3.0,
+        },
+    )
+    assert s.trend_ema_fast_1h == 12
+    assert s.trend_ema_slow_1h == 48
+    assert s.trigger_required_votes == 1
+    assert s.atr_trailing_mult == 3.0
+
+
+def test_regime_pullback_continuation_30m_hidden_by_default():
+    assert "regime_pullback_continuation_30m" not in get_strategy_names()
+
+
+def test_regime_pullback_continuation_30m_available_when_experimental():
+    assert "regime_pullback_continuation_30m" in get_strategy_names(include_experimental=True)
+
+
+def test_strategy_params_has_regime_pullback_continuation_30m():
+    assert "regime_pullback_continuation_30m" in STRATEGY_PARAMS
+    names = [p["name"] for p in STRATEGY_PARAMS["regime_pullback_continuation_30m"]]
+    assert "trend_ema_fast_1h" in names
+    assert "pullback_min_pct" in names
+    assert "trigger_required_votes" in names
+    assert "initial_stop_atr_mult" in names
+
+
+def test_strategy_labels_has_regime_pullback_continuation_30m():
+    assert "regime_pullback_continuation_30m" in STRATEGY_LABELS
+    assert "Continuation" in STRATEGY_LABELS["regime_pullback_continuation_30m"]

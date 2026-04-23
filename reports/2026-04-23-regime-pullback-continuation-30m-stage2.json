@@ -1,0 +1,2944 @@
+{
+  "as_of": "2026-04-23",
+  "strategy": "regime_pullback_continuation_30m",
+  "scope": "Stage 2 in-sample only; no walk-forward/live/UI/KPI",
+  "interval": "minute30",
+  "tickers": [
+    "KRW-BTC",
+    "KRW-ETH",
+    "KRW-XRP"
+  ],
+  "lookback_windows": {
+    "1y": 365,
+    "2y": 730
+  },
+  "fee": 0.0005,
+  "slippage": 0.0005,
+  "base_params": {
+    "regime_ticker": "KRW-BTC",
+    "daily_regime_ma_window": 100,
+    "trend_ema_fast_1h": 20,
+    "trend_ema_slow_1h": 60,
+    "trend_slope_lookback_1h": 3,
+    "pullback_lookback_1h": 8,
+    "pullback_min_pct": -0.045,
+    "pullback_max_pct": -0.012,
+    "pullback_ema_buffer_pct": 0.012,
+    "setup_rsi_window": 14,
+    "setup_rsi_min": 35.0,
+    "setup_rsi_recovery": 40.0,
+    "trigger_ema_fast_30m": 8,
+    "trigger_ema_slow_30m": 21,
+    "trigger_breakout_lookback_30m": 6,
+    "trigger_volume_window_30m": 20,
+    "trigger_volume_mult": 1.1,
+    "trigger_close_location_min": 0.55,
+    "trigger_rsi_momentum_min": 3.0,
+    "trigger_rsi_min": 45.0,
+    "trigger_required_votes": 2,
+    "atr_window": 14,
+    "initial_stop_atr_mult": 1.5,
+    "atr_trailing_mult": 2.5,
+    "trend_exit_mode": "close_below_ema20",
+    "max_hold_bars_30m": 96
+  },
+  "candidate_count": 17,
+  "ranked_candidates": [
+    {
+      "name": "votes1_pullback_wide",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.06,
+        "pullback_max_pct": -0.008,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.010134880995119167,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.22127104206049952,
+            "mdd": -0.00549107946618631,
+            "sharpe": -8.744211506039523,
+            "total_trades": 2,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005080260635566436,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 1,
+                "ratio": 0.5,
+                "avg_return": -0.00466944180494655,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 0.5,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0026043267435509145,
+        "avg_excess_return": -0.25256215804560816,
+        "avg_expectancy": -0.001761890016958793,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 3,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.3333333333333333,
+        "trend_exit_share": 0.6666666666666666
+      }
+    },
+    {
+      "name": "votes1",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_no_volume_premium",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.0,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_rsi38",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 38.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_breakout4",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 4,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_atr20",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.0,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_atr30",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 3.0,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_stop12",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.2,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_hold48",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 48
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "votes1_hold72",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 72
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.1366976390157476,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.005491079466186322,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21662724053156668,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.005491079466186322,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.005491079466186322,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.0018303598220621071,
+        "avg_excess_return": -0.2517881911241193,
+        "avg_expectancy": -0.0018303598220621071,
+        "avg_hold_bars": 0.3333333333333333,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 1.0
+      }
+    },
+    {
+      "name": "relaxed_rsi_pullback_votes2",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.1,
+        "pullback_max_pct": -0.002,
+        "pullback_ema_buffer_pct": 0.05,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 50.0,
+        "setup_rsi_recovery": 35.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.0,
+        "trigger_close_location_min": 0.5,
+        "trigger_rsi_momentum_min": 0.0,
+        "trigger_rsi_min": 40.0,
+        "trigger_required_votes": 2,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.1150515159694897,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.027137202512444225,
+            "mdd": -0.11174701051673988,
+            "sharpe": -10.509403755927305,
+            "total_trades": 40,
+            "win_rate": 0.025,
+            "avg_hold_days": 0.06770833333333333,
+            "avg_hold_bars": 3.25,
+            "expectancy": -0.0030493355609992412,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 12,
+                "ratio": 0.3,
+                "avg_return": -0.004870543707808113,
+                "avg_hold_days": 0.026041666666666668,
+                "avg_hold_bars": 1.25
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 3,
+                "ratio": 0.075,
+                "avg_return": -0.002969853186348385,
+                "avg_hold_days": 0.3402777777777778,
+                "avg_hold_bars": 16.333333333333336
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 25,
+                "ratio": 0.625,
+                "avg_return": -0.0021846935354890864,
+                "avg_hold_days": 0.055,
+                "avg_hold_bars": 2.64
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.05741184725165471,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.29153428857972696,
+            "mdd": -0.06294314683062206,
+            "sharpe": 0.46726791410360347,
+            "total_trades": 36,
+            "win_rate": 0.19444444444444445,
+            "avg_hold_days": 0.13483796296296294,
+            "avg_hold_bars": 6.472222222222221,
+            "expectancy": 0.0017980605563128593,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 7,
+                "ratio": 0.19444444444444445,
+                "avg_return": -0.011563911022967928,
+                "avg_hold_days": 0.08928571428571429,
+                "avg_hold_bars": 4.285714285714286
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 6,
+                "ratio": 0.16666666666666666,
+                "avg_return": 0.03706438613749424,
+                "avg_hold_days": 0.5486111111111112,
+                "avg_hold_bars": 26.333333333333336
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 23,
+                "ratio": 0.6388888888888888,
+                "avg_return": -0.003335163462475088,
+                "avg_hold_days": 0.04076086956521739,
+                "avg_hold_bars": 1.9565217391304348
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.1781281257839531,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.17555285581113889,
+            "mdd": -0.17480379714352448,
+            "sharpe": -5.293457500800141,
+            "total_trades": 49,
+            "win_rate": 0.12244897959183673,
+            "avg_hold_days": 0.08163265306122448,
+            "avg_hold_bars": 3.9183673469387754,
+            "expectancy": -0.003981849606848784,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 5,
+                "ratio": 0.10204081632653061,
+                "avg_return": -0.008758019798232897,
+                "avg_hold_days": 0.025,
+                "avg_hold_bars": 1.2000000000000002
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 7,
+                "ratio": 0.14285714285714285,
+                "avg_return": -0.0007832032466846986,
+                "avg_hold_days": 0.3541666666666667,
+                "avg_hold_bars": 17.0
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 37,
+                "ratio": 0.7551020408163265,
+                "avg_return": -0.003941570513990082,
+                "avg_hold_days": 0.03772522522522523,
+                "avg_hold_bars": 1.810810810810811
+              }
+            }
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.21985846452086355,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.4309946255862439,
+            "mdd": -0.21510352364960944,
+            "sharpe": -4.570039879328616,
+            "total_trades": 84,
+            "win_rate": 0.11904761904761904,
+            "avg_hold_days": 0.06994047619047618,
+            "avg_hold_bars": 3.3571428571428568,
+            "expectancy": -0.0029427270579167847,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 23,
+                "ratio": 0.27380952380952384,
+                "avg_return": -0.006776543654781647,
+                "avg_hold_days": 0.025362318840579712,
+                "avg_hold_bars": 1.2173913043478262
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 6,
+                "ratio": 0.07142857142857142,
+                "avg_return": 0.0006288188371953071,
+                "avg_hold_days": 0.3159722222222222,
+                "avg_hold_bars": 15.166666666666666
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 55,
+                "ratio": 0.6547619047619048,
+                "avg_return": -0.0017291178514218888,
+                "avg_hold_days": 0.061742424242424244,
+                "avg_hold_bars": 2.963636363636364
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.07524666895506094,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.16851700719373552,
+            "mdd": -0.18694591917108405,
+            "sharpe": -0.32169477549848774,
+            "total_trades": 75,
+            "win_rate": 0.2,
+            "avg_hold_days": 0.10333333333333332,
+            "avg_hold_bars": 4.959999999999999,
+            "expectancy": -0.0009032397327944823,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 16,
+                "ratio": 0.21333333333333335,
+                "avg_return": -0.011143014406405624,
+                "avg_hold_days": 0.06380208333333333,
+                "avg_hold_bars": 3.0625
+              },
+              "regime_pullback_continuation_30m_regime_off_exit": {
+                "trade_count": 1,
+                "ratio": 0.013333333333333334,
+                "avg_return": 0.007756446867533295,
+                "avg_hold_days": 0.3541666666666667,
+                "avg_hold_bars": 17.0
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 10,
+                "ratio": 0.13333333333333333,
+                "avg_return": 0.02551976325099451,
+                "avg_hold_days": 0.43333333333333335,
+                "avg_hold_bars": 20.8
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 48,
+                "ratio": 0.64,
+                "avg_return": -0.003175183934053636,
+                "avg_hold_days": 0.042534722222222224,
+                "avg_hold_bars": 2.041666666666667
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.37306594721027697,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -2.0523640143516806,
+            "mdd": -0.37703256248994316,
+            "sharpe": -5.257430530049211,
+            "total_trades": 108,
+            "win_rate": 0.16666666666666666,
+            "avg_hold_days": 0.07812500000000001,
+            "avg_hold_bars": 3.750000000000001,
+            "expectancy": -0.0042959794568886945,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 17,
+                "ratio": 0.1574074074074074,
+                "avg_return": -0.011381350185131416,
+                "avg_hold_days": 0.06740196078431374,
+                "avg_hold_bars": 3.2352941176470593
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 13,
+                "ratio": 0.12037037037037036,
+                "avg_return": -0.0006180052676582487,
+                "avg_hold_days": 0.3205128205128205,
+                "avg_hold_bars": 15.384615384615383
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 78,
+                "ratio": 0.7222222222222222,
+                "avg_return": -0.003364727688681894,
+                "avg_hold_days": 0.04006410256410256,
+                "avg_hold_bars": 1.923076923076923
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.15065647919799827,
+        "avg_excess_return": -0.40061431050005547,
+        "avg_expectancy": -0.002229178476522521,
+        "avg_hold_bars": 4.284622071050642,
+        "total_trades": 392,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.20408163265306123,
+        "trailing_exit_share": 0.11479591836734694,
+        "trend_exit_share": 0.6785714285714286
+      }
+    },
+    {
+      "name": "votes1_trend_slow_exit",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "ema20_below_ema60",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.008021411100769482,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.13416730738116445,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.125,
+            "avg_hold_bars": 6.0,
+            "expectancy": -0.008021411100769482,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.008021411100769482,
+                "avg_hold_days": 0.125,
+                "avg_hold_bars": 6.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.008021411100769482,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.21915757216614984,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.125,
+            "avg_hold_bars": 6.0,
+            "expectancy": -0.008021411100769482,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.008021411100769482,
+                "avg_hold_days": 0.125,
+                "avg_hold_bars": 6.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.6792980671414037,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.002673803700256494,
+        "avg_excess_return": -0.2526316350023137,
+        "avg_expectancy": -0.002673803700256494,
+        "avg_hold_bars": 2.0,
+        "total_trades": 2,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 1.0,
+        "trailing_exit_share": 0.0,
+        "trend_exit_share": 0.0
+      }
+    },
+    {
+      "name": "relaxed_rsi_pullback_votes1",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.1,
+        "pullback_max_pct": -0.002,
+        "pullback_ema_buffer_pct": 0.05,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 50.0,
+        "setup_rsi_recovery": 35.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.0,
+        "trigger_close_location_min": 0.5,
+        "trigger_rsi_momentum_min": 0.0,
+        "trigger_rsi_min": 40.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.1600501248965298,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": -0.017861406414595882,
+            "mdd": -0.15971541251695495,
+            "sharpe": -10.549462371744257,
+            "total_trades": 68,
+            "win_rate": 0.058823529411764705,
+            "avg_hold_days": 0.04656862745098039,
+            "avg_hold_bars": 2.235294117647059,
+            "expectancy": -0.0025596345505048902,
+            "exit_mix": {
+              "end_of_data": {
+                "trade_count": 1,
+                "ratio": 0.014705882352941176,
+                "avg_return": -0.0019980014990006456,
+                "avg_hold_days": 0.0,
+                "avg_hold_bars": 0.0
+              },
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 14,
+                "ratio": 0.20588235294117646,
+                "avg_return": -0.004976030413512522,
+                "avg_hold_days": 0.02827380952380952,
+                "avg_hold_bars": 1.357142857142857
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 7,
+                "ratio": 0.10294117647058823,
+                "avg_return": -0.0022864453884254682,
+                "avg_hold_days": 0.1636904761904762,
+                "avg_hold_bars": 7.857142857142858
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 46,
+                "ratio": 0.6764705882352942,
+                "avg_return": -0.0018779914005908325,
+                "avg_hold_days": 0.03532608695652174,
+                "avg_hold_bars": 1.6956521739130437
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.15220854514163207,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.5011546809730137,
+            "mdd": -0.1691816441363362,
+            "sharpe": -1.7762092160404341,
+            "total_trades": 72,
+            "win_rate": 0.19444444444444445,
+            "avg_hold_days": 0.08015046296296297,
+            "avg_hold_bars": 3.8472222222222223,
+            "expectancy": -0.0022358291795700623,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 13,
+                "ratio": 0.18055555555555555,
+                "avg_return": -0.010351658321935239,
+                "avg_hold_days": 0.05929487179487179,
+                "avg_hold_bars": 2.846153846153846
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 11,
+                "ratio": 0.1527777777777778,
+                "avg_return": 0.009872851580264096,
+                "avg_hold_days": 0.3143939393939394,
+                "avg_hold_bars": 15.09090909090909
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 48,
+                "ratio": 0.6666666666666666,
+                "avg_return": -0.002812698127641488,
+                "avg_hold_days": 0.03211805555555555,
+                "avg_hold_bars": 1.5416666666666665
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.2270301323542938,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.12665084924079817,
+            "mdd": -0.22178977828534088,
+            "sharpe": -6.230149714406763,
+            "total_trades": 72,
+            "win_rate": 0.1527777777777778,
+            "avg_hold_days": 0.06539351851851853,
+            "avg_hold_bars": 3.1388888888888893,
+            "expectancy": -0.0035586165910808116,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 9,
+                "ratio": 0.125,
+                "avg_return": -0.0087243856741549,
+                "avg_hold_days": 0.02546296296296296,
+                "avg_hold_bars": 1.222222222222222
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 9,
+                "ratio": 0.125,
+                "avg_return": 0.0016174100685818853,
+                "avg_hold_days": 0.2986111111111111,
+                "avg_hold_bars": 14.333333333333332
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 54,
+                "ratio": 0.75,
+                "avg_return": -0.003560326187178913,
+                "avg_hold_days": 0.033179012345679014,
+                "avg_hold_bars": 1.5925925925925926
+              }
+            }
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.24738606181405265,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.458522222879433,
+            "mdd": -0.24902446018501342,
+            "sharpe": -2.9698718819389263,
+            "total_trades": 134,
+            "win_rate": 0.14925373134328357,
+            "avg_hold_days": 0.058613184079602,
+            "avg_hold_bars": 2.8134328358208958,
+            "expectancy": -0.002102247866403392,
+            "exit_mix": {
+              "end_of_data": {
+                "trade_count": 1,
+                "ratio": 0.007462686567164179,
+                "avg_return": -0.0019980014990006456,
+                "avg_hold_days": 0.0,
+                "avg_hold_bars": 0.0
+              },
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 29,
+                "ratio": 0.21641791044776118,
+                "avg_return": -0.006573592714164865,
+                "avg_hold_days": 0.026580459770114945,
+                "avg_hold_bars": 1.2758620689655173
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 12,
+                "ratio": 0.08955223880597014,
+                "avg_return": 0.003776171087396011,
+                "avg_hold_days": 0.2309027777777778,
+                "avg_hold_bars": 11.083333333333334
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 92,
+                "ratio": 0.6865671641791045,
+                "avg_return": -0.0014606856188807053,
+                "avg_hold_days": 0.046875,
+                "avg_hold_bars": 2.25
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.35548466410182333,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": -0.11172098795302687,
+            "mdd": -0.37088980984297,
+            "sharpe": -2.8730002705376725,
+            "total_trades": 135,
+            "win_rate": 0.15555555555555556,
+            "avg_hold_days": 0.06574074074074072,
+            "avg_hold_bars": 3.155555555555555,
+            "expectancy": -0.0032075067900970734,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 28,
+                "ratio": 0.2074074074074074,
+                "avg_return": -0.010053479748148833,
+                "avg_hold_days": 0.046130952380952384,
+                "avg_hold_bars": 2.2142857142857144
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 17,
+                "ratio": 0.1259259259259259,
+                "avg_return": 0.007042840531998146,
+                "avg_hold_days": 0.26348039215686275,
+                "avg_hold_bars": 12.647058823529413
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 90,
+                "ratio": 0.6666666666666666,
+                "avg_return": -0.003013825252876735,
+                "avg_hold_days": 0.03449074074074074,
+                "avg_hold_bars": 1.6555555555555554
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.46956226285361824,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -2.148860329995022,
+            "mdd": -0.4702472432895615,
+            "sharpe": -5.9774233816691895,
+            "total_trades": 157,
+            "win_rate": 0.18471337579617833,
+            "avg_hold_days": 0.06356157112526538,
+            "avg_hold_bars": 3.050955414012738,
+            "expectancy": -0.004012716281632489,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 24,
+                "ratio": 0.15286624203821655,
+                "avg_return": -0.010232008205397302,
+                "avg_hold_days": 0.05555555555555555,
+                "avg_hold_bars": 2.6666666666666665
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 16,
+                "ratio": 0.10191082802547771,
+                "avg_return": -0.00027892584892934974,
+                "avg_hold_days": 0.2747395833333333,
+                "avg_hold_bars": 13.1875
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 117,
+                "ratio": 0.7452229299363057,
+                "avg_return": -0.003247567911999111,
+                "avg_hold_days": 0.03632478632478633,
+                "avg_hold_bars": 1.7435897435897436
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.26862029852699165,
+        "avg_excess_return": -0.5185781298290489,
+        "avg_expectancy": -0.0029460918765481198,
+        "avg_hold_bars": 3.04022483902456,
+        "total_trades": 638,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.1833855799373041,
+        "trailing_exit_share": 0.11285266457680251,
+        "trend_exit_share": 0.700626959247649
+      }
+    },
+    {
+      "name": "relaxed_trend_slow_exit",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 20,
+        "trend_ema_slow_1h": 60,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.1,
+        "pullback_max_pct": -0.002,
+        "pullback_ema_buffer_pct": 0.05,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 50.0,
+        "setup_rsi_recovery": 35.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.0,
+        "trigger_close_location_min": 0.5,
+        "trigger_rsi_momentum_min": 0.0,
+        "trigger_rsi_min": 40.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "ema20_below_ema60",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.1468893279637069,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": -0.004700609481772977,
+            "mdd": -0.1514776666612909,
+            "sharpe": -5.66212238169087,
+            "total_trades": 57,
+            "win_rate": 0.15789473684210525,
+            "avg_hold_days": 0.21125730994152045,
+            "avg_hold_bars": 10.140350877192981,
+            "expectancy": -0.0027765123950793474,
+            "exit_mix": {
+              "end_of_data": {
+                "trade_count": 1,
+                "ratio": 0.017543859649122806,
+                "avg_return": -0.0019980014990006456,
+                "avg_hold_days": 0.0,
+                "avg_hold_bars": 0.0
+              },
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 28,
+                "ratio": 0.49122807017543857,
+                "avg_return": -0.005321403110679246,
+                "avg_hold_days": 0.07738095238095237,
+                "avg_hold_bars": 3.7142857142857135
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 25,
+                "ratio": 0.43859649122807015,
+                "avg_return": -8.523306464379043e-05,
+                "avg_hold_days": 0.38416666666666666,
+                "avg_hold_bars": 18.439999999999998
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 3,
+                "ratio": 0.05263157894736842,
+                "avg_return": -0.00171103043513617,
+                "avg_hold_days": 0.09027777777777778,
+                "avg_hold_bars": 4.333333333333333
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.1162556656400523,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.465201801471434,
+            "mdd": -0.19291717468672226,
+            "sharpe": -0.7358426876768299,
+            "total_trades": 58,
+            "win_rate": 0.22413793103448276,
+            "avg_hold_days": 0.2036637931034483,
+            "avg_hold_bars": 9.775862068965518,
+            "expectancy": -0.0019399815491625292,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 29,
+                "ratio": 0.5,
+                "avg_return": -0.010811367167412534,
+                "avg_hold_days": 0.07974137931034483,
+                "avg_hold_bars": 3.827586206896552
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 25,
+                "ratio": 0.43103448275862066,
+                "avg_return": 0.008160742399129593,
+                "avg_hold_days": 0.36916666666666664,
+                "avg_hold_bars": 17.72
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 4,
+                "ratio": 0.06896551724137931,
+                "avg_return": -0.0007519604936757629,
+                "avg_hold_days": 0.06770833333333333,
+                "avg_hold_bars": 3.25
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.25940582056435524,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.09427516103073674,
+            "mdd": -0.2535736567653999,
+            "sharpe": -4.638561120199051,
+            "total_trades": 55,
+            "win_rate": 0.21818181818181817,
+            "avg_hold_days": 0.1772727272727273,
+            "avg_hold_bars": 8.509090909090911,
+            "expectancy": -0.005408352658269906,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 33,
+                "ratio": 0.6,
+                "avg_return": -0.010006015816892394,
+                "avg_hold_days": 0.10542929292929294,
+                "avg_hold_bars": 5.060606060606061
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 20,
+                "ratio": 0.36363636363636365,
+                "avg_return": 0.0021142584350094694,
+                "avg_hold_days": 0.309375,
+                "avg_hold_bars": 14.850000000000001
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 2,
+                "ratio": 0.03636363636363636,
+                "avg_return": -0.004773021473792605,
+                "avg_hold_days": 0.041666666666666664,
+                "avg_hold_bars": 2.0
+              }
+            }
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.26757571336652786,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.4787118744319082,
+            "mdd": -0.2631116077943592,
+            "sharpe": -2.802319576810628,
+            "total_trades": 113,
+            "win_rate": 0.21238938053097345,
+            "avg_hold_days": 0.20943952802359886,
+            "avg_hold_bars": 10.053097345132745,
+            "expectancy": -0.002725730208499323,
+            "exit_mix": {
+              "end_of_data": {
+                "trade_count": 1,
+                "ratio": 0.008849557522123894,
+                "avg_return": -0.0019980014990006456,
+                "avg_hold_days": 0.0,
+                "avg_hold_bars": 0.0
+              },
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 57,
+                "ratio": 0.504424778761062,
+                "avg_return": -0.006663279884331132,
+                "avg_hold_days": 0.07054093567251463,
+                "avg_hold_bars": 3.385964912280702
+              },
+              "regime_pullback_continuation_30m_regime_off_exit": {
+                "trade_count": 1,
+                "ratio": 0.008849557522123894,
+                "avg_return": -0.0007993442824486552,
+                "avg_hold_days": 0.16666666666666666,
+                "avg_hold_bars": 8.0
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 50,
+                "ratio": 0.4424778761061947,
+                "avg_return": 0.0016306184572903936,
+                "avg_hold_days": 0.38333333333333336,
+                "avg_hold_bars": 18.400000000000002
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 4,
+                "ratio": 0.035398230088495575,
+                "avg_return": -0.0017335343091548217,
+                "avg_hold_days": 0.078125,
+                "avg_hold_bars": 3.75
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.07271870629066268,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.17104496985813378,
+            "mdd": -0.345520075628832,
+            "sharpe": -0.1247360240829138,
+            "total_trades": 110,
+            "win_rate": 0.23636363636363636,
+            "avg_hold_days": 0.21818181818181817,
+            "avg_hold_bars": 10.472727272727273,
+            "expectancy": -0.00041018987870574276,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 58,
+                "ratio": 0.5272727272727272,
+                "avg_return": -0.010317685703463992,
+                "avg_hold_days": 0.09770114942528736,
+                "avg_hold_bars": 4.689655172413794
+              },
+              "regime_pullback_continuation_30m_regime_off_exit": {
+                "trade_count": 1,
+                "ratio": 0.00909090909090909,
+                "avg_return": 0.0007146305700655997,
+                "avg_hold_days": 0.08333333333333333,
+                "avg_hold_bars": 4.0
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 46,
+                "ratio": 0.41818181818181815,
+                "avg_return": 0.012191737287475954,
+                "avg_hold_days": 0.3899456521739131,
+                "avg_hold_bars": 18.717391304347828
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 5,
+                "ratio": 0.045454545454545456,
+                "avg_return": -0.0016459323301359241,
+                "avg_hold_days": 0.0625,
+                "avg_hold_bars": 3.0
+              }
+            }
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.5379015363748988,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -2.2171996035163026,
+            "mdd": -0.5490569360592255,
+            "sharpe": -3.455895711832436,
+            "total_trades": 127,
+            "win_rate": 0.2125984251968504,
+            "avg_hold_days": 0.18832020997375323,
+            "avg_hold_bars": 9.039370078740156,
+            "expectancy": -0.0059667992182464765,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_initial_stop": {
+                "trade_count": 77,
+                "ratio": 0.6062992125984252,
+                "avg_return": -0.012540133658804086,
+                "avg_hold_days": 0.11417748917748918,
+                "avg_hold_bars": 5.480519480519481
+              },
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 45,
+                "ratio": 0.3543307086614173,
+                "avg_return": 0.005055171891050861,
+                "avg_hold_days": 0.32592592592592595,
+                "avg_hold_bars": 15.644444444444446
+              },
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 5,
+                "ratio": 0.03937007874015748,
+                "avg_return": -0.003935188817335344,
+                "avg_hold_days": 0.09166666666666666,
+                "avg_hold_bars": 4.3999999999999995
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.2334577950333673,
+        "avg_excess_return": -0.48341562633542456,
+        "avg_expectancy": -0.0032045943179938876,
+        "avg_hold_bars": 9.66508309197493,
+        "total_trades": 520,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.5423076923076923,
+        "trailing_exit_share": 0.40576923076923077,
+        "trend_exit_share": 0.04423076923076923
+      }
+    },
+    {
+      "name": "votes1_fast12_slow48",
+      "params": {
+        "regime_ticker": "KRW-BTC",
+        "daily_regime_ma_window": 100,
+        "trend_ema_fast_1h": 12,
+        "trend_ema_slow_1h": 48,
+        "trend_slope_lookback_1h": 3,
+        "pullback_lookback_1h": 8,
+        "pullback_min_pct": -0.045,
+        "pullback_max_pct": -0.012,
+        "pullback_ema_buffer_pct": 0.012,
+        "setup_rsi_window": 14,
+        "setup_rsi_min": 35.0,
+        "setup_rsi_recovery": 40.0,
+        "trigger_ema_fast_30m": 8,
+        "trigger_ema_slow_30m": 21,
+        "trigger_breakout_lookback_30m": 6,
+        "trigger_volume_window_30m": 20,
+        "trigger_volume_mult": 1.1,
+        "trigger_close_location_min": 0.55,
+        "trigger_rsi_momentum_min": 3.0,
+        "trigger_rsi_min": 45.0,
+        "trigger_required_votes": 1,
+        "atr_window": 14,
+        "initial_stop_atr_mult": 1.5,
+        "atr_trailing_mult": 2.5,
+        "trend_exit_mode": "close_below_ema20",
+        "max_hold_bars_30m": 96
+      },
+      "results": {
+        "1y": {
+          "KRW-BTC": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.00906565254321201,
+            "benchmark_return": -0.14218871848193393,
+            "excess_return": 0.13312306593872192,
+            "mdd": -0.003594309717309521,
+            "sharpe": -4.789927290266058,
+            "total_trades": 2,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.004542694591747942,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 2,
+                "ratio": 1.0,
+                "avg_return": -0.004542694591747942,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": 0.3489461358313817,
+            "excess_return": -0.3489461358313817,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2025-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.353680981595092,
+            "excess_return": 0.353680981595092,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          }
+        },
+        "2y": {
+          "KRW-BTC": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.00906565254321201,
+            "benchmark_return": 0.21113616106538036,
+            "excess_return": -0.22020181360859237,
+            "mdd": -0.003594309717309521,
+            "sharpe": -3.3869900683376337,
+            "total_trades": 2,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.020833333333333332,
+            "avg_hold_bars": 1.0,
+            "expectancy": -0.004542694591747942,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trend_exit": {
+                "trade_count": 2,
+                "ratio": 1.0,
+                "avg_return": -0.004542694591747942,
+                "avg_hold_days": 0.020833333333333332,
+                "avg_hold_bars": 1.0
+              }
+            }
+          },
+          "KRW-ETH": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": 0.0,
+            "benchmark_return": -0.24376367614879646,
+            "excess_return": 0.24376367614879646,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "avg_hold_bars": 0.0,
+            "expectancy": 0.0,
+            "exit_mix": {}
+          },
+          "KRW-XRP": {
+            "start": "2024-04-23 18:30:00",
+            "end": "2026-04-23 18:30:00",
+            "cumulative_return": -0.04011016904072329,
+            "benchmark_return": 1.6792980671414037,
+            "excess_return": -1.719408236182127,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "total_trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.10416666666666667,
+            "avg_hold_bars": 5.0,
+            "expectancy": -0.04011016904072329,
+            "exit_mix": {
+              "regime_pullback_continuation_30m_trailing_exit": {
+                "trade_count": 1,
+                "ratio": 1.0,
+                "avg_return": -0.04011016904072329,
+                "avg_hold_days": 0.10416666666666667,
+                "avg_hold_bars": 5.0
+              }
+            }
+          }
+        }
+      },
+      "summary": {
+        "avg_cumulative_return": -0.009706912354524552,
+        "avg_excess_return": -0.25966474365658176,
+        "avg_expectancy": -0.00819925970403653,
+        "avg_hold_bars": 1.1666666666666667,
+        "total_trades": 5,
+        "time_exit_share": 0.0,
+        "initial_stop_share": 0.0,
+        "trailing_exit_share": 0.2,
+        "trend_exit_share": 0.8
+      }
+    }
+  ],
+  "best_candidate": {
+    "name": "votes1_pullback_wide",
+    "params": {
+      "regime_ticker": "KRW-BTC",
+      "daily_regime_ma_window": 100,
+      "trend_ema_fast_1h": 20,
+      "trend_ema_slow_1h": 60,
+      "trend_slope_lookback_1h": 3,
+      "pullback_lookback_1h": 8,
+      "pullback_min_pct": -0.06,
+      "pullback_max_pct": -0.008,
+      "pullback_ema_buffer_pct": 0.012,
+      "setup_rsi_window": 14,
+      "setup_rsi_min": 35.0,
+      "setup_rsi_recovery": 40.0,
+      "trigger_ema_fast_30m": 8,
+      "trigger_ema_slow_30m": 21,
+      "trigger_breakout_lookback_30m": 6,
+      "trigger_volume_window_30m": 20,
+      "trigger_volume_mult": 1.1,
+      "trigger_close_location_min": 0.55,
+      "trigger_rsi_momentum_min": 3.0,
+      "trigger_rsi_min": 45.0,
+      "trigger_required_votes": 1,
+      "atr_window": 14,
+      "initial_stop_atr_mult": 1.5,
+      "atr_trailing_mult": 2.5,
+      "trend_exit_mode": "close_below_ema20",
+      "max_hold_bars_30m": 96
+    },
+    "results": {
+      "1y": {
+        "KRW-BTC": {
+          "start": "2025-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": -0.005491079466186322,
+          "benchmark_return": -0.14218871848193393,
+          "excess_return": 0.1366976390157476,
+          "mdd": 0.0,
+          "sharpe": 0.0,
+          "total_trades": 1,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.020833333333333332,
+          "avg_hold_bars": 1.0,
+          "expectancy": -0.005491079466186322,
+          "exit_mix": {
+            "regime_pullback_continuation_30m_trend_exit": {
+              "trade_count": 1,
+              "ratio": 1.0,
+              "avg_return": -0.005491079466186322,
+              "avg_hold_days": 0.020833333333333332,
+              "avg_hold_bars": 1.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "start": "2025-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": 0.0,
+          "benchmark_return": 0.3489461358313817,
+          "excess_return": -0.3489461358313817,
+          "mdd": 0.0,
+          "sharpe": 0.0,
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.0,
+          "avg_hold_bars": 0.0,
+          "expectancy": 0.0,
+          "exit_mix": {}
+        },
+        "KRW-XRP": {
+          "start": "2025-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": 0.0,
+          "benchmark_return": -0.353680981595092,
+          "excess_return": 0.353680981595092,
+          "mdd": 0.0,
+          "sharpe": 0.0,
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.0,
+          "avg_hold_bars": 0.0,
+          "expectancy": 0.0,
+          "exit_mix": {}
+        }
+      },
+      "2y": {
+        "KRW-BTC": {
+          "start": "2024-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": -0.010134880995119167,
+          "benchmark_return": 0.21113616106538036,
+          "excess_return": -0.22127104206049952,
+          "mdd": -0.00549107946618631,
+          "sharpe": -8.744211506039523,
+          "total_trades": 2,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.020833333333333332,
+          "avg_hold_bars": 1.0,
+          "expectancy": -0.005080260635566436,
+          "exit_mix": {
+            "regime_pullback_continuation_30m_trailing_exit": {
+              "trade_count": 1,
+              "ratio": 0.5,
+              "avg_return": -0.00466944180494655,
+              "avg_hold_days": 0.020833333333333332,
+              "avg_hold_bars": 1.0
+            },
+            "regime_pullback_continuation_30m_trend_exit": {
+              "trade_count": 1,
+              "ratio": 0.5,
+              "avg_return": -0.005491079466186322,
+              "avg_hold_days": 0.020833333333333332,
+              "avg_hold_bars": 1.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "start": "2024-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": 0.0,
+          "benchmark_return": -0.24376367614879646,
+          "excess_return": 0.24376367614879646,
+          "mdd": 0.0,
+          "sharpe": 0.0,
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.0,
+          "avg_hold_bars": 0.0,
+          "expectancy": 0.0,
+          "exit_mix": {}
+        },
+        "KRW-XRP": {
+          "start": "2024-04-23 18:30:00",
+          "end": "2026-04-23 18:30:00",
+          "cumulative_return": 0.0,
+          "benchmark_return": 1.6792980671414037,
+          "excess_return": -1.6792980671414037,
+          "mdd": 0.0,
+          "sharpe": 0.0,
+          "total_trades": 0,
+          "win_rate": 0.0,
+          "avg_hold_days": 0.0,
+          "avg_hold_bars": 0.0,
+          "expectancy": 0.0,
+          "exit_mix": {}
+        }
+      }
+    },
+    "summary": {
+      "avg_cumulative_return": -0.0026043267435509145,
+      "avg_excess_return": -0.25256215804560816,
+      "avg_expectancy": -0.001761890016958793,
+      "avg_hold_bars": 0.3333333333333333,
+      "total_trades": 3,
+      "time_exit_share": 0.0,
+      "initial_stop_share": 0.0,
+      "trailing_exit_share": 0.3333333333333333,
+      "trend_exit_share": 0.6666666666666666
+    }
+  },
+  "verdict": {
+    "label": "HOLD",
+    "gates": {
+      "btc_2y_trades_ge_10": false,
+      "eth_2y_trades_ge_20": false,
+      "avg_hold_bars_ge_6": false,
+      "avg_hold_bars_le_72": true,
+      "time_exit_share_le_20pct": true,
+      "btc_or_eth_2y_expectancy_positive": false,
+      "avg_core_excess_non_negative": true
+    },
+    "avg_core_2y_excess_return": 0.011246317044148468
+  }
+}

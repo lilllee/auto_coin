@@ -18,8 +18,8 @@ class MarketSnapshot:
     """전략에 전달되는 시장 스냅샷.
 
     Attributes:
-        df: `enrich_daily`로 보조 컬럼이 채워진 일봉 DataFrame.
-            마지막 행이 "오늘"이며 `open`/`target`/`maN`이 채워져 있어야 한다.
+        df: strategy용 보조 컬럼이 채워진 candle DataFrame.
+            마지막 행이 현재 bar이며 `open`/지표 컬럼이 채워져 있어야 한다.
         current_price: 현재가 (실거래) 또는 백테스트 시점 가격.
         has_position: 보유 중 여부. True면 신규 진입은 막힌다.
     """
@@ -27,16 +27,25 @@ class MarketSnapshot:
     df: pd.DataFrame
     current_price: float
     has_position: bool
+    interval: str = "day"
+    bar_seconds: int = 24 * 60 * 60
 
 
 @dataclass(frozen=True)
 class PositionSnapshot:
-    """백테스트/리뷰용 포지션 상태 스냅샷."""
+    """백테스트/리뷰용 포지션 상태 스냅샷.
+
+    `hold_days`는 legacy 이름이다. 1H 백테스트에서는 "보유 bar 수"로 해석할 수 있게
+    `hold_bars`와 `interval` 메타데이터를 함께 전달한다.
+    """
 
     entry_price: float
     hold_days: int
     highest_close: float
     highest_high: float
+    interval: str = "day"
+    bar_seconds: int = 24 * 60 * 60
+    hold_bars: int | None = None
 
 
 @dataclass(frozen=True)

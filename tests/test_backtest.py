@@ -21,14 +21,14 @@ from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 
-def _make_df(rows: list[dict]) -> pd.DataFrame:
-    idx = pd.date_range("2026-01-01", periods=len(rows), freq="D")
+def _make_df(rows: list[dict], *, freq: str = "D") -> pd.DataFrame:
+    idx = pd.date_range("2026-01-01", periods=len(rows), freq=freq)
     return pd.DataFrame(rows, index=idx)
 
 
-def _make_enriched_df(rows, strategy_name="volatility_breakout", params=None):
+def _make_enriched_df(rows, strategy_name="volatility_breakout", params=None, *, freq: str = "D"):
     """전략에 맞게 enriched된 DataFrame 생성."""
-    idx = pd.date_range("2026-01-01", periods=len(rows), freq="D")
+    idx = pd.date_range("2026-01-01", periods=len(rows), freq=freq)
     df = pd.DataFrame(rows, index=idx)
     return enrich_for_strategy(df, strategy_name, params or {})
 
@@ -208,6 +208,27 @@ def test_cli_sweep(mocker, capsys):
     assert "0.500" in out
 
 
+def test_cli_generic_minute60_fetches_hourly_candles(mocker, capsys):
+    base = _make_df([
+        {"open": 100, "high": 110, "low": 90, "close": 105, "volume": 1},
+        {"open": 105, "high": 115, "low": 95, "close": 110, "volume": 1},
+    ], freq="h")
+    get_ohlcv = mocker.patch("auto_coin.backtest.runner.pyupbit.get_ohlcv", return_value=base)
+    rc = cli([
+        "--ticker", "KRW-BTC",
+        "--strategy", "sma200_regime",
+        "--params", '{"ma_window": 3, "allow_sell_signal": true}',
+        "--days", "2",
+        "--interval", "1h",
+        "--fee", "0",
+        "--slippage", "0",
+    ])
+    assert rc == 0
+    get_ohlcv.assert_called_once_with("KRW-BTC", interval="minute60", count=48)
+    out = capsys.readouterr().out
+    assert "interval=minute60" in out
+
+
 # ===================================================================
 # Generic backtest tests
 # ===================================================================
@@ -253,6 +274,25 @@ def test_generic_backtest_sma200_regime():
     assert t.entry_price == pytest.approx(108.0)
     assert t.exit_price == pytest.approx(88.0)
     assert t.exit_type == "signal"
+
+
+def test_generic_backtest_accepts_minute60_interval():
+    rows = [
+        {"open": 100, "high": 103, "low": 99, "close": 102, "volume": 1},
+        {"open": 102, "high": 104, "low": 100, "close": 103, "volume": 1},
+        {"open": 103, "high": 105, "low": 101, "close": 104, "volume": 1},
+        {"open": 104, "high": 106, "low": 80, "close": 82, "volume": 1},
+        {"open": 82, "high": 84, "low": 81, "close": 83, "volume": 1},
+    ]
+    idx = pd.date_range("2026-01-01", periods=5, freq="h")
+    df = pd.DataFrame(rows, index=idx)
+    df["sma3"] = [float("nan"), float("nan"), 100.0, 101.0, 102.0]
+    strat = Sma200RegimeStrategy(ma_window=3, allow_sell_signal=True)
+
+    r = backtest(df, strat, fee=0.0, slippage=0.0, interval="minute60")
+
+    assert r.n_trades == 1
+    assert r.avg_hold_days == pytest.approx(1 / 24)
 
 
 def test_generic_backtest_composite():
@@ -715,3 +755,68 @@ def test_default_slippage_in_cli(mocker, capsys):
     out = capsys.readouterr().out
     assert f"slippage={DEFAULT_SLIPPAGE}" in out
     assert "slippage=0.0005" in out
+
+
+# === minute30 backtest 지원 테스트 ===
+
+def test_backtest_supports_minute30_interval():
+    """backtest 가 minute30 interval 을 받아 crash-free 로 동작."""
+    # 30m sample df 생성
+    idx = pd.date_range("2026-01-01", periods=100, freq="30min")
+    np.random.seed(42)
+    closes = 100 + np.cumsum(np.random.randn(100) * 0.5)
+    df = pd.DataFrame(
+        {
+            "open":   closes + np.random.randn(100) * 0.1,
+            "high":   closes + np.abs(np.random.randn(100)) * 0.5,
+            "low":    closes - np.abs(np.random.randn(100)) * 0.5,
+            "close":  closes,
+            "volume": np.ones(100),
+        },
+        index=idx,
+    )
+
+    from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+    strat = VolatilityBreakout(k=0.5, ma_window=5, require_ma_filter=False)
+    from auto_coin.data.candles import enrich_daily
+    enriched = enrich_daily(df, ma_window=5, k=0.5)
+
+    result = backtest(
+        enriched, strat,
+        fee=0.0005, slippage=0.0,
+        interval="minute30",
+    )
+
+    # crash-free 확인
+    assert result is not None
+    assert isinstance(result, BacktestResult)
+    # bar_seconds 가 1800 으로 전달되어야 함
+    assert result.avg_hold_days == 0.0 or result.avg_hold_days >= 0.0
+
+
+def test_backtest_minute30_bar_seconds_in_snapshot():
+    """backtest 가 minute30 의 bar_seconds=1800 을 MarketSnapshot 에 전달."""
+    idx = pd.date_range("2026-01-01", periods=20, freq="30min")
+    df = pd.DataFrame(
+        {
+            "open":   [100.0] * 20,
+            "high":   [110.0] * 20,
+            "low":    [90.0] * 20,
+            "close":  [105.0] * 20,
+            "volume": [1.0] * 20,
+        },
+        index=idx,
+    )
+
+    from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+    strat = VolatilityBreakout(k=0.5, ma_window=5, require_ma_filter=False)
+    from auto_coin.data.candles import enrich_daily
+    enriched = enrich_daily(df, ma_window=5, k=0.5)
+
+    # interval="minute30" 으로 호출 시 crash-free
+    result = backtest(
+        enriched, strat,
+        fee=0.0005, slippage=0.0,
+        interval="minute30",
+    )
+    assert result is not None

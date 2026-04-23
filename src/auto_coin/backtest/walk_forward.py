@@ -23,7 +23,11 @@ from auto_coin.backtest.runner import (
     BacktestResult,
     backtest,
 )
-from auto_coin.data.candles import enrich_for_strategy
+from auto_coin.data.candles import (
+    enrich_for_strategy,
+    history_days_to_candles,
+    normalize_candle_interval,
+)
 from auto_coin.strategy import STRATEGY_REGISTRY, create_strategy
 
 DEFAULT_PARAM_GRIDS: dict[str, dict[str, list]] = {
@@ -47,6 +51,29 @@ DEFAULT_PARAM_GRIDS: dict[str, dict[str, list]] = {
     "atr_channel_breakout": {
         "atr_window": [7, 10, 14, 20, 30],
         "channel_multiplier": [0.75, 1.0, 1.5, 2.0],
+    },
+    "regime_reclaim_1h": {
+        "daily_regime_ma_window": 120,
+        "dip_lookback_bars": [6, 8, 12],
+        "pullback_threshold_pct": [-0.02, -0.025, -0.03],
+        "rsi_window": 14,
+        "rsi_threshold": [30.0, 35.0, 40.0],
+        "reclaim_ema_window": [4, 6, 8],
+        "max_hold_bars": [24, 36, 48],
+        "atr_window": 14,
+        "atr_trailing_mult": [1.5, 2.0, 2.5],
+    },
+    "regime_reclaim_30m": {
+        "daily_regime_ma_window": 100,
+        "hourly_pullback_bars": [6, 8, 12],
+        "hourly_pullback_threshold_pct": [-0.02, -0.025, -0.03],
+        "setup_rsi_window": 14,
+        "setup_rsi_threshold": [30.0, 35.0, 40.0],
+        "trigger_reclaim_ema_window": [4, 6, 8],
+        "trigger_rsi_rebound_threshold": 30.0,
+        "max_hold_bars_30m": [24, 36, 48],
+        "atr_window": 14,
+        "atr_trailing_mult": [1.5, 2.0, 2.5],
     },
 }
 
@@ -81,6 +108,7 @@ class WalkForwardResult:
 
     strategy_name: str
     param_grid: dict[str, list]
+    interval: str = "day"
     n_windows: int = 0
     avg_train_return: float = 0.0
     avg_test_return: float = 0.0
@@ -127,11 +155,28 @@ def _param_combos(param_grid: dict[str, list | Any]) -> list[dict[str, Any]]:
     return combos
 
 
-def _enrich(df: pd.DataFrame, strategy_name: str, params: dict) -> pd.DataFrame:
+def _enrich(
+    df: pd.DataFrame,
+    strategy_name: str,
+    params: dict,
+    *,
+    interval: str = "day",
+    regime_df: pd.DataFrame | None = None,
+    hourly_setup_df: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """enrich_for_strategy wrapper — k/ma_window을 params에서 전달."""
     k = params.get("k", 0.5)
     ma_window = params.get("ma_window", 5)
-    return enrich_for_strategy(df, strategy_name, params, k=k, ma_window=ma_window)
+    return enrich_for_strategy(
+        df,
+        strategy_name,
+        params,
+        k=k,
+        ma_window=ma_window,
+        regime_df=regime_df,
+        hourly_setup_df=hourly_setup_df,
+        interval=interval,
+    )
 
 
 def _date_str(idx_val) -> str:
@@ -151,6 +196,7 @@ def walk_forward(
     strategy_name: str,
     param_grid: dict[str, list | Any] | None = None,
     *,
+    interval: str = "day",
     train_days: int = 180,
     test_days: int = 30,
     fee: float = UPBIT_DEFAULT_FEE,
@@ -158,12 +204,15 @@ def walk_forward(
     stop_loss_ratio: float | None = None,
     enable_time_exit: bool = False,
     optimize_by: str = "cumulative_return",
+    regime_df: pd.DataFrame | None = None,
+    hourly_setup_df: pd.DataFrame | None = None,
 ) -> WalkForwardResult:
     """Rolling walk-forward 검증.
 
     Train 구간에서 param_grid의 모든 조합을 백테스트하고,
     optimize_by 기준 최적 파라미터를 Test 구간에서 검증한다.
     """
+    interval = normalize_candle_interval(interval)
     if param_grid is None:
         param_grid = DEFAULT_PARAM_GRIDS.get(strategy_name, {})
 
@@ -172,6 +221,7 @@ def walk_forward(
     if not param_grid or not has_sweep:
         return WalkForwardResult(
             strategy_name=strategy_name,
+            interval=interval,
             param_grid=param_grid if param_grid else {},
         )
 
@@ -181,23 +231,26 @@ def walk_forward(
     cache: dict[tuple, pd.DataFrame] = {}
     for combo in combos:
         key = tuple(sorted(combo.items()))
-        cache[key] = _enrich(df, strategy_name, combo)
+        cache[key] = _enrich(df, strategy_name, combo, interval=interval, regime_df=regime_df, hourly_setup_df=hourly_setup_df)
 
     # 윈도우 생성
     n_rows = len(df)
+    train_candles = history_days_to_candles(train_days, interval)
+    test_candles = history_days_to_candles(test_days, interval)
     window_specs: list[tuple[int, int, int, int]] = []
     ws = 0
-    while ws + train_days + test_days <= n_rows:
+    while ws + train_candles + test_candles <= n_rows:
         train_start = ws
-        train_end = ws + train_days
+        train_end = ws + train_candles
         test_start = train_end
-        test_end = train_end + test_days
+        test_end = train_end + test_candles
         window_specs.append((train_start, train_end, test_start, test_end))
-        ws += test_days
+        ws += test_candles
 
     if not window_specs:
         return WalkForwardResult(
             strategy_name=strategy_name,
+            interval=interval,
             param_grid=param_grid,
         )
 
@@ -222,6 +275,7 @@ def walk_forward(
                 slippage=slippage,
                 stop_loss_ratio=stop_loss_ratio,
                 enable_time_exit=enable_time_exit,
+                interval=interval,
             )
             metric = getattr(result, optimize_by, result.cumulative_return)
             if metric > best_metric:
@@ -240,6 +294,7 @@ def walk_forward(
             slippage=slippage,
             stop_loss_ratio=stop_loss_ratio,
             enable_time_exit=enable_time_exit,
+            interval=interval,
         )
 
         assert best_train_result is not None
@@ -281,6 +336,7 @@ def walk_forward(
 
     return WalkForwardResult(
         strategy_name=strategy_name,
+        interval=interval,
         param_grid=param_grid,
         n_windows=n_w,
         avg_train_return=float(avg_train),
@@ -322,6 +378,7 @@ def report(result: WalkForwardResult) -> str:
     lines: list[str] = [
         sep,
         f"  WALK-FORWARD REPORT: {result.strategy_name}",
+        f"  Interval: {result.interval}",
         f"  Windows: {result.n_windows}",
         sep,
         "",
@@ -423,7 +480,9 @@ def cli(argv: list[str] | None = None) -> int:
     )
     p.add_argument("--strategy", required=True, choices=list(STRATEGY_REGISTRY.keys()))
     p.add_argument("--ticker", default="KRW-BTC")
-    p.add_argument("--days", type=int, default=730, help="Total candles to fetch")
+    p.add_argument("--interval", default="day",
+                   help="Candle interval: day | minute60 | minute30 (aliases: 1h, 60m, hourly, 30m, 30min)")
+    p.add_argument("--days", type=int, default=730, help="Total lookback days to fetch")
     p.add_argument("--train-days", type=int, default=180)
     p.add_argument("--test-days", type=int, default=30)
     p.add_argument("--fee", type=float, default=UPBIT_DEFAULT_FEE)
@@ -442,19 +501,55 @@ def cli(argv: list[str] | None = None) -> int:
         help='JSON param grid, e.g. \'{"k": [0.3, 0.5, 0.7]}\'',
     )
     args = p.parse_args(argv)
+    interval = normalize_candle_interval(args.interval)
 
     # Fetch candles
-    raw = pyupbit.get_ohlcv(args.ticker, interval="day", count=args.days)
+    raw = pyupbit.get_ohlcv(
+        args.ticker,
+        interval=interval,
+        count=history_days_to_candles(args.days, interval),
+    )
     if raw is None or raw.empty:
         print(f"ERROR: no candles for {args.ticker}", file=sys.stderr)
         return 1
 
     grid = json.loads(args.param_grid) if args.param_grid else None
+    regime_df = None
+    hourly_setup_df = None
+    if args.strategy in {"rcdb", "rcdb_v2", "regime_reclaim_1h", "regime_reclaim_30m"}:
+        params_for_fetch = grid or {}
+        regime_ticker = params_for_fetch.get("regime_ticker", "KRW-BTC")
+        regime_interval = normalize_candle_interval(params_for_fetch.get("regime_interval", interval))
+        if regime_ticker and (regime_ticker != args.ticker or regime_interval != interval):
+            regime_df = pyupbit.get_ohlcv(
+                regime_ticker,
+                interval=regime_interval,
+                count=history_days_to_candles(args.days, regime_interval),
+            )
+    elif args.strategy == "regime_reclaim_30m":
+        # multi-TF: daily regime + 1H setup + 30m trigger
+        params_for_fetch = grid or {}
+        regime_ticker = params_for_fetch.get("regime_ticker", args.ticker)
+        # daily
+        if regime_ticker:
+            regime_df = pyupbit.get_ohlcv(
+                regime_ticker,
+                interval="day",
+                count=history_days_to_candles(args.days, "day"),
+            )
+        # 1H setup
+        if regime_ticker:
+            hourly_setup_df = pyupbit.get_ohlcv(
+                regime_ticker,
+                interval="minute60",
+                count=history_days_to_candles(args.days, "minute60"),
+            )
 
     result = walk_forward(
         raw,
         args.strategy,
         grid,
+        interval=interval,
         train_days=args.train_days,
         test_days=args.test_days,
         fee=args.fee,
@@ -462,9 +557,11 @@ def cli(argv: list[str] | None = None) -> int:
         stop_loss_ratio=args.stop_loss,
         enable_time_exit=args.enable_time_exit,
         optimize_by=args.optimize_by,
+        regime_df=regime_df,
+        hourly_setup_df=hourly_setup_df,
     )
 
-    print(f"# {args.ticker}  strategy={args.strategy}  total_candles={len(raw)}")
+    print(f"# {args.ticker}  strategy={args.strategy}  interval={interval}  total_candles={len(raw)}")
     print(report(result))
     return 0
 
