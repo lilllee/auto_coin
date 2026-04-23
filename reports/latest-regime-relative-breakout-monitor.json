@@ -1,0 +1,118 @@
+{
+  "as_of": "2026-04-24T00:12:03.275767",
+  "strategy": "regime_relative_breakout_30m",
+  "scope": "read-only monitor per Codex 0005; no orders, no paper, no live, no strategy/ui/kpi changes",
+  "fetch_days": 365,
+  "base_params": {
+    "daily_regime_ma_window": 100,
+    "rs_24h_bars_30m": 48,
+    "rs_7d_bars_30m": 336,
+    "hourly_ema_fast": 20,
+    "hourly_ema_slow": 60,
+    "hourly_slope_lookback": 3,
+    "breakout_lookback_30m": 6,
+    "volume_window_30m": 20,
+    "volume_mult": 1.2,
+    "close_location_min": 0.55,
+    "atr_window": 14
+  },
+  "btc_daily_regime": {
+    "latest_completed_daily_date": "2026-04-23T09:00:00",
+    "latest_completed_daily_close": 116000000.0,
+    "shifted_sma100": 109407230.0,
+    "regime_on_at_latest_completed_daily": true,
+    "consecutive_state_days": 4,
+    "regime_confirmed_2d_on": true,
+    "last_flip_date": "2026-04-20T09:00:00",
+    "days_since_last_flip": 3,
+    "history_days_considered": 365
+  },
+  "per_ticker": {
+    "KRW-ETH": {
+      "conditions": {
+        "1_btc_daily_regime_on": "True",
+        "2_rs_24h_vs_btc_positive": false,
+        "3_rs_7d_vs_btc_positive": false,
+        "4_hourly_close_above_ema20": false,
+        "5_hourly_ema20_above_ema60": true,
+        "6_hourly_ema20_slope_3_non_negative": false,
+        "7_close_above_prior_high_6": false,
+        "8_close_location_value_ge_055": false,
+        "9_volume_above_ma_mult": false
+      },
+      "conditions_met_count": 2,
+      "conditions_total": 9,
+      "full_entry_met": false,
+      "hourly_trend_ok": false,
+      "breakout_ok": false,
+      "rs_ok": false,
+      "near_miss": {
+        "full_entry_except_volume": false,
+        "full_entry_except_breakout": false,
+        "full_entry_except_rs_7d": false,
+        "full_entry_except_hourly_trend": false
+      },
+      "values": {
+        "close": 3460000.0,
+        "prior_high_6": 3472000.0,
+        "close_location_value": 0.26666666666666666,
+        "volume": 434.35212994,
+        "volume_ma_20": 889.3625349145002,
+        "volume_ratio": 0.48838590888220507,
+        "volume_threshold_ratio": 1.2,
+        "target_rs_24h_vs_btc": -0.016370716746029967,
+        "target_rs_7d_vs_btc": -0.04838933703896564,
+        "hourly_close": 3469000.0,
+        "hourly_ema20": 3483832.6562357824,
+        "hourly_ema60": 3483242.1250384646,
+        "hourly_ema20_slope_3": -7781.606688781176
+      },
+      "latest_30m_timestamp": "2026-04-24T00:00:00"
+    },
+    "KRW-XRP": {
+      "conditions": {
+        "1_btc_daily_regime_on": "True",
+        "2_rs_24h_vs_btc_positive": false,
+        "3_rs_7d_vs_btc_positive": false,
+        "4_hourly_close_above_ema20": true,
+        "5_hourly_ema20_above_ema60": false,
+        "6_hourly_ema20_slope_3_non_negative": false,
+        "7_close_above_prior_high_6": false,
+        "8_close_location_value_ge_055": false,
+        "9_volume_above_ma_mult": false
+      },
+      "conditions_met_count": 2,
+      "conditions_total": 9,
+      "full_entry_met": false,
+      "hourly_trend_ok": false,
+      "breakout_ok": false,
+      "rs_ok": false,
+      "near_miss": {
+        "full_entry_except_volume": false,
+        "full_entry_except_breakout": false,
+        "full_entry_except_rs_7d": false,
+        "full_entry_except_hourly_trend": false
+      },
+      "values": {
+        "close": 2119.0,
+        "prior_high_6": 2123.0,
+        "close_location_value": 0.2,
+        "volume": 852737.70375939,
+        "volume_ma_20": 1124802.3174668436,
+        "volume_ratio": 0.7581222855939987,
+        "volume_threshold_ratio": 1.2,
+        "target_rs_24h_vs_btc": -0.006719748287276506,
+        "target_rs_7d_vs_btc": -0.04586840085095356,
+        "hourly_close": 2123.0,
+        "hourly_ema20": 2115.3666851486682,
+        "hourly_ema60": 2121.4107326219428,
+        "hourly_ema20_slope_3": -0.8836241036738102
+      },
+      "latest_30m_timestamp": "2026-04-24T00:00:00"
+    }
+  },
+  "verdict": {
+    "label": "WATCHLIST_REGIME_ON",
+    "reason": "BTC regime ON at the strategy's 30m view but no alt is near full entry conditions. Passive watchlist."
+  }
+}
