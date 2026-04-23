@@ -28,6 +28,7 @@ _SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 if str(_SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS_DIR))
 import regime_relative_breakout_30m_stage2 as stage2  # noqa: E402
+import regime_relative_breakout_30m_walk_forward as wf  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -551,3 +552,190 @@ def test_classify_verdict_hold_when_counts_too_low() -> None:
     )
     out = stage2.classify_verdict(eth, xrp, _stage2_summary())
     assert out["label"] == "HOLD"
+
+
+# ---------------------------------------------------------------------------
+# Walk-forward (0003) — fold schedule + OOS verdict classifier
+# ---------------------------------------------------------------------------
+
+
+def test_generate_folds_respects_bounds_and_step() -> None:
+    data_start = pd.Timestamp("2024-01-01")
+    # 730 days of data total.
+    data_end = data_start + pd.Timedelta(days=730)
+    folds = wf.generate_folds(
+        data_start,
+        data_end,
+        warmup_days=100,
+        train_days=180,
+        test_days=60,
+        step_days=60,
+    )
+    # train_start begins at data_start + 100 = 2024-04-10; each fold's
+    # test_end must stay inside 730d. Expected fold count is 7:
+    # train_start candidates (days offset): 100, 160, 220, 280, 340, 400, 460.
+    # test_end for last = 460 + 180 + 60 = 700 ≤ 730. Next (520) would be
+    # 520 + 240 = 760 > 730 → stop.
+    assert len(folds) == 7
+    assert folds[0]["train_start"] == data_start + pd.Timedelta(days=100)
+    assert folds[0]["test_end"] == data_start + pd.Timedelta(days=100 + 180 + 60)
+    # Step is 60 days between consecutive train_starts.
+    for prev, nxt in zip(folds[:-1], folds[1:], strict=False):
+        assert (nxt["train_start"] - prev["train_start"]).days == 60
+    # Test end strictly inside data window.
+    for f in folds:
+        assert f["test_end"] <= data_end
+
+
+def test_generate_folds_returns_empty_when_window_too_short() -> None:
+    data_start = pd.Timestamp("2024-01-01")
+    data_end = data_start + pd.Timedelta(days=200)  # too short for warmup + 240
+    folds = wf.generate_folds(
+        data_start,
+        data_end,
+        warmup_days=100,
+        train_days=180,
+        test_days=60,
+        step_days=60,
+    )
+    assert folds == []
+
+
+def _wf_ticker_agg(
+    *,
+    total_trades: int,
+    expectancy: float,
+    cum_chained: float,
+    bench_chained: float,
+    worst_mdd: float,
+    worst_bench_mdd: float,
+) -> dict:
+    return {
+        "fold_count": 6,
+        "total_trades": total_trades,
+        "total_wins": 0,
+        "win_rate": 0.0,
+        "expectancy": expectancy,
+        "cumulative_return_chained": cum_chained,
+        "benchmark_return_chained": bench_chained,
+        "excess_return_chained": cum_chained - bench_chained,
+        "worst_fold_mdd": worst_mdd,
+        "worst_fold_benchmark_mdd": worst_bench_mdd,
+        "return_over_abs_worst_mdd": (
+            cum_chained / abs(worst_mdd) if worst_mdd < 0 else 0.0
+        ),
+        "benchmark_return_over_abs_worst_mdd": (
+            bench_chained / abs(worst_bench_mdd) if worst_bench_mdd < 0 else 0.0
+        ),
+        "positive_expectancy_fold_ratio": 1.0,
+        "positive_cum_fold_ratio": 1.0,
+        "positive_risk_adjusted_fold_ratio": 1.0,
+        "exit_mix_totals": {},
+    }
+
+
+def _wf_alt_from(eth_agg: dict, xrp_agg: dict) -> dict:
+    eth_tr = eth_agg["total_trades"]
+    xrp_tr = xrp_agg["total_trades"]
+    alt_tr = eth_tr + xrp_tr
+    expectancy = (
+        (eth_agg["expectancy"] * eth_tr + xrp_agg["expectancy"] * xrp_tr) / alt_tr
+        if alt_tr
+        else 0.0
+    )
+    cum = (eth_agg["cumulative_return_chained"] + xrp_agg["cumulative_return_chained"]) / 2.0
+    bench = (eth_agg["benchmark_return_chained"] + xrp_agg["benchmark_return_chained"]) / 2.0
+    worst_mdd = min(eth_agg["worst_fold_mdd"], xrp_agg["worst_fold_mdd"])
+    worst_bench = min(
+        eth_agg["worst_fold_benchmark_mdd"], xrp_agg["worst_fold_benchmark_mdd"]
+    )
+    return {
+        "total_trades": alt_tr,
+        "eth_trades": eth_tr,
+        "xrp_trades": xrp_tr,
+        "expectancy": expectancy,
+        "cumulative_return_avg": cum,
+        "benchmark_return_avg": bench,
+        "excess_return_avg": cum - bench,
+        "worst_fold_mdd": worst_mdd,
+        "worst_fold_benchmark_mdd": worst_bench,
+        "return_over_abs_worst_mdd": cum / abs(worst_mdd) if worst_mdd < 0 else 0.0,
+        "benchmark_return_over_abs_worst_mdd": (
+            bench / abs(worst_bench) if worst_bench < 0 else 0.0
+        ),
+        "exit_mix_totals": {},
+    }
+
+
+def test_classify_wf_verdict_pass_pure() -> None:
+    eth = _wf_ticker_agg(
+        total_trades=40, expectancy=0.003, cum_chained=0.30, bench_chained=0.10,
+        worst_mdd=-0.10, worst_bench_mdd=-0.30,
+    )
+    xrp = _wf_ticker_agg(
+        total_trades=35, expectancy=0.004, cum_chained=0.20, bench_chained=0.05,
+        worst_mdd=-0.12, worst_bench_mdd=-0.35,
+    )
+    alt = _wf_alt_from(eth, xrp)
+    out = wf.classify_wf_verdict(eth, xrp, alt, 0.80, 0.10)
+    assert out["label"] == "PASS_WF"
+    assert out["pass_type"] == "pure"
+
+
+def test_classify_wf_verdict_pass_risk_adjusted() -> None:
+    # strategy beats benchmark on risk-adjusted R/|MDD| despite negative raw excess.
+    eth = _wf_ticker_agg(
+        total_trades=40, expectancy=0.002, cum_chained=0.20, bench_chained=0.50,
+        worst_mdd=-0.10, worst_bench_mdd=-0.50,
+    )
+    xrp = _wf_ticker_agg(
+        total_trades=35, expectancy=0.003, cum_chained=0.15, bench_chained=0.40,
+        worst_mdd=-0.10, worst_bench_mdd=-0.45,
+    )
+    alt = _wf_alt_from(eth, xrp)
+    out = wf.classify_wf_verdict(eth, xrp, alt, 0.70, 0.15)
+    assert out["label"] == "PASS_WF_RISK_ADJUSTED"
+    assert out["pass_type"] == "risk_adjusted"
+
+
+def test_classify_wf_verdict_revise_on_low_fold_ratio() -> None:
+    eth = _wf_ticker_agg(
+        total_trades=40, expectancy=0.002, cum_chained=0.20, bench_chained=0.05,
+        worst_mdd=-0.10, worst_bench_mdd=-0.30,
+    )
+    xrp = _wf_ticker_agg(
+        total_trades=35, expectancy=0.003, cum_chained=0.15, bench_chained=0.05,
+        worst_mdd=-0.10, worst_bench_mdd=-0.30,
+    )
+    alt = _wf_alt_from(eth, xrp)
+    # positive-expectancy fold ratio below 60% — one performance gate fails.
+    out = wf.classify_wf_verdict(eth, xrp, alt, 0.45, 0.15)
+    assert out["label"] == "REVISE_WF"
+
+
+def test_classify_wf_verdict_stop_on_both_alts_negative() -> None:
+    eth = _wf_ticker_agg(
+        total_trades=40, expectancy=-0.003, cum_chained=-0.20, bench_chained=0.10,
+        worst_mdd=-0.30, worst_bench_mdd=-0.30,
+    )
+    xrp = _wf_ticker_agg(
+        total_trades=35, expectancy=-0.004, cum_chained=-0.25, bench_chained=0.05,
+        worst_mdd=-0.30, worst_bench_mdd=-0.30,
+    )
+    alt = _wf_alt_from(eth, xrp)
+    out = wf.classify_wf_verdict(eth, xrp, alt, 0.20, 0.30)
+    assert out["label"] == "STOP_WF"
+
+
+def test_classify_wf_verdict_hold_when_trade_counts_too_low() -> None:
+    eth = _wf_ticker_agg(
+        total_trades=10, expectancy=0.002, cum_chained=0.05, bench_chained=0.02,
+        worst_mdd=-0.05, worst_bench_mdd=-0.10,
+    )
+    xrp = _wf_ticker_agg(
+        total_trades=5, expectancy=0.003, cum_chained=0.03, bench_chained=0.01,
+        worst_mdd=-0.03, worst_bench_mdd=-0.08,
+    )
+    alt = _wf_alt_from(eth, xrp)
+    out = wf.classify_wf_verdict(eth, xrp, alt, 0.60, 0.10)
+    assert out["label"] == "HOLD_WF"
