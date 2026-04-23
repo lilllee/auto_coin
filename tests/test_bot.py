@@ -673,8 +673,9 @@ def test_daily_reset_clears_stop_loss_counts(store, mocker):
 
 def test_save_snapshot_live_uses_tradelog_pnl_ratio(store, mocker):
     """live 모드에서는 TradeLog 기반 total_pnl_ratio가 snapshot에 저장되어야 한다."""
-    s = _settings(mode="live", live_trading=True)
+    s = _settings(mode="live", live_trading=True, active_strategy_group="rcdb_v2")
     bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    bot._client._upbit = object()
 
     captured = {}
     bot._snapshot_writer = lambda data: captured.update(data)
@@ -685,6 +686,27 @@ def test_save_snapshot_live_uses_tradelog_pnl_ratio(store, mocker):
         "realized_pnl_krw": -3500.0,
         "total_pnl_ratio": -0.07,
     }
+    mocker.patch.object(
+        bot._client,
+        "get_holdings",
+        return_value=[
+            AssetBalance(
+                currency="KRW",
+                unit_currency="KRW",
+                balance=250_000.0,
+                locked=0.0,
+                avg_buy_price=0.0,
+            ),
+            AssetBalance(
+                currency="BTC",
+                unit_currency="KRW",
+                balance=0.01,
+                locked=0.0,
+                avg_buy_price=100_000_000.0,
+            ),
+        ],
+    )
+    mocker.patch.object(bot._client, "get_current_prices", return_value={"KRW-BTC": 100_000_000.0})
     # state.daily_pnl_ratio는 live에서 항상 0
     assert store.load().daily_pnl_ratio == 0.0
 
@@ -694,6 +716,8 @@ def test_save_snapshot_live_uses_tradelog_pnl_ratio(store, mocker):
     assert captured["realized_pnl_krw"] == -3500.0
     assert captured["win_count"] == 1
     assert captured["loss_count"] == 1
+    assert captured["portfolio_equity_krw"] == pytest.approx(1_250_000.0)
+    assert captured["active_strategy_group"] == "rcdb_v2"
 
 
 def test_save_snapshot_paper_uses_state_pnl_ratio(store, mocker):
@@ -726,6 +750,7 @@ def test_save_snapshot_live_no_trades_returns_zero(store, mocker):
     """live 모드에서 당일 거래가 없으면 total_pnl_ratio는 0이어야 한다."""
     s = _settings(mode="live", live_trading=True)
     bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+    bot._client._upbit = object()
 
     captured = {}
     bot._snapshot_writer = lambda data: captured.update(data)
@@ -741,6 +766,40 @@ def test_save_snapshot_live_no_trades_returns_zero(store, mocker):
 
     assert captured["total_pnl_ratio"] == 0.0
     assert captured["realized_pnl_krw"] == 0.0
+
+
+def test_save_snapshot_live_omits_equity_when_price_lookup_fails(store, mocker):
+    s = _settings(mode="live", live_trading=True)
+    bot, _ = _make_bot(store, s, mocker, fetch_df=_enriched_df(False), current_price=100.0)
+
+    captured = {}
+    bot._snapshot_writer = lambda data: captured.update(data)
+    bot._trade_log_query = lambda snap_date: {
+        "closed_count": 0,
+        "win_count": 0,
+        "loss_count": 0,
+        "realized_pnl_krw": 0.0,
+        "total_pnl_ratio": 0.0,
+    }
+    mocker.patch.object(
+        bot._client,
+        "get_holdings",
+        return_value=[
+            AssetBalance(
+                currency="BTC",
+                unit_currency="KRW",
+                balance=0.01,
+                locked=0.0,
+                avg_buy_price=100_000_000.0,
+            ),
+        ],
+    )
+    mocker.patch.object(bot._client, "get_current_price", side_effect=UpbitError("ticker fail"))
+    mocker.patch.object(bot._client, "get_current_prices", return_value={})
+
+    bot._save_daily_snapshot()
+
+    assert captured["portfolio_equity_krw"] is None
 
 
 def test_save_snapshot_live_without_query_falls_back(store, mocker):

@@ -4,8 +4,9 @@
 <h1 class="text-xl font-semibold mb-3">KPI 요약</h1>
 
 <div class="mb-3 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-300">
-  ⚠️ <b>"estimated_*" 지표는 추정치입니다.</b> DailySnapshot의 <code>total_pnl_ratio</code>는 종목별 수익률의 단순합 구조이므로,
-  누적 수익률·MDD는 정확한 포트폴리오 가중 수익률과 차이가 있습니다. "거래 통계"(승률·평균 수익률·거래별 실현 KRW)는 fee 반영된 정확한 값입니다.
+  ℹ️ 기본적으로 <b>"estimated_*"</b> 필드는 하위호환 이름을 유지합니다.
+  기간 전체에 <code>DailySnapshot.portfolio_equity_krw</code>가 있으면 해당 평가액 기준으로 계산하고,
+  없으면 <code>total_pnl_ratio</code> 합 기반 추정치로 계산합니다. "거래 통계"(승률·평균 수익률·거래별 실현 KRW)는 fee 반영된 정확한 값입니다.
 </div>
 
 <form method="get" class="mb-3 flex gap-2 items-center">
@@ -36,7 +37,7 @@
 
   <!-- 차트 -->
   <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-3">
-    <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">추정 누적 equity (1.0 시작)</div>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-1">누적 equity (1.0 시작 정규화)</div>
     <canvas id="equity-chart" height="220"></canvas>
   </div>
 
@@ -159,14 +160,15 @@
   }
 
   function renderDailySummary(d){
+    const exactEquity = d.equity_basis === "portfolio_equity_krw";
     const mddPeriod = (d.estimated_mdd_peak_date && d.estimated_mdd_trough_date)
       ? `${d.estimated_mdd_peak_date} → ${d.estimated_mdd_trough_date}` : "-";
-    els.dailySummary.innerHTML = [
+    const cards = [
       card("기간", `${d.days_count}일`, `win ${d.win_days} / loss ${d.loss_days}`),
-      card("추정 누적 수익률 (근사)",
+      card(exactEquity ? "누적 수익률" : "추정 누적 수익률 (근사)",
            `<span class="${pnlClass(d.estimated_cumulative_return)}">${fmtPct(d.estimated_cumulative_return)}</span>`,
-           "DailySnapshot 합 기반 추정치"),
-      card("추정 MDD (근사)",
+           exactEquity ? "DailySnapshot.portfolio_equity_krw 기준" : "DailySnapshot 합 기반 추정치"),
+      card(exactEquity ? "MDD" : "추정 MDD (근사)",
            `<span class="text-red-600 dark:text-red-400">${fmtPct(d.estimated_mdd)}</span>`,
            mddPeriod),
       card("평균 일일 수익률", fmtPct(d.avg_daily_pnl_ratio)),
@@ -176,7 +178,14 @@
       card("최악의 날",
            d.worst_day ? `<span class="text-red-600 dark:text-red-400">${fmtPct(d.worst_day.pnl_ratio)}</span>` : "-",
            d.worst_day ? d.worst_day.date : ""),
-    ].join("");
+    ];
+    if (exactEquity) {
+      cards.push(
+        card("시작 평가액", fmtKrw(d.start_portfolio_equity_krw)),
+        card("종료 평가액", fmtKrw(d.end_portfolio_equity_krw)),
+      );
+    }
+    els.dailySummary.innerHTML = cards.join("");
   }
 
   function renderStrategy(rows){
@@ -291,10 +300,11 @@
     const ctx = document.getElementById("equity-chart").getContext("2d");
     const labels = series.map(p => p.date);
     const data = series.map(p => p.estimated_cumulative);
+    const exactEquity = series.some(p => p.portfolio_equity_krw !== null && p.portfolio_equity_krw !== undefined);
     new Chart(ctx, {
       type: "line",
       data: {labels, datasets: [{
-        label: "추정 누적 equity (근사)",
+        label: exactEquity ? "누적 equity (portfolio_equity_krw 정규화)" : "추정 누적 equity (근사)",
         data, borderColor: "#2563eb", backgroundColor: "rgba(37,99,235,0.08)",
         tension: 0.15, fill: true, pointRadius: 0, borderWidth: 2,
       }]},

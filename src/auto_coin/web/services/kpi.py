@@ -41,6 +41,7 @@ class _SnapshotLike(Protocol):
     snapshot_date: date
     total_pnl_ratio: float
     realized_pnl_krw: float
+    portfolio_equity_krw: float | None
 
 
 @dataclass(frozen=True)
@@ -80,6 +81,7 @@ class DailyPoint:
     pnl_ratio: float                # 해당 일 total_pnl_ratio (원본 그대로)
     estimated_cumulative: float     # 근사 누적 equity (1.0 시작)
     realized_krw: float
+    portfolio_equity_krw: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -87,6 +89,7 @@ class DailyPoint:
             "pnl_ratio": self.pnl_ratio,
             "estimated_cumulative": self.estimated_cumulative,
             "realized_krw": self.realized_krw,
+            "portfolio_equity_krw": self.portfolio_equity_krw,
         }
 
 
@@ -118,13 +121,17 @@ class DailyKpiResult:
     win_days: int
     loss_days: int
     daily_series: list[DailyPoint] = field(default_factory=list)
-    # 근사 지표: 포트폴리오 구조상 정확한 수익률/MDD가 아님. 접두사로 명시.
+    equity_basis: str = "total_pnl_ratio"
+    # 하위호환 필드명. portfolio_equity_krw가 기간 전체에 있으면 exact basis,
+    # 없으면 total_pnl_ratio 기반 approximate basis를 사용한다.
     estimated_mdd: float = 0.0
     estimated_mdd_peak_date: date | None = None
     estimated_mdd_trough_date: date | None = None
     estimated_cumulative_return: float = 0.0
     total_realized_krw: float = 0.0
     avg_daily_pnl_ratio: float = 0.0
+    start_portfolio_equity_krw: float | None = None
+    end_portfolio_equity_krw: float | None = None
     best_day: DailyPoint | None = None
     worst_day: DailyPoint | None = None
 
@@ -134,6 +141,7 @@ class DailyKpiResult:
             "win_days": self.win_days,
             "loss_days": self.loss_days,
             "daily_series": [p.to_dict() for p in self.daily_series],
+            "equity_basis": self.equity_basis,
             "estimated_mdd": self.estimated_mdd,
             "estimated_mdd_peak_date": (
                 self.estimated_mdd_peak_date.isoformat()
@@ -146,11 +154,13 @@ class DailyKpiResult:
             "estimated_cumulative_return": self.estimated_cumulative_return,
             "total_realized_krw": self.total_realized_krw,
             "avg_daily_pnl_ratio": self.avg_daily_pnl_ratio,
+            "start_portfolio_equity_krw": self.start_portfolio_equity_krw,
+            "end_portfolio_equity_krw": self.end_portfolio_equity_krw,
             "best_day": self.best_day.to_dict() if self.best_day else None,
             "worst_day": self.worst_day.to_dict() if self.worst_day else None,
             "note": (
-                "estimated_* 지표는 DailySnapshot.total_pnl_ratio (종목별 수익률 합)"
-                " 기반 추정치(근사)로, 정확한 포트폴리오 가중 수익률이 아닙니다."
+                "portfolio_equity_krw가 기간 전체에 있으면 해당 평가액 기준으로 누적 수익률/MDD를 계산합니다. "
+                "없으면 DailySnapshot.total_pnl_ratio (종목별 수익률 합) 기반 추정치(근사)로 계산합니다."
             ),
         }
 
@@ -351,20 +361,33 @@ def compute_trade_kpi(trades: list[_TradeLike]) -> TradeKpiResult:
 
 def _aggregate_snapshots_by_date(
     snapshots: list[_SnapshotLike],
-) -> list[tuple[date, float, float]]:
+) -> list[tuple[date, float, float, float | None]]:
     """같은 날짜에 여러 snapshot이 있을 수 있으므로 합산.
 
-    반환: (date, pnl_ratio_sum, realized_krw_sum) 오름차순 리스트.
+    반환: (date, pnl_ratio_sum, realized_krw_sum, portfolio_equity_krw) 오름차순 리스트.
+
+    `portfolio_equity_krw`는 같은 날짜에 여러 row가 있을 경우 non-null 값 중 최대값을 사용한다.
+    legacy 단일 row/day 경로와, portfolio snapshot duplicated-row 경로 모두에 안전한 보수적 선택이다.
     """
     bucket: dict[date, list[float]] = defaultdict(list)
     krw_bucket: dict[date, list[float]] = defaultdict(list)
+    equity_bucket: dict[date, list[float]] = defaultdict(list)
     for s in snapshots:
         bucket[s.snapshot_date].append(s.total_pnl_ratio)
         krw_bucket[s.snapshot_date].append(s.realized_pnl_krw)
+        equity = getattr(s, "portfolio_equity_krw", None)
+        if equity is not None:
+            try:
+                equity_f = float(equity)
+            except (TypeError, ValueError):
+                equity_f = 0.0
+            if equity_f > 0:
+                equity_bucket[s.snapshot_date].append(equity_f)
 
     out = []
     for d in sorted(bucket):
-        out.append((d, sum(bucket[d]), sum(krw_bucket[d])))
+        exact_equity = max(equity_bucket[d]) if equity_bucket[d] else None
+        out.append((d, sum(bucket[d]), sum(krw_bucket[d]), exact_equity))
     return out
 
 
@@ -393,9 +416,8 @@ def _compute_estimated_mdd(
 def compute_daily_kpi(snapshots: list[_SnapshotLike]) -> DailyKpiResult:
     """DailySnapshot 리스트로부터 일별 KPI를 계산한다.
 
-    경고: 결과의 estimated_* 지표는 `total_pnl_ratio` (종목별 수익률 합) 기반 근사치다.
-    정확한 포트폴리오 equity가 필요하면 DailySnapshot 모델에 total_equity_krw 추가 후
-    재계산해야 한다 (Phase 3).
+    `portfolio_equity_krw`가 기간 전체에 있으면 해당 평가액 시계열을 우선 사용한다.
+    그렇지 않으면 기존처럼 `total_pnl_ratio` (종목별 수익률 합) 기반 추정 경로로 계산한다.
     """
     snapshots = list(snapshots)
     if not snapshots:
@@ -403,15 +425,37 @@ def compute_daily_kpi(snapshots: list[_SnapshotLike]) -> DailyKpiResult:
 
     aggregated = _aggregate_snapshots_by_date(snapshots)
     series: list[DailyPoint] = []
-    equity = 1.0
-    for d, ratio, krw in aggregated:
-        equity *= (1.0 + ratio)
-        series.append(DailyPoint(
-            date=d,
-            pnl_ratio=ratio,
-            estimated_cumulative=equity,
-            realized_krw=krw,
-        ))
+    exact_equities = [equity for *_rest, equity in aggregated if equity is not None]
+    use_exact_equity = (
+        len(exact_equities) == len(aggregated)
+        and bool(exact_equities)
+        and exact_equities[0] > 0
+    )
+
+    if use_exact_equity:
+        base_equity = exact_equities[0]
+        for d, ratio, krw, portfolio_equity in aggregated:
+            assert portfolio_equity is not None  # guarded by use_exact_equity
+            series.append(DailyPoint(
+                date=d,
+                pnl_ratio=ratio,
+                estimated_cumulative=portfolio_equity / base_equity,
+                realized_krw=krw,
+                portfolio_equity_krw=portfolio_equity,
+            ))
+        equity_basis = "portfolio_equity_krw"
+    else:
+        equity = 1.0
+        for d, ratio, krw, portfolio_equity in aggregated:
+            equity *= (1.0 + ratio)
+            series.append(DailyPoint(
+                date=d,
+                pnl_ratio=ratio,
+                estimated_cumulative=equity,
+                realized_krw=krw,
+                portfolio_equity_krw=portfolio_equity,
+            ))
+        equity_basis = "total_pnl_ratio"
 
     win_days = sum(1 for p in series if p.pnl_ratio > 0)
     loss_days = sum(1 for p in series if p.pnl_ratio <= 0)
@@ -427,12 +471,15 @@ def compute_daily_kpi(snapshots: list[_SnapshotLike]) -> DailyKpiResult:
         win_days=win_days,
         loss_days=loss_days,
         daily_series=series,
+        equity_basis=equity_basis,
         estimated_mdd=mdd,
         estimated_mdd_peak_date=mdd_peak,
         estimated_mdd_trough_date=mdd_trough,
         estimated_cumulative_return=final_cumulative - 1.0,
         total_realized_krw=sum(p.realized_krw for p in series),
         avg_daily_pnl_ratio=_safe_mean([p.pnl_ratio for p in series]),
+        start_portfolio_equity_krw=series[0].portfolio_equity_krw if use_exact_equity else None,
+        end_portfolio_equity_krw=series[-1].portfolio_equity_krw if use_exact_equity else None,
         best_day=best_day,
         worst_day=worst_day,
     )

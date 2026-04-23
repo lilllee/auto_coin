@@ -469,8 +469,8 @@ def test_api_keys_upbit_holdings_renders_saved_assets(app_env, mocker):
                 ok=True,
                 detail="보유 코인 2개",
                 holdings=(
-                    HoldingRow("KRW-BTC", "0.01", "-", "100,000,000", "1,000,000"),
-                    HoldingRow("KRW-ETH", "1.25", "0.2", "3,500,000", "4,375,000"),
+                    HoldingRow("KRW-BTC", "0.01", "-", "100,000,000", "100,000,000", "현재가", "1,000,000"),
+                    HoldingRow("KRW-ETH", "1.25", "0.2", "3,500,000", "3,500,000", "현재가", "4,375,000"),
                 ),
             ),
         )

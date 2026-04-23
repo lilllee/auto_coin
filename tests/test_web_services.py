@@ -117,8 +117,8 @@ def test_check_upbit_success(mocker):
 
 def test_fetch_upbit_holdings_success(mocker):
     mocker.patch(
-        "auto_coin.web.services.credentials_check.UpbitClient.get_current_price",
-        side_effect=[100000000.0],
+        "auto_coin.web.services.credentials_check.UpbitClient.get_current_prices",
+        return_value={"KRW-BTC": 100000000.0},
     )
     mocker.patch(
         "auto_coin.web.services.credentials_check.UpbitClient.get_holdings",
@@ -141,11 +141,16 @@ def test_fetch_upbit_holdings_success(mocker):
     )
     r = fetch_upbit_holdings("ak", "sk")
     assert r.ok is True
+    assert "총 평가 1,050,000 KRW" in r.detail
     assert r.holdings[0].market == "KRW"
+    assert r.holdings[0].current_price_text == "1"
+    assert r.holdings[0].valuation_basis_text == "현금"
     assert r.holdings[0].avg_buy_price_text == "-"
     assert r.holdings[0].krw_value_text == "50,000"
     assert r.holdings[1].market == "KRW-BTC"
     assert r.holdings[1].quantity_text == "0.01"
+    assert r.holdings[1].current_price_text == "100,000,000"
+    assert r.holdings[1].valuation_basis_text == "현재가"
     assert r.holdings[1].krw_value_text == "1,000,000"
 
 
@@ -160,6 +165,10 @@ def test_fetch_upbit_holdings_failure(mocker):
 
 
 def test_fetch_upbit_holdings_falls_back_to_avg_buy_price_when_price_lookup_fails(mocker):
+    mocker.patch(
+        "auto_coin.web.services.credentials_check.UpbitClient.get_current_prices",
+        return_value={},
+    )
     mocker.patch(
         "auto_coin.web.services.credentials_check.UpbitClient.get_current_price",
         side_effect=UpbitError("ticker fail"),
@@ -178,6 +187,9 @@ def test_fetch_upbit_holdings_falls_back_to_avg_buy_price_when_price_lookup_fail
     )
     r = fetch_upbit_holdings("ak", "sk")
     assert r.ok is True
+    assert "평균매수가 대체 1개" in r.detail
+    assert r.holdings[0].current_price_text == "-"
+    assert r.holdings[0].valuation_basis_text == "평균매수가"
     assert r.holdings[0].krw_value_text == "4,500,000"
 
 

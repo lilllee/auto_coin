@@ -24,7 +24,9 @@ class HoldingRow:
     market: str
     quantity_text: str
     locked_text: str
+    current_price_text: str
     avg_buy_price_text: str
+    valuation_basis_text: str
     krw_value_text: str
 
 
@@ -49,13 +51,29 @@ def _estimate_krw_value(asset: AssetBalance, current_price: float | None) -> flo
     return None
 
 
+def _valuation_basis(asset: AssetBalance, current_price: float | None) -> str:
+    if asset.currency == "KRW":
+        return "현금"
+    if current_price is not None and current_price > 0:
+        return "현재가"
+    if asset.avg_buy_price > 0:
+        return "평균매수가"
+    return "미확인"
+
+
 def _to_holding_row(asset: AssetBalance, current_price: float | None = None) -> HoldingRow:
     krw_value = _estimate_krw_value(asset, current_price)
     return HoldingRow(
         market=asset.market,
         quantity_text=_format_volume(asset.total_volume),
         locked_text=_format_volume(asset.locked) if asset.locked else "-",
+        current_price_text=(
+            "1"
+            if asset.currency == "KRW"
+            else (format_price(current_price) if current_price is not None and current_price > 0 else "-")
+        ),
         avg_buy_price_text=format_price(asset.avg_buy_price) if asset.avg_buy_price > 0 else "-",
+        valuation_basis_text=_valuation_basis(asset, current_price),
         krw_value_text=format_price(krw_value) if krw_value is not None else "-",
     )
 
@@ -87,16 +105,60 @@ def fetch_upbit_holdings(access_key: str, secret_key: str) -> HoldingsResult:
         return HoldingsResult(False, f"보유 코인 조회 실패: {e}")
     if not holdings:
         return HoldingsResult(True, "보유 중인 코인이 없습니다", ())
-    rows = []
+
+    markets = [asset.market for asset in holdings if asset.currency != "KRW"]
+    current_prices: dict[str, float] = {}
+    if markets:
+        try:
+            current_prices.update(client.get_current_prices(markets))
+        except UpbitError:
+            current_prices = {}
+
+    total_krw_value = 0.0
+    current_price_count = 0
+    avg_buy_fallback_count = 0
+    unresolved_count = 0
+    rows_with_value: list[tuple[float, HoldingRow]] = []
+
     for asset in holdings:
-        current_price: float | None = None
-        if asset.currency != "KRW":
+        current_price = current_prices.get(asset.market) if asset.currency != "KRW" else None
+        if asset.currency != "KRW" and current_price is None:
             try:
                 current_price = client.get_current_price(asset.market)
             except UpbitError:
                 current_price = None
-        rows.append(_to_holding_row(asset, current_price))
-    return HoldingsResult(True, f"보유 코인 {len(rows)}개", rows)
+
+        if asset.currency != "KRW":
+            if current_price is not None and current_price > 0:
+                current_price_count += 1
+            elif asset.avg_buy_price > 0:
+                avg_buy_fallback_count += 1
+            else:
+                unresolved_count += 1
+
+        value = _estimate_krw_value(asset, current_price) or 0.0
+        row = _to_holding_row(asset, current_price)
+        total_krw_value += value
+        rows_with_value.append((value, row))
+
+    rows_with_value.sort(
+        key=lambda item: (
+            0 if item[1].market == "KRW" else 1,
+            -item[0],
+            item[1].market,
+        )
+    )
+    rows = tuple(row for _, row in rows_with_value)
+
+    detail = f"보유 자산 {len(rows)}개 · 총 평가 {format_price(total_krw_value)} KRW"
+    if markets:
+        detail += (
+            f" · 현재가 {current_price_count}개"
+            f" · 평균매수가 대체 {avg_buy_fallback_count}개"
+        )
+        if unresolved_count:
+            detail += f" · 미확인 {unresolved_count}개"
+    return HoldingsResult(True, detail, rows)
 
 
 def check_telegram(bot_token: str, chat_id: str, *, send_probe: bool = False) -> CheckResult:

@@ -41,6 +41,7 @@ class _S:
     snapshot_date: date
     total_pnl_ratio: float
     realized_pnl_krw: float
+    portfolio_equity_krw: float | None = None
 
 
 def _trade(
@@ -257,6 +258,23 @@ def test_daily_kpi_aggregates_same_date_multiple_rows():
     assert r.days_count == 2
     assert r.daily_series[0].pnl_ratio == pytest.approx(0.03)
     assert r.daily_series[0].realized_krw == pytest.approx(3000)
+
+
+def test_daily_kpi_uses_portfolio_equity_when_available():
+    snaps = [
+        _S(date(2026, 4, 1), 0.02, 20_000, portfolio_equity_krw=1_000_000.0),
+        _S(date(2026, 4, 2), -0.50, -10_000, portfolio_equity_krw=1_050_000.0),
+        _S(date(2026, 4, 3), -0.30, 30_000, portfolio_equity_krw=1_100_000.0),
+    ]
+    r = compute_daily_kpi(snaps)
+    assert r.equity_basis == "portfolio_equity_krw"
+    assert r.daily_series[0].estimated_cumulative == pytest.approx(1.0)
+    assert r.daily_series[1].estimated_cumulative == pytest.approx(1.05)
+    assert r.daily_series[2].estimated_cumulative == pytest.approx(1.10)
+    assert r.estimated_cumulative_return == pytest.approx(0.10)
+    assert r.estimated_mdd == 0.0
+    assert r.start_portfolio_equity_krw == pytest.approx(1_000_000.0)
+    assert r.end_portfolio_equity_krw == pytest.approx(1_100_000.0)
 
 
 # ---------------------------------------------------------------------------

@@ -544,6 +544,8 @@ class TradingBot:
             if is_live and tradelog_pnl_ratio is not None:
                 total_pnl = tradelog_pnl_ratio
 
+            portfolio_equity_krw = self._live_portfolio_equity_krw() if is_live else None
+
             self._snapshot_writer({
                 "snapshot_date": snap_date,
                 "mode": self._s.mode.value if hasattr(self._s.mode, "value") else str(self._s.mode),
@@ -554,6 +556,8 @@ class TradingBot:
                 "win_count": win_count,
                 "loss_count": loss_count,
                 "realized_pnl_krw": realized_krw,
+                "portfolio_equity_krw": portfolio_equity_krw,
+                "active_strategy_group": getattr(self._s, "active_strategy_group", None),
             })
         except Exception:
             logger.warning("daily snapshot save failed", exc_info=True)
@@ -580,6 +584,55 @@ class TradingBot:
 
     def _total_daily_pnl_ratio(self) -> float:
         return sum(s.load().daily_pnl_ratio for s in self._stores.values())
+
+    def _live_portfolio_equity_krw(self) -> float | None:
+        """거래소 보유 자산 기준 현재 포트폴리오 평가액.
+
+        live + authenticated 경로에서만 사용한다. non-KRW 자산은 현재가(mark-to-market)를
+        우선 사용하고, 가격 조회가 끝내 실패하면 snapshot 자체를 포기해 KPI를 추정 경로로
+        되돌린다.
+        """
+        if not self._client.authenticated:
+            return None
+
+        try:
+            holdings = self._client.get_holdings(include_krw=True)
+        except UpbitError as exc:
+            logger.warning("portfolio equity holdings fetch failed: {}", exc)
+            return None
+
+        if not holdings:
+            return 0.0
+
+        price_targets = [asset.market for asset in holdings if asset.currency != "KRW"]
+        prices: dict[str, float] = {}
+        if price_targets:
+            try:
+                prices = self._get_prices(price_targets)
+            except UpbitError as exc:
+                logger.warning("portfolio equity price batch fetch failed: {}", exc)
+                prices = {}
+
+        total = 0.0
+        for asset in holdings:
+            if asset.currency == "KRW":
+                total += asset.total_volume
+                continue
+
+            price = prices.get(asset.market)
+            if price is None or price <= 0:
+                try:
+                    price = self._client.get_current_price(asset.market)
+                except UpbitError as exc:
+                    logger.warning(
+                        "portfolio equity price fetch failed for {}: {}",
+                        asset.market,
+                        exc,
+                    )
+                    return None
+            total += asset.total_volume * price
+
+        return total
 
     def _is_cooldown_active(self, state: State) -> bool:
         """최근 청산 이후 쿨다운 기간이 남아 있는지 확인."""

@@ -94,7 +94,11 @@ def _seed_live_sell(
 def _seed_snapshot(
     db: Session,
     *,
-    days_ago: int, pnl_ratio: float, krw: float = 0.0, strategy: str = "vb",
+    days_ago: int,
+    pnl_ratio: float,
+    krw: float = 0.0,
+    strategy: str = "vb",
+    portfolio_equity_krw: float | None = None,
 ) -> None:
     d = datetime.now(UTC).date() - timedelta(days=days_ago)
     db.add(DailySnapshot(
@@ -102,6 +106,7 @@ def _seed_snapshot(
         total_pnl_ratio=pnl_ratio, open_positions=0,
         closed_trades_count=1, win_count=1 if pnl_ratio > 0 else 0,
         loss_count=0 if pnl_ratio > 0 else 1, realized_pnl_krw=krw,
+        portfolio_equity_krw=portfolio_equity_krw,
     ))
 
 
@@ -191,6 +196,35 @@ def test_kpi_data_daily_uses_estimated_naming(app_env):
         assert "estimated_cumulative" in d["daily_series"][0]
         # note 문구로 추정치 성격을 숨기지 않음
         assert "추정치" in d["note"]
+
+
+def test_kpi_data_prefers_portfolio_equity_when_available(app_env):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        with Session(web_db.engine()) as db:
+            _seed_snapshot(
+                db,
+                days_ago=2,
+                pnl_ratio=0.02,
+                krw=2000,
+                portfolio_equity_krw=1_000_000.0,
+            )
+            _seed_snapshot(
+                db,
+                days_ago=1,
+                pnl_ratio=-0.50,
+                krw=-1000,
+                portfolio_equity_krw=1_050_000.0,
+            )
+            db.commit()
+        r = client.get("/kpi/data?period=14d")
+        d = r.json()["daily_kpi"]
+        assert d["equity_basis"] == "portfolio_equity_krw"
+        assert d["estimated_cumulative_return"] == pytest.approx(0.05)
+        assert d["start_portfolio_equity_krw"] == pytest.approx(1_000_000.0)
+        assert d["end_portfolio_equity_krw"] == pytest.approx(1_050_000.0)
+        assert d["daily_series"][0]["portfolio_equity_krw"] == pytest.approx(1_000_000.0)
 
 
 def test_kpi_data_period_filter_excludes_older_rows(app_env):
