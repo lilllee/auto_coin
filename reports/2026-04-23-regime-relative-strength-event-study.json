@@ -1,0 +1,3721 @@
+{
+  "as_of": "2026-04-23",
+  "study": "regime_relative_strength_event_study",
+  "scope": "event-study only; no strategy/live/walk-forward",
+  "tickers": [
+    "KRW-BTC",
+    "KRW-ETH",
+    "KRW-XRP"
+  ],
+  "regime_ticker": "KRW-BTC",
+  "interval": "minute30",
+  "fetch_days": 830,
+  "lookback_days": 730,
+  "forward_bars": [
+    4,
+    8,
+    16,
+    24,
+    48
+  ],
+  "path_horizons": [
+    16,
+    24,
+    48
+  ],
+  "event_cooldown_bars": 8,
+  "condition_sets": {
+    "breakout_only": "close > prior_high_6 AND close_location_value >= 0.55",
+    "regime_breakout": "breakout_only AND btc_daily_regime_on",
+    "regime_rs_breakout": "regime_breakout AND target_rs_24h_vs_btc > 0 AND target_rs_7d_vs_btc > 0",
+    "regime_rs_volume_breakout": "regime_rs_breakout AND volume > volume_ma20 * 1.2",
+    "regime_rs_trend_volume_breakout": "regime_rs_volume_breakout AND hourly_close > hourly_ema20 > hourly_ema60 AND hourly_ema20_slope_3 >= 0",
+    "regime_rs_pullback_rebreakout": "regime_rs_trend_volume_breakout AND hourly_pullback_return_8 in [-0.08, -0.008] AND rsi14 >= 50"
+  },
+  "results": {
+    "breakout_only": {
+      "overall": {
+        "raw_event_count": 8899,
+        "event_count": 4498,
+        "horizons": {
+          "4": {
+            "avg_return": -0.00011796577139407393,
+            "median_return": -0.0005711022272987254,
+            "win_rate": 0.44407382699577497,
+            "avg_excess_return": 4.267301680480031e-05,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2868579052701801
+          },
+          "8": {
+            "avg_return": 5.03458084813178e-05,
+            "median_return": -0.0006633499170812795,
+            "win_rate": 0.45830553702468313,
+            "avg_excess_return": 0.00022767878015932845,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.28997109183900377
+          },
+          "16": {
+            "avg_return": 0.0003436887520312724,
+            "median_return": -0.0005756501372657374,
+            "win_rate": 0.4712950600801068,
+            "avg_excess_return": 0.0004402648730844594,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2914997774810859
+          },
+          "24": {
+            "avg_return": 0.0006324499222036062,
+            "median_return": -0.0006925912516669297,
+            "win_rate": 0.4737427681352915,
+            "avg_excess_return": 0.0006055717004819888,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.29439252336448596
+          },
+          "48": {
+            "avg_return": 0.0016357792533191282,
+            "median_return": -0.0012078477458949965,
+            "win_rate": 0.47162252392610726,
+            "avg_excess_return": 0.0012105860538687454,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2851101713776986
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.012986446154458839,
+            "median_mfe": 0.0077558394631565,
+            "avg_mae": -0.012865632095651001,
+            "median_mae": -0.0085578230381817
+          },
+          "24": {
+            "avg_mfe": 0.01601829617549671,
+            "median_mfe": 0.009588014483809304,
+            "avg_mae": -0.015716465884057295,
+            "median_mae": -0.010397550944515499
+          },
+          "48": {
+            "avg_mfe": 0.023533885174239964,
+            "median_mfe": 0.01394136807817592,
+            "avg_mae": -0.02201509386906394,
+            "median_mae": -0.014835948644793207
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 5506,
+        "event_count": 2896,
+        "horizons": {
+          "4": {
+            "avg_return": -0.00013014583203793524,
+            "median_return": -0.0007527296009428586,
+            "win_rate": 0.4381906077348066,
+            "avg_excess_return": 6.626400434087949e-05,
+            "median_excess_return": -0.0006319660540408112,
+            "excess_win_rate": 0.44544198895027626
+          },
+          "8": {
+            "avg_return": 0.00016250795153800623,
+            "median_return": -0.0009043859292639511,
+            "win_rate": 0.46029005524861877,
+            "avg_excess_return": 0.00035354677982613953,
+            "median_excess_return": -0.000682120204217429,
+            "excess_win_rate": 0.45027624309392267
+          },
+          "16": {
+            "avg_return": 0.0006796454121742472,
+            "median_return": -0.0006455343615841547,
+            "win_rate": 0.4727021423635107,
+            "avg_excess_return": 0.0006836732341539599,
+            "median_excess_return": -0.000841413337654584,
+            "excess_win_rate": 0.4526606772633034
+          },
+          "24": {
+            "avg_return": 0.0010458309539084771,
+            "median_return": -0.0008907451342595185,
+            "win_rate": 0.4730476848652384,
+            "avg_excess_return": 0.0009403729170580713,
+            "median_excess_return": -0.0013331011624835298,
+            "excess_win_rate": 0.45715272978576366
+          },
+          "48": {
+            "avg_return": 0.0024977184720161288,
+            "median_return": -0.001606502557667644,
+            "win_rate": 0.4640635798203179,
+            "avg_excess_return": 0.0018794620387119119,
+            "median_excess_return": -0.0022593616286530893,
+            "excess_win_rate": 0.44263994471319973
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.015310121902372562,
+            "median_mfe": 0.009397460030313387,
+            "avg_mae": -0.014899948817307745,
+            "median_mae": -0.00993213071414012
+          },
+          "24": {
+            "avg_mfe": 0.01899514854885699,
+            "median_mfe": 0.011466955216496988,
+            "avg_mae": -0.01825077612326412,
+            "median_mae": -0.012284651921622203
+          },
+          "48": {
+            "avg_mfe": 0.028080016716886067,
+            "median_mfe": 0.016590005694527177,
+            "avg_mae": -0.025427172947127204,
+            "median_mae": -0.017169796687911354
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 3393,
+          "event_count": 1602,
+          "horizons": {
+            "4": {
+              "avg_return": -9.593363171598377e-05,
+              "median_return": -0.0003604090642879143,
+              "win_rate": 0.4547158026233604,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": -0.0001525408662795627,
+              "median_return": -0.00045979469632162484,
+              "win_rate": 0.4547158026233604,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": -0.0002639728570023335,
+              "median_return": -0.0005414935909466845,
+              "win_rate": 0.46875,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": -0.00011525301889257967,
+              "median_return": -0.0005044076228033489,
+              "win_rate": 0.475,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 7.57716867718372e-05,
+              "median_return": -0.0005925147670561293,
+              "win_rate": 0.48530331457160725,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.008783497645419887,
+              "median_mfe": 0.005625747851717877,
+              "avg_mae": -0.009186061725354362,
+              "median_mae": -0.006527451057908418
+            },
+            "24": {
+              "avg_mfe": 0.010633914445181305,
+              "median_mfe": 0.007177025391928549,
+              "avg_mae": -0.011132532238891936,
+              "median_mae": -0.007904496586344067
+            },
+            "48": {
+              "avg_mfe": 0.015305927272790423,
+              "median_mfe": 0.010102095647501308,
+              "avg_mae": -0.01583963617555857,
+              "median_mae": -0.011243516342440696
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 2687,
+          "event_count": 1446,
+          "horizons": {
+            "4": {
+              "avg_return": -0.00023511166817167698,
+              "median_return": -0.0008089053196362328,
+              "win_rate": 0.44398340248962653,
+              "avg_excess_return": -8.237001532606159e-05,
+              "median_excess_return": -0.0006899488726964664,
+              "excess_win_rate": 0.43706777316735823
+            },
+            "8": {
+              "avg_return": -5.7073968378519144e-05,
+              "median_return": -0.0008990455534375608,
+              "win_rate": 0.46265560165975106,
+              "avg_excess_return": 0.0001110151110174065,
+              "median_excess_return": -0.0005372388084978752,
+              "excess_win_rate": 0.4578146611341632
+            },
+            "16": {
+              "avg_return": 0.0001773212415120948,
+              "median_return": -0.0002842524161454918,
+              "win_rate": 0.48304498269896196,
+              "avg_excess_return": 0.00035182031511669703,
+              "median_excess_return": -0.000781793182297319,
+              "excess_win_rate": 0.45467128027681664
+            },
+            "24": {
+              "avg_return": 0.0004623651553882384,
+              "median_return": -0.00022119000221187957,
+              "win_rate": 0.4885813148788927,
+              "avg_excess_return": 0.0005034512929883685,
+              "median_excess_return": -0.0008755078388258397,
+              "excess_win_rate": 0.471280276816609
+            },
+            "48": {
+              "avg_return": 0.0006965340628084088,
+              "median_return": -0.001497454327643033,
+              "win_rate": 0.46366782006920415,
+              "avg_excess_return": 0.0004215545870407131,
+              "median_excess_return": -0.0019737920492113314,
+              "excess_win_rate": 0.43460207612456747
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.01370737578293299,
+              "median_mfe": 0.009356924123851584,
+              "avg_mae": -0.013906751694370553,
+              "median_mae": -0.009954891896095774
+            },
+            "24": {
+              "avg_mfe": 0.016905537136697034,
+              "median_mfe": 0.01127554615926707,
+              "avg_mae": -0.01693665029043448,
+              "median_mae": -0.012270998963014201
+            },
+            "48": {
+              "avg_mfe": 0.024492110142419293,
+              "median_mfe": 0.01677972152802565,
+              "avg_mae": -0.023956169117441688,
+              "median_mae": -0.016913946587537088
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 2819,
+          "event_count": 1450,
+          "horizons": {
+            "4": {
+              "avg_return": -2.5469556831458983e-05,
+              "median_return": -0.0006971224607982829,
+              "win_rate": 0.4324137931034483,
+              "avg_excess_return": 0.0002144879991259807,
+              "median_excess_return": -0.0006129231502333132,
+              "excess_win_rate": 0.45379310344827584
+            },
+            "8": {
+              "avg_return": 0.0003814841282271757,
+              "median_return": -0.0009242513268827857,
+              "win_rate": 0.4579310344827586,
+              "avg_excess_return": 0.0005954093957554002,
+              "median_excess_return": -0.000888189771578618,
+              "excess_win_rate": 0.44275862068965516
+            },
+            "16": {
+              "avg_return": 0.001180582904656518,
+              "median_return": -0.0010574550581600173,
+              "win_rate": 0.46238785369220153,
+              "avg_excess_return": 0.0010146100650779385,
+              "median_excess_return": -0.0009336384453095814,
+              "excess_win_rate": 0.45065562456866803
+            },
+            "24": {
+              "avg_return": 0.00162768608079719,
+              "median_return": -0.0012629451881788212,
+              "win_rate": 0.4575569358178054,
+              "avg_excess_return": 0.0013760884082801004,
+              "median_excess_return": -0.0018167772193888876,
+              "excess_win_rate": 0.44306418219461696
+            },
+            "48": {
+              "avg_return": 0.004293930667533834,
+              "median_return": -0.0016969696969697523,
+              "win_rate": 0.4644582470669427,
+              "avg_excess_return": 0.0033333449011445425,
+              "median_excess_return": -0.0028346882381168337,
+              "excess_win_rate": 0.45065562456866803
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.016908443601882695,
+              "median_mfe": 0.009423654739142195,
+              "avg_mae": -0.01589040419525408,
+              "median_mae": -0.009927513394264231
+            },
+            "24": {
+              "avg_mfe": 0.02107899153751893,
+              "median_mfe": 0.011611441517983545,
+              "avg_mae": -0.01956127427953661,
+              "median_mae": -0.012292358803986714
+            },
+            "48": {
+              "avg_mfe": 0.03165801878735155,
+              "median_mfe": 0.01628084456881207,
+              "avg_mae": -0.02689411603470178,
+              "median_mae": -0.017751479289940808
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-23T22:30:00",
+          "close": 96321000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.1016798136493602,
+          "hourly_pullback_return_8": -0.0029963170269876604,
+          "fwd_ret_16": -0.002709689475815291,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.005450524807674384,
+          "mae_24": -0.006654831241370007
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-24T03:00:00",
+          "close": 96734000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.3709957895135501,
+          "hourly_pullback_return_8": 0.0010566663213509297,
+          "fwd_ret_16": -0.007587818140467717,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 8.270101515495121e-05,
+          "mae_24": -0.010895858746666098
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-24T09:30:00",
+          "close": 96498000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 2.037271081639587,
+          "hourly_pullback_return_8": -0.00677352637021722,
+          "fwd_ret_16": -0.006331737445335661,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.0013368152707828873,
+          "mae_24": -0.009927666894650633
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-25T06:30:00",
+          "close": 93908000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.49842045773426336,
+          "hourly_pullback_return_8": -0.023666969687470618,
+          "fwd_ret_16": -0.013002087149124653,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.004376623929803536,
+          "mae_24": -0.020317757805511816
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T01:00:00",
+          "close": 92547000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.4092114906907634,
+          "hourly_pullback_return_8": -0.001869926608082828,
+          "fwd_ret_16": 0.0005510713475316287,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.015700130744378482,
+          "mae_24": -0.005802457129890803
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T05:30:00",
+          "close": 93539000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5657168516207154,
+          "hourly_pullback_return_8": 0.0010533896574334012,
+          "fwd_ret_16": -0.013726894664257694,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.004928425576497419,
+          "mae_24": -0.01634612300751559
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T18:00:00",
+          "close": 92693000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.7711380731116998,
+          "hourly_pullback_return_8": -0.0026853020155941376,
+          "fwd_ret_16": -0.00786467155017101,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.0029883594230417643,
+          "mae_24": -0.013248033832112482
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-27T22:30:00",
+          "close": 91129000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.4924041179723915,
+          "hourly_pullback_return_8": 0.00019824880224672548,
+          "fwd_ret_16": 0.0015472571848698102,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.009557879489514809,
+          "mae_24": -0.005804957807064692
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-28T06:30:00",
+          "close": 91270000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5828569611407023,
+          "hourly_pullback_return_8": -0.002059574281613963,
+          "fwd_ret_16": 0.008589898104524929,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.014900843650706763,
+          "mae_24": -0.0013147803221211785
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-28T11:30:00",
+          "close": 92044000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 2.158606210439188,
+          "hourly_pullback_return_8": -0.0015227984684997864,
+          "fwd_ret_16": -0.007083568727999645,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.006366520359827987,
+          "mae_24": -0.013091564903741637
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-29T03:30:00",
+          "close": 91440000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.2886189687393749,
+          "hourly_pullback_return_8": -0.00446316524623791,
+          "fwd_ret_16": -0.015179352580927397,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 2.1872265966838e-05,
+          "mae_24": -0.03204286964129488
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-30T00:30:00",
+          "close": 90149000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.68117948470236,
+          "hourly_pullback_return_8": 0.0006921960477839217,
+          "fwd_ret_16": 0.013877025812820909,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.026522756769348454,
+          "mae_24": -0.007243563433870559
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-30T06:30:00",
+          "close": 90337000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5764386415159527,
+          "hourly_pullback_return_8": -0.0019058594096268422,
+          "fwd_ret_16": -0.0027563456833855637,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.024386464018065768,
+          "mae_24": -0.022261089033286496
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-01T07:00:00",
+          "close": 87468000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.6853199879196396,
+          "hourly_pullback_return_8": -0.014082427628814509,
+          "fwd_ret_16": -0.037259340558832954,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.005853569305345863,
+          "mae_24": -0.08532263227694703
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-01T20:30:00",
+          "close": 82775000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.6854440267543813,
+          "hourly_pullback_return_8": -0.0389468874125628,
+          "fwd_ret_16": -0.01856840833585016,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.02559951676230754,
+          "mae_24": -0.024463908184838457
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-02T03:00:00",
+          "close": 82581000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.1833196663246617,
+          "hourly_pullback_return_8": -0.013131984294775023,
+          "fwd_ret_16": -0.017788595439628963,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.028008864024412494,
+          "mae_24": -0.02397645947615068
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-02T08:30:00",
+          "close": 83499000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.0054200142001917,
+          "hourly_pullback_return_8": -0.010894440736149535,
+          "fwd_ret_16": -0.024311668403214415,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.0054012622905663665,
+          "mae_24": -0.03470700247907166
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-02T16:00:00",
+          "close": 81599000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5328796635677671,
+          "hourly_pullback_return_8": -0.026335644738260333,
+          "fwd_ret_16": 0.025931690339342284,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.029424380200737676,
+          "mae_24": -0.003345629235652403
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-02T20:30:00",
+          "close": 83119000.0,
+          "btc_daily_regime_on": false,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 2.2196523196240743,
+          "hourly_pullback_return_8": -0.0012096626385308396,
+          "fwd_ret_16": 0.008554000890289792,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.010599261300063834,
+          "mae_24": -0.011056437156366172
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-03T11:00:00",
+          "close": 84177000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 3.5377315640364815,
+          "hourly_pullback_return_8": -0.004318160129783366,
+          "fwd_ret_16": -0.0024828634900270208,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.04647350226308844,
+          "mae_24": -0.008363329650617146
+        }
+      ]
+    },
+    "regime_breakout": {
+      "overall": {
+        "raw_event_count": 5025,
+        "event_count": 2475,
+        "horizons": {
+          "4": {
+            "avg_return": 6.605136666308215e-05,
+            "median_return": -0.0002732441319032719,
+            "win_rate": 0.4652384801940178,
+            "avg_excess_return": 2.1249753326523923e-05,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2825383993532741
+          },
+          "8": {
+            "avg_return": 0.00046645065359325025,
+            "median_return": -0.000387484262088178,
+            "win_rate": 0.4692805173807599,
+            "avg_excess_return": 0.0002152257967907133,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2950687146321746
+          },
+          "16": {
+            "avg_return": 0.0013024429516023419,
+            "median_return": -0.00025963910164861215,
+            "win_rate": 0.4840145690004047,
+            "avg_excess_return": 0.0006669606473842918,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.29380817482800486
+          },
+          "24": {
+            "avg_return": 0.0019314398625559608,
+            "median_return": 0.0,
+            "win_rate": 0.49696479158235535,
+            "avg_excess_return": 0.0008911800746066095,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.2982598138405504
+          },
+          "48": {
+            "avg_return": 0.004258169556351519,
+            "median_return": -0.00023419120268058924,
+            "win_rate": 0.49271255060728747,
+            "avg_excess_return": 0.002427366786029904,
+            "median_excess_return": 0.0,
+            "excess_win_rate": 0.29676113360323886
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.012848111443219085,
+            "median_mfe": 0.007542262678803535,
+            "avg_mae": -0.011959297073823962,
+            "median_mae": -0.007743279963496885
+          },
+          "24": {
+            "avg_mfe": 0.015915087757467562,
+            "median_mfe": 0.009456784693204323,
+            "avg_mae": -0.014663738470497881,
+            "median_mae": -0.00930821494749845
+          },
+          "48": {
+            "avg_mfe": 0.02398295916943661,
+            "median_mfe": 0.013547572318084344,
+            "avg_mae": -0.02010238100300591,
+            "median_mae": -0.013094547711341054
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 3100,
+        "event_count": 1604,
+        "horizons": {
+          "4": {
+            "avg_return": -4.548177313587282e-05,
+            "median_return": -0.0005625352375637771,
+            "win_rate": 0.45012468827930174,
+            "avg_excess_return": 3.2775492350261964e-05,
+            "median_excess_return": -0.0007824322796468053,
+            "excess_win_rate": 0.435785536159601
+          },
+          "8": {
+            "avg_return": 0.0005112100979702231,
+            "median_return": -0.0005323127484960777,
+            "win_rate": 0.4688279301745636,
+            "avg_excess_return": 0.0003319629808355516,
+            "median_excess_return": -0.0007011339296820185,
+            "excess_win_rate": 0.4551122194513716
+          },
+          "16": {
+            "avg_return": 0.001593701366852515,
+            "median_return": -0.00028490176489742725,
+            "win_rate": 0.4794007490636704,
+            "avg_excess_return": 0.0010287514105409394,
+            "median_excess_return": -0.0008779782826620619,
+            "excess_win_rate": 0.45318352059925093
+          },
+          "24": {
+            "avg_return": 0.002279272457292719,
+            "median_return": -0.00042223581271649824,
+            "win_rate": 0.4850187265917603,
+            "avg_excess_return": 0.0013745979802452762,
+            "median_excess_return": -0.001380541112339928,
+            "excess_win_rate": 0.4600499375780275
+          },
+          "48": {
+            "avg_return": 0.0054475016237853155,
+            "median_return": -0.0002614808141758185,
+            "win_rate": 0.4893882646691635,
+            "avg_excess_return": 0.0037425692643532223,
+            "median_excess_return": -0.0018819303189917536,
+            "excess_win_rate": 0.4575530586766542
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.015471751107806209,
+            "median_mfe": 0.009328885897923467,
+            "avg_mae": -0.014450042503068042,
+            "median_mae": -0.009626085468091239
+          },
+          "24": {
+            "avg_mfe": 0.01922319989794068,
+            "median_mfe": 0.011573080743168873,
+            "avg_mae": -0.017806410906088206,
+            "median_mae": -0.011523839407266478
+          },
+          "48": {
+            "avg_mfe": 0.029312877066775926,
+            "median_mfe": 0.017125825363392577,
+            "avg_mae": -0.024312540162969094,
+            "median_mae": -0.015783836301740795
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 1925,
+          "event_count": 871,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0002716825807292014,
+              "median_return": -4.1201494751785805e-05,
+              "win_rate": 0.49310344827586206,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": 0.0003839286435005325,
+              "median_return": -0.0002338868787691295,
+              "win_rate": 0.47011494252873565,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": 0.0007655085658362001,
+              "median_return": -0.00010109928623902587,
+              "win_rate": 0.49252013808975836,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": 0.0012902110745602348,
+              "median_return": 0.000537629055863631,
+              "win_rate": 0.5189873417721519,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 0.0020631119848896003,
+              "median_return": -4.527858982317223e-05,
+              "win_rate": 0.4988479262672811,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.008011436250274815,
+              "median_mfe": 0.005276048126625188,
+              "avg_mae": -0.007367612174342932,
+              "median_mae": -0.0053126532997943565
+            },
+            "24": {
+              "avg_mfe": 0.009816588736710445,
+              "median_mfe": 0.0068705576945877755,
+              "avg_mae": -0.008870227260123091,
+              "median_mae": -0.006232012397609066
+            },
+            "48": {
+              "avg_mfe": 0.014145944801305743,
+              "median_mfe": 0.009698875097839732,
+              "avg_mae": -0.0123320181294333,
+              "median_mae": -0.009022269629449797
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 1534,
+          "event_count": 800,
+          "horizons": {
+            "4": {
+              "avg_return": 1.2480621169680545e-05,
+              "median_return": -0.000474176459861142,
+              "win_rate": 0.46375,
+              "avg_excess_return": -5.8754844589007645e-05,
+              "median_excess_return": -0.0008146472427530971,
+              "excess_win_rate": 0.425
+            },
+            "8": {
+              "avg_return": 0.0001806000590930898,
+              "median_return": -0.0006016998698302745,
+              "win_rate": 0.4625,
+              "avg_excess_return": 0.00010201318593596742,
+              "median_excess_return": -0.0006193235711419165,
+              "excess_win_rate": 0.455
+            },
+            "16": {
+              "avg_return": 0.0013267960153671304,
+              "median_return": 0.0,
+              "win_rate": 0.48936170212765956,
+              "avg_excess_return": 0.0008654345113479929,
+              "median_excess_return": -0.0008041930083000359,
+              "excess_win_rate": 0.4555694618272841
+            },
+            "24": {
+              "avg_return": 0.0023232698761687215,
+              "median_return": 0.00038109756097570724,
+              "win_rate": 0.5068836045056321,
+              "avg_excess_return": 0.0013610242070998502,
+              "median_excess_return": -0.0005911854779823145,
+              "excess_win_rate": 0.4806007509386733
+            },
+            "48": {
+              "avg_return": 0.00416087896769651,
+              "median_return": 0.0,
+              "win_rate": 0.49436795994993743,
+              "avg_excess_return": 0.002580813895458063,
+              "median_excess_return": -0.0016839289396267665,
+              "excess_win_rate": 0.44806007509386736
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.01362074203599578,
+              "median_mfe": 0.009293680297397744,
+              "avg_mae": -0.012737637275811921,
+              "median_mae": -0.009311740890688314
+            },
+            "24": {
+              "avg_mfe": 0.01708376169331566,
+              "median_mfe": 0.01148600143575007,
+              "avg_mae": -0.015291484756357204,
+              "median_mae": -0.011353959693443105
+            },
+            "48": {
+              "avg_mfe": 0.025599569482815623,
+              "median_mfe": 0.017500475556400996,
+              "avg_mae": -0.021380410585861445,
+              "median_mae": -0.015550239234449759
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 1566,
+          "event_count": 804,
+          "horizons": {
+            "4": {
+              "avg_return": -0.00010315579732050303,
+              "median_return": -0.0006476980034921254,
+              "win_rate": 0.43656716417910446,
+              "avg_excess_return": 0.00012385045447888844,
+              "median_excess_return": -0.0007358301535533851,
+              "excess_win_rate": 0.4465174129353234
+            },
+            "8": {
+              "avg_return": 0.000840175310783291,
+              "median_return": -0.0004752938678280749,
+              "win_rate": 0.47512437810945274,
+              "avg_excess_return": 0.0005607687469047895,
+              "median_excess_return": -0.0009026430566951849,
+              "excess_win_rate": 0.4552238805970149
+            },
+            "16": {
+              "avg_return": 0.0018592771773591427,
+              "median_return": -0.0007913479293062409,
+              "win_rate": 0.46948941469489414,
+              "avg_excess_return": 0.0011912547759894627,
+              "median_excess_return": -0.0009500173983836291,
+              "excess_win_rate": 0.45080946450809467
+            },
+            "24": {
+              "avg_return": 0.002235494203641503,
+              "median_return": -0.0010245901639344135,
+              "win_rate": 0.46326276463262767,
+              "avg_excess_return": 0.001388104138082381,
+              "median_excess_return": -0.0020451810421693306,
+              "excess_win_rate": 0.4396014943960149
+            },
+            "48": {
+              "avg_return": 0.006727715200640803,
+              "median_return": -0.0006680026720107257,
+              "win_rate": 0.48443337484433374,
+              "avg_excess_return": 0.004898537557936325,
+              "median_excess_return": -0.002360834144665369,
+              "excess_win_rate": 0.4669987546699875
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.017313539711014844,
+              "median_mfe": 0.009333762471837703,
+              "avg_mae": -0.016153917691832224,
+              "median_mae": -0.009930486593843102
+            },
+            "24": {
+              "avg_mfe": 0.021351980876141666,
+              "median_mfe": 0.011619800139437642,
+              "avg_mae": -0.02030880940376575,
+              "median_mae": -0.011627906976744207
+            },
+            "48": {
+              "avg_mfe": 0.033007687477217135,
+              "median_mfe": 0.016286644951140072,
+              "avg_mae": -0.027230063864225645,
+              "median_mae": -0.015952042267831756
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-24T09:30:00",
+          "close": 96498000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 2.037271081639587,
+          "hourly_pullback_return_8": -0.00677352637021722,
+          "fwd_ret_16": -0.006331737445335661,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.0013368152707828873,
+          "mae_24": -0.009927666894650633
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-25T06:30:00",
+          "close": 93908000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.49842045773426336,
+          "hourly_pullback_return_8": -0.023666969687470618,
+          "fwd_ret_16": -0.013002087149124653,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.004376623929803536,
+          "mae_24": -0.020317757805511816
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T01:00:00",
+          "close": 92547000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.4092114906907634,
+          "hourly_pullback_return_8": -0.001869926608082828,
+          "fwd_ret_16": 0.0005510713475316287,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.015700130744378482,
+          "mae_24": -0.005802457129890803
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T05:30:00",
+          "close": 93539000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5657168516207154,
+          "hourly_pullback_return_8": 0.0010533896574334012,
+          "fwd_ret_16": -0.013726894664257694,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.004928425576497419,
+          "mae_24": -0.01634612300751559
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-26T18:00:00",
+          "close": 92693000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.7711380731116998,
+          "hourly_pullback_return_8": -0.0026853020155941376,
+          "fwd_ret_16": -0.00786467155017101,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.0029883594230417643,
+          "mae_24": -0.013248033832112482
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-27T22:30:00",
+          "close": 91129000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.4924041179723915,
+          "hourly_pullback_return_8": 0.00019824880224672548,
+          "fwd_ret_16": 0.0015472571848698102,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.009557879489514809,
+          "mae_24": -0.005804957807064692
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-28T06:30:00",
+          "close": 91270000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5828569611407023,
+          "hourly_pullback_return_8": -0.002059574281613963,
+          "fwd_ret_16": 0.008589898104524929,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.014900843650706763,
+          "mae_24": -0.0013147803221211785
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-28T11:30:00",
+          "close": 92044000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 2.158606210439188,
+          "hourly_pullback_return_8": -0.0015227984684997864,
+          "fwd_ret_16": -0.007083568727999645,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.006366520359827987,
+          "mae_24": -0.013091564903741637
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-29T03:30:00",
+          "close": 91440000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.2886189687393749,
+          "hourly_pullback_return_8": -0.00446316524623791,
+          "fwd_ret_16": -0.015179352580927397,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 2.1872265966838e-05,
+          "mae_24": -0.03204286964129488
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-30T00:30:00",
+          "close": 90149000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.68117948470236,
+          "hourly_pullback_return_8": 0.0006921960477839217,
+          "fwd_ret_16": 0.013877025812820909,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.026522756769348454,
+          "mae_24": -0.007243563433870559
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-04-30T06:30:00",
+          "close": 90337000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.5764386415159527,
+          "hourly_pullback_return_8": -0.0019058594096268422,
+          "fwd_ret_16": -0.0027563456833855637,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.024386464018065768,
+          "mae_24": -0.022261089033286496
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-01T07:00:00",
+          "close": 87468000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.6853199879196396,
+          "hourly_pullback_return_8": -0.014082427628814509,
+          "fwd_ret_16": -0.037259340558832954,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.005853569305345863,
+          "mae_24": -0.08532263227694703
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-03T11:00:00",
+          "close": 84177000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 3.5377315640364815,
+          "hourly_pullback_return_8": -0.004318160129783366,
+          "fwd_ret_16": -0.0024828634900270208,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.04647350226308844,
+          "mae_24": -0.008363329650617146
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-03T18:30:00",
+          "close": 84379000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.7596008230641981,
+          "hourly_pullback_return_8": -0.010534893883383911,
+          "fwd_ret_16": 0.03384728427689354,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.06069045615615254,
+          "mae_24": -0.010737268751703666
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-04T05:00:00",
+          "close": 88758000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.0199357129533895,
+          "hourly_pullback_return_8": 0.002092935484977687,
+          "fwd_ret_16": -0.00018026544086169327,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.01489443205119545,
+          "mae_24": -0.009554068365668411
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-04T10:00:00",
+          "close": 90050000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 1.8381024988569648,
+          "hourly_pullback_return_8": 0.005566070488627117,
+          "fwd_ret_16": -0.007129372570794046,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.011915602443087092,
+          "mae_24": -0.023764575235979968
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-04T14:30:00",
+          "close": 89591000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.3633271652797466,
+          "hourly_pullback_return_8": -0.0059473426293046305,
+          "fwd_ret_16": 0.006607806587715315,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.01709993191280379,
+          "mae_24": -0.008996439374490794
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-04T19:00:00",
+          "close": 89600000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.440583812499425,
+          "hourly_pullback_return_8": -0.0024779274703932153,
+          "fwd_ret_16": 0.0035491071428570553,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.01699776785714291,
+          "mae_24": -0.00041294642857148123
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-05T03:30:00",
+          "close": 90219000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.3071837600159615,
+          "hourly_pullback_return_8": -0.013606638456888476,
+          "fwd_ret_16": -0.01465323268934482,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.005985435440428288,
+          "mae_24": -0.02092685576209008
+        },
+        {
+          "ticker": "KRW-BTC",
+          "timestamp": "2024-05-05T16:00:00",
+          "close": 89893000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0,
+          "target_rs_7d_vs_btc": 0.0,
+          "volume_ratio": 0.7123775373443574,
+          "hourly_pullback_return_8": -0.009855708005271135,
+          "fwd_ret_16": 0.006963834781351208,
+          "fwd_excess_ret_16": 0.0,
+          "mfe_24": 0.008977339726118805,
+          "mae_24": -0.00408263157309241
+        }
+      ]
+    },
+    "regime_rs_breakout": {
+      "overall": {
+        "raw_event_count": 1114,
+        "event_count": 588,
+        "horizons": {
+          "4": {
+            "avg_return": 0.00045976643461869906,
+            "median_return": -0.00042838294060065785,
+            "win_rate": 0.46598639455782315,
+            "avg_excess_return": 0.0007968998362437983,
+            "median_excess_return": -0.0006509714886208107,
+            "excess_win_rate": 0.46258503401360546
+          },
+          "8": {
+            "avg_return": 0.001270949213815233,
+            "median_return": -0.0010103804845585374,
+            "win_rate": 0.4523809523809524,
+            "avg_excess_return": 0.001140605623740565,
+            "median_excess_return": -0.0012359702585222343,
+            "excess_win_rate": 0.4421768707482993
+          },
+          "16": {
+            "avg_return": 0.003714126486607947,
+            "median_return": 0.0002725602791510129,
+            "win_rate": 0.5068027210884354,
+            "avg_excess_return": 0.0035581994914112803,
+            "median_excess_return": -0.00042503628063583765,
+            "excess_win_rate": 0.4897959183673469
+          },
+          "24": {
+            "avg_return": 0.005708140860243501,
+            "median_return": 0.0010201949935564336,
+            "win_rate": 0.5204081632653061,
+            "avg_excess_return": 0.004979682137630397,
+            "median_excess_return": -0.00041389210419034983,
+            "excess_win_rate": 0.4897959183673469
+          },
+          "48": {
+            "avg_return": 0.011785679798024964,
+            "median_return": 0.001771945368324257,
+            "win_rate": 0.5102040816326531,
+            "avg_excess_return": 0.00984827637080637,
+            "median_excess_return": 0.0004678660881839991,
+            "excess_win_rate": 0.5085034013605442
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.020356687665574007,
+            "median_mfe": 0.012356501156863042,
+            "avg_mae": -0.01678078968694017,
+            "median_mae": -0.011130997454152636
+          },
+          "24": {
+            "avg_mfe": 0.02554547981763617,
+            "median_mfe": 0.014432710444602925,
+            "avg_mae": -0.02027207048997294,
+            "median_mae": -0.013140509273711798
+          },
+          "48": {
+            "avg_mfe": 0.03827375686796397,
+            "median_mfe": 0.021530295406824607,
+            "avg_mae": -0.02654199559160181,
+            "median_mae": -0.0175664145956948
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 1114,
+        "event_count": 588,
+        "horizons": {
+          "4": {
+            "avg_return": 0.00045976643461869906,
+            "median_return": -0.00042838294060065785,
+            "win_rate": 0.46598639455782315,
+            "avg_excess_return": 0.0007968998362437983,
+            "median_excess_return": -0.0006509714886208107,
+            "excess_win_rate": 0.46258503401360546
+          },
+          "8": {
+            "avg_return": 0.001270949213815233,
+            "median_return": -0.0010103804845585374,
+            "win_rate": 0.4523809523809524,
+            "avg_excess_return": 0.001140605623740565,
+            "median_excess_return": -0.0012359702585222343,
+            "excess_win_rate": 0.4421768707482993
+          },
+          "16": {
+            "avg_return": 0.003714126486607947,
+            "median_return": 0.0002725602791510129,
+            "win_rate": 0.5068027210884354,
+            "avg_excess_return": 0.0035581994914112803,
+            "median_excess_return": -0.00042503628063583765,
+            "excess_win_rate": 0.4897959183673469
+          },
+          "24": {
+            "avg_return": 0.005708140860243501,
+            "median_return": 0.0010201949935564336,
+            "win_rate": 0.5204081632653061,
+            "avg_excess_return": 0.004979682137630397,
+            "median_excess_return": -0.00041389210419034983,
+            "excess_win_rate": 0.4897959183673469
+          },
+          "48": {
+            "avg_return": 0.011785679798024964,
+            "median_return": 0.001771945368324257,
+            "win_rate": 0.5102040816326531,
+            "avg_excess_return": 0.00984827637080637,
+            "median_excess_return": 0.0004678660881839991,
+            "excess_win_rate": 0.5085034013605442
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.020356687665574007,
+            "median_mfe": 0.012356501156863042,
+            "avg_mae": -0.01678078968694017,
+            "median_mae": -0.011130997454152636
+          },
+          "24": {
+            "avg_mfe": 0.02554547981763617,
+            "median_mfe": 0.014432710444602925,
+            "avg_mae": -0.02027207048997294,
+            "median_mae": -0.013140509273711798
+          },
+          "48": {
+            "avg_mfe": 0.03827375686796397,
+            "median_mfe": 0.021530295406824607,
+            "avg_mae": -0.02654199559160181,
+            "median_mae": -0.0175664145956948
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 0,
+          "event_count": 0,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "24": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "48": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 560,
+          "event_count": 292,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0007896389349344423,
+              "median_return": 0.0,
+              "win_rate": 0.4794520547945205,
+              "avg_excess_return": 0.0009445016342082287,
+              "median_excess_return": -0.0006442002824392778,
+              "excess_win_rate": 0.4589041095890411
+            },
+            "8": {
+              "avg_return": 0.000860928089287311,
+              "median_return": -0.0008156432307094841,
+              "win_rate": 0.4452054794520548,
+              "avg_excess_return": 0.0012527245919002514,
+              "median_excess_return": -0.00039469001009606597,
+              "excess_win_rate": 0.476027397260274
+            },
+            "16": {
+              "avg_return": 0.0024126751864212404,
+              "median_return": 0.00118783392604771,
+              "win_rate": 0.5342465753424658,
+              "avg_excess_return": 0.002714367419827034,
+              "median_excess_return": 0.0008679871305335429,
+              "excess_win_rate": 0.5376712328767124
+            },
+            "24": {
+              "avg_return": 0.0036927022407292802,
+              "median_return": 0.002663019877975681,
+              "win_rate": 0.5513698630136986,
+              "avg_excess_return": 0.0035781631320923007,
+              "median_excess_return": 0.001326602801942578,
+              "excess_win_rate": 0.5376712328767124
+            },
+            "48": {
+              "avg_return": 0.00720339237788569,
+              "median_return": 0.001771945368324257,
+              "win_rate": 0.5136986301369864,
+              "avg_excess_return": 0.006385221928955955,
+              "median_excess_return": 0.0014818771714628642,
+              "excess_win_rate": 0.523972602739726
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.015544224207319051,
+              "median_mfe": 0.010922393716981449,
+              "avg_mae": -0.012962655479164191,
+              "median_mae": -0.009261417911812508
+            },
+            "24": {
+              "avg_mfe": 0.01930171279771125,
+              "median_mfe": 0.01302377430488566,
+              "avg_mae": -0.015453703071711967,
+              "median_mae": -0.011465729436253347
+            },
+            "48": {
+              "avg_mfe": 0.028592913245990777,
+              "median_mfe": 0.019579300145048162,
+              "avg_mae": -0.021975455554749244,
+              "median_mae": -0.01606801680407338
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 554,
+          "event_count": 296,
+          "horizons": {
+            "4": {
+              "avg_return": 0.00013435167079370913,
+              "median_return": -0.0009335632153542606,
+              "win_rate": 0.4527027027027027,
+              "avg_excess_return": 0.0006512926571707791,
+              "median_excess_return": -0.0006510937276744677,
+              "excess_win_rate": 0.46621621621621623
+            },
+            "8": {
+              "avg_return": 0.0016754295123360212,
+              "median_return": -0.0012716116916344222,
+              "win_rate": 0.4594594594594595,
+              "avg_excess_return": 0.0010300017767722262,
+              "median_excess_return": -0.0021988816991975746,
+              "excess_win_rate": 0.40878378378378377
+            },
+            "16": {
+              "avg_return": 0.004997990607062402,
+              "median_return": -0.000523916417533743,
+              "win_rate": 0.4797297297297297,
+              "avg_excess_return": 0.004390628426893037,
+              "median_excess_return": -0.0018545556644762873,
+              "excess_win_rate": 0.44256756756756754
+            },
+            "24": {
+              "avg_return": 0.007696343822737259,
+              "median_return": -0.0008129744739389655,
+              "win_rate": 0.48986486486486486,
+              "avg_excess_return": 0.006362261697147706,
+              "median_excess_return": -0.0035748446589978222,
+              "excess_win_rate": 0.44256756756756754
+            },
+            "48": {
+              "avg_return": 0.016306044415189385,
+              "median_return": 0.0013823558706126393,
+              "win_rate": 0.5067567567567568,
+              "avg_excess_return": 0.013264532779658805,
+              "median_excess_return": -0.000564899898867155,
+              "excess_win_rate": 0.49324324324324326
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.025104117833852545,
+              "median_mfe": 0.013823045706175208,
+              "avg_mae": -0.020547327486502957,
+              "median_mae": -0.01322788551890719
+            },
+            "24": {
+              "avg_mfe": 0.03170487160756211,
+              "median_mfe": 0.016328273653054226,
+              "avg_mae": -0.025025324835014164,
+              "median_mae": -0.01519184015458741
+            },
+            "48": {
+              "avg_mfe": 0.047823778278829415,
+              "median_mfe": 0.02449918571497256,
+              "avg_mae": -0.031046825627956364,
+              "median_mae": -0.02069535985361287
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T10:00:00",
+          "close": 4674000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.009558111349765142,
+          "target_rs_7d_vs_btc": 0.0017889293514352644,
+          "volume_ratio": 1.140368832493351,
+          "hourly_pullback_return_8": -0.0027765912003416826,
+          "fwd_ret_16": 0.0023534445870774245,
+          "fwd_excess_ret_16": 0.009409415741521321,
+          "mfe_24": 0.01326486949080019,
+          "mae_24": -0.006204535729567806
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T19:00:00",
+          "close": 4704000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.023451961033234214,
+          "target_rs_7d_vs_btc": 0.00941424244123068,
+          "volume_ratio": 1.242098184153096,
+          "hourly_pullback_return_8": -0.0025510204081632404,
+          "fwd_ret_16": -0.026573129251700633,
+          "fwd_excess_ret_16": -0.005367877034550439,
+          "mfe_24": 0.006802721088435382,
+          "mae_24": -0.03932823129251706
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-25T06:30:00",
+          "close": 4594000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.010784764828923987,
+          "target_rs_7d_vs_btc": 0.001574521167996723,
+          "volume_ratio": 0.44769058624216734,
+          "hourly_pullback_return_8": -0.031190324633991073,
+          "fwd_ret_16": -0.0082716586852416,
+          "fwd_excess_ret_16": 0.004730428463883052,
+          "mfe_24": 0.005877231171092623,
+          "mae_24": -0.01980844579886809
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-26T05:30:00",
+          "close": 4583000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.002642240595273071,
+          "target_rs_7d_vs_btc": 0.013340806949240891,
+          "volume_ratio": 0.7400461706212176,
+          "hourly_pullback_return_8": 0.0,
+          "fwd_ret_16": -0.01832860571677941,
+          "fwd_excess_ret_16": -0.0046017110525217175,
+          "mfe_24": 0.004800349116299341,
+          "mae_24": -0.02029238490072005
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-27T21:00:00",
+          "close": 4512000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.019530456632874005,
+          "target_rs_7d_vs_btc": 0.03771935713217722,
+          "volume_ratio": 2.4269201103784837,
+          "hourly_pullback_return_8": 0.0008900756564307333,
+          "fwd_ret_16": 0.028368794326241176,
+          "fwd_excess_ret_16": 0.026551033147010017,
+          "mfe_24": 0.04632092198581561,
+          "mae_24": -0.00155141843971629
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-28T02:00:00",
+          "close": 4584000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.028403661335221875,
+          "target_rs_7d_vs_btc": 0.04821058572427883,
+          "volume_ratio": 1.1295448390053413,
+          "hourly_pullback_return_8": 0.001980633802816989,
+          "fwd_ret_16": 0.025523560209424145,
+          "fwd_excess_ret_16": 0.01536691432606041,
+          "mfe_24": 0.04537521815008727,
+          "mae_24": -0.0008726003490401313
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-28T08:00:00",
+          "close": 4692000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04354303775770452,
+          "target_rs_7d_vs_btc": 0.05058226251693365,
+          "volume_ratio": 0.9502105322314423,
+          "hourly_pullback_return_8": -0.0017057569296374808,
+          "fwd_ret_16": 0.017263427109974527,
+          "fwd_excess_ret_16": 0.01241504815019212,
+          "mfe_24": 0.02195225916453536,
+          "mae_24": -0.002557544757033292
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-29T03:30:00",
+          "close": 4782000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.017615213352838444,
+          "target_rs_7d_vs_btc": 0.07394202724067023,
+          "volume_ratio": 0.676075973228414,
+          "hourly_pullback_return_8": -0.00042069835927638355,
+          "fwd_ret_16": -0.03304056879966544,
+          "fwd_excess_ret_16": -0.01786121621873804,
+          "mfe_24": 0.0,
+          "mae_24": -0.05897114178168128
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T04:00:00",
+          "close": 4600000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0439211504731809,
+          "target_rs_7d_vs_btc": 0.033403244310597824,
+          "volume_ratio": 12.063021812937441,
+          "hourly_pullback_return_8": 0.0011520737327188613,
+          "fwd_ret_16": 0.09695652173913039,
+          "fwd_excess_ret_16": 0.07161211118071198,
+          "mfe_24": 0.10608695652173905,
+          "mae_24": -0.00043478260869567187
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T09:00:00",
+          "close": 5037000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.12268952709986736,
+          "target_rs_7d_vs_btc": 0.11358250082994314,
+          "volume_ratio": 2.929168955849624,
+          "hourly_pullback_return_8": 0.0020072260136492215,
+          "fwd_ret_16": -0.006750049632717858,
+          "fwd_excess_ret_16": -0.002311072750253329,
+          "mfe_24": 0.04228707564026202,
+          "mae_24": -0.019058963668850515
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T19:00:00",
+          "close": 5080000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.13441924065111377,
+          "target_rs_7d_vs_btc": 0.12222514681872765,
+          "volume_ratio": 1.2194205855957112,
+          "hourly_pullback_return_8": -0.008280757097791747,
+          "fwd_ret_16": 0.012598425196850505,
+          "fwd_excess_ret_16": 0.024013480729553116,
+          "mfe_24": 0.039960629921259816,
+          "mae_24": -0.0023622047244094
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-22T07:00:00",
+          "close": 5228000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.034557116331016546,
+          "target_rs_7d_vs_btc": 0.1725538722843294,
+          "volume_ratio": 1.0609291873108937,
+          "hourly_pullback_return_8": -0.005765904285988888,
+          "fwd_ret_16": -0.01568477429227233,
+          "fwd_excess_ret_16": -0.007312498131499812,
+          "mfe_24": 0.008798775822494331,
+          "mae_24": -0.026587605202754383
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-22T17:30:00",
+          "close": 5172000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04471123576687752,
+          "target_rs_7d_vs_btc": 0.1665532642522609,
+          "volume_ratio": 0.7216791916924642,
+          "hourly_pullback_return_8": -0.01892563563372207,
+          "fwd_ret_16": -0.0009667440061871257,
+          "fwd_excess_ret_16": -0.0057350938239904,
+          "mfe_24": 0.007540603248259892,
+          "mae_24": -0.031709203402938924
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T06:30:00",
+          "close": 5202000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.010460904902611756,
+          "target_rs_7d_vs_btc": 0.1946076982724967,
+          "volume_ratio": 0.9286323099823244,
+          "hourly_pullback_return_8": -0.0013526570048308928,
+          "fwd_ret_16": 0.00038446751249510136,
+          "fwd_excess_ret_16": -0.00037813368886285836,
+          "mfe_24": 0.02095347943098802,
+          "mae_24": -0.010957324106113053
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T13:30:00",
+          "close": 5227000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.013489811344434388,
+          "target_rs_7d_vs_btc": 0.2037035397437168,
+          "volume_ratio": 3.4373656713445713,
+          "hourly_pullback_return_8": -0.0009611687812379754,
+          "fwd_ret_16": 0.01970537593265731,
+          "fwd_excess_ret_16": 0.0181493701681259,
+          "mfe_24": 0.04247178113640704,
+          "mae_24": -0.013774631719915775
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T18:00:00",
+          "close": 5298000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.029366373301674464,
+          "target_rs_7d_vs_btc": 0.22345941661563962,
+          "volume_ratio": 2.1744548056946718,
+          "hourly_pullback_return_8": 0.0003800836183960321,
+          "fwd_ret_16": -0.0005662514156284937,
+          "fwd_excess_ret_16": 0.018597204030635917,
+          "mfe_24": 0.02850132125330318,
+          "mae_24": -0.06832767081917701
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T03:30:00",
+          "close": 5226000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0021777059945746746,
+          "target_rs_7d_vs_btc": 0.17081166810972204,
+          "volume_ratio": 0.31588666778955193,
+          "hourly_pullback_return_8": -0.004582776398701527,
+          "fwd_ret_16": -0.004592422502870286,
+          "fwd_excess_ret_16": -0.001279066249559535,
+          "mfe_24": 0.0024875621890547706,
+          "mae_24": -0.006314580941446657
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T10:00:00",
+          "close": 5226000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0010195083334822996,
+          "target_rs_7d_vs_btc": 0.17332512245360787,
+          "volume_ratio": 3.955802321115905,
+          "hourly_pullback_return_8": -0.004401071565250714,
+          "fwd_ret_16": 0.016073478760045834,
+          "fwd_excess_ret_16": 0.014409412197383231,
+          "mfe_24": 0.017986988136241777,
+          "mae_24": -0.00574052812858783
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T16:30:00",
+          "close": 5270000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0018953227531690597,
+          "target_rs_7d_vs_btc": 0.18622743166735978,
+          "volume_ratio": 3.993901295836174,
+          "hourly_pullback_return_8": -0.001527592132900546,
+          "fwd_ret_16": 0.014421252371916493,
+          "fwd_excess_ret_16": 0.017709702339758104,
+          "mfe_24": 0.028273244781783724,
+          "mae_24": -0.0015180265654648473
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T23:30:00",
+          "close": 5380000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.028457334693234637,
+          "target_rs_7d_vs_btc": 0.22182055148341395,
+          "volume_ratio": 3.347322006262645,
+          "hourly_pullback_return_8": -0.0011301563382934976,
+          "fwd_ret_16": -0.006877323420074299,
+          "fwd_excess_ret_16": 0.0008985971804053028,
+          "mfe_24": 0.019330855018587334,
+          "mae_24": -0.01115241635687736
+        }
+      ]
+    },
+    "regime_rs_volume_breakout": {
+      "overall": {
+        "raw_event_count": 732,
+        "event_count": 412,
+        "horizons": {
+          "4": {
+            "avg_return": 0.0007385197646054477,
+            "median_return": -0.00025332958302176634,
+            "win_rate": 0.46601941747572817,
+            "avg_excess_return": 0.0014546662394826447,
+            "median_excess_return": -0.0005905098778054563,
+            "excess_win_rate": 0.470873786407767
+          },
+          "8": {
+            "avg_return": 0.002065228192815925,
+            "median_return": -0.000602872280509259,
+            "win_rate": 0.47815533980582525,
+            "avg_excess_return": 0.002076102622615166,
+            "median_excess_return": -0.00026847832008791706,
+            "excess_win_rate": 0.4878640776699029
+          },
+          "16": {
+            "avg_return": 0.0049306952085255516,
+            "median_return": 0.000742897084309524,
+            "win_rate": 0.5145631067961165,
+            "avg_excess_return": 0.00498827437608178,
+            "median_excess_return": 0.0008251414573612892,
+            "excess_win_rate": 0.5266990291262136
+          },
+          "24": {
+            "avg_return": 0.0069420223831154855,
+            "median_return": 0.002347371982759805,
+            "win_rate": 0.5364077669902912,
+            "avg_excess_return": 0.006152925193296532,
+            "median_excess_return": -0.0002926074551258817,
+            "excess_win_rate": 0.4975728155339806
+          },
+          "48": {
+            "avg_return": 0.012251601202440099,
+            "median_return": 0.0032658165030983177,
+            "win_rate": 0.5242718446601942,
+            "avg_excess_return": 0.010520768966847232,
+            "median_excess_return": 0.000548004113661904,
+            "excess_win_rate": 0.5048543689320388
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.022021598069397873,
+            "median_mfe": 0.013577055392683501,
+            "avg_mae": -0.01675723890011725,
+            "median_mae": -0.011168067716460395
+          },
+          "24": {
+            "avg_mfe": 0.02716086603814512,
+            "median_mfe": 0.01607514718967107,
+            "avg_mae": -0.019525808825416692,
+            "median_mae": -0.012954919262141318
+          },
+          "48": {
+            "avg_mfe": 0.039797591396368716,
+            "median_mfe": 0.022762872348626728,
+            "avg_mae": -0.026987107681587085,
+            "median_mae": -0.017413483932206042
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 732,
+        "event_count": 412,
+        "horizons": {
+          "4": {
+            "avg_return": 0.0007385197646054477,
+            "median_return": -0.00025332958302176634,
+            "win_rate": 0.46601941747572817,
+            "avg_excess_return": 0.0014546662394826447,
+            "median_excess_return": -0.0005905098778054563,
+            "excess_win_rate": 0.470873786407767
+          },
+          "8": {
+            "avg_return": 0.002065228192815925,
+            "median_return": -0.000602872280509259,
+            "win_rate": 0.47815533980582525,
+            "avg_excess_return": 0.002076102622615166,
+            "median_excess_return": -0.00026847832008791706,
+            "excess_win_rate": 0.4878640776699029
+          },
+          "16": {
+            "avg_return": 0.0049306952085255516,
+            "median_return": 0.000742897084309524,
+            "win_rate": 0.5145631067961165,
+            "avg_excess_return": 0.00498827437608178,
+            "median_excess_return": 0.0008251414573612892,
+            "excess_win_rate": 0.5266990291262136
+          },
+          "24": {
+            "avg_return": 0.0069420223831154855,
+            "median_return": 0.002347371982759805,
+            "win_rate": 0.5364077669902912,
+            "avg_excess_return": 0.006152925193296532,
+            "median_excess_return": -0.0002926074551258817,
+            "excess_win_rate": 0.4975728155339806
+          },
+          "48": {
+            "avg_return": 0.012251601202440099,
+            "median_return": 0.0032658165030983177,
+            "win_rate": 0.5242718446601942,
+            "avg_excess_return": 0.010520768966847232,
+            "median_excess_return": 0.000548004113661904,
+            "excess_win_rate": 0.5048543689320388
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.022021598069397873,
+            "median_mfe": 0.013577055392683501,
+            "avg_mae": -0.01675723890011725,
+            "median_mae": -0.011168067716460395
+          },
+          "24": {
+            "avg_mfe": 0.02716086603814512,
+            "median_mfe": 0.01607514718967107,
+            "avg_mae": -0.019525808825416692,
+            "median_mae": -0.012954919262141318
+          },
+          "48": {
+            "avg_mfe": 0.039797591396368716,
+            "median_mfe": 0.022762872348626728,
+            "avg_mae": -0.026987107681587085,
+            "median_mae": -0.017413483932206042
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 0,
+          "event_count": 0,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "24": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "48": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 359,
+          "event_count": 202,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0010525938260235103,
+              "median_return": 0.0,
+              "win_rate": 0.48514851485148514,
+              "avg_excess_return": 0.0015251792233262566,
+              "median_excess_return": -0.00024600995262569203,
+              "excess_win_rate": 0.48514851485148514
+            },
+            "8": {
+              "avg_return": 0.001371170436722306,
+              "median_return": -0.0002702008958335722,
+              "win_rate": 0.4752475247524752,
+              "avg_excess_return": 0.0018829531748502692,
+              "median_excess_return": 0.0003223206393552225,
+              "excess_win_rate": 0.5247524752475248
+            },
+            "16": {
+              "avg_return": 0.003639422759760998,
+              "median_return": 0.0011912717014119778,
+              "win_rate": 0.5198019801980198,
+              "avg_excess_return": 0.003975875172646887,
+              "median_excess_return": 0.0015846316232183133,
+              "excess_win_rate": 0.5594059405940595
+            },
+            "24": {
+              "avg_return": 0.004766140143177762,
+              "median_return": 0.0038768941473054097,
+              "win_rate": 0.5594059405940595,
+              "avg_excess_return": 0.004431275860803977,
+              "median_excess_return": 0.0016195283351558842,
+              "excess_win_rate": 0.5247524752475248
+            },
+            "48": {
+              "avg_return": 0.006661514530830507,
+              "median_return": 0.003433847360640785,
+              "win_rate": 0.5247524752475248,
+              "avg_excess_return": 0.006401067687305503,
+              "median_excess_return": 0.0016698040730385166,
+              "excess_win_rate": 0.5148514851485149
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.017100134879454592,
+              "median_mfe": 0.012489378222434344,
+              "avg_mae": -0.01304425913730503,
+              "median_mae": -0.010234719746339771
+            },
+            "24": {
+              "avg_mfe": 0.020792728508566245,
+              "median_mfe": 0.014904059930810232,
+              "avg_mae": -0.01595565756842253,
+              "median_mae": -0.012152233722478478
+            },
+            "48": {
+              "avg_mfe": 0.030488420763456217,
+              "median_mfe": 0.022265195634951995,
+              "avg_mae": -0.023282258761118044,
+              "median_mae": -0.01616717062993528
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 373,
+          "event_count": 210,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0004364104293366448,
+              "median_return": -0.0012506629342219355,
+              "win_rate": 0.44761904761904764,
+              "avg_excess_return": 0.0013868394645473608,
+              "median_excess_return": -0.0012105942589245577,
+              "excess_win_rate": 0.45714285714285713
+            },
+            "8": {
+              "avg_return": 0.0027328456534393107,
+              "median_return": -0.0007754211426144186,
+              "win_rate": 0.48095238095238096,
+              "avg_excess_return": 0.002261893996179495,
+              "median_excess_return": -0.0014116426872834431,
+              "excess_win_rate": 0.4523809523809524
+            },
+            "16": {
+              "avg_return": 0.0061727763259086,
+              "median_return": 0.0002423361237565702,
+              "win_rate": 0.5095238095238095,
+              "avg_excess_return": 0.005962105990814394,
+              "median_excess_return": -0.00010138235536255591,
+              "excess_win_rate": 0.49523809523809526
+            },
+            "24": {
+              "avg_return": 0.009035013871055583,
+              "median_return": 0.0009733519813049929,
+              "win_rate": 0.5142857142857142,
+              "avg_excess_return": 0.007808987884551275,
+              "median_excess_return": -0.002398153175060036,
+              "excess_win_rate": 0.4714285714285714
+            },
+            "48": {
+              "avg_return": 0.017628732191321706,
+              "median_return": 0.003091292422146119,
+              "win_rate": 0.5238095238095238,
+              "avg_excess_return": 0.014483529245263563,
+              "median_excess_return": -0.000564899898867155,
+              "excess_win_rate": 0.49523809523809526
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.02675557694734331,
+              "median_mfe": 0.01516271947867076,
+              "avg_mae": -0.02032877181482233,
+              "median_mae": -0.011873360651649012
+            },
+            "24": {
+              "avg_mfe": 0.033286407852311475,
+              "median_mfe": 0.01865152445262952,
+              "avg_mae": -0.022959954320239645,
+              "median_mae": -0.014424316117854163
+            },
+            "48": {
+              "avg_mfe": 0.048752126957551205,
+              "median_mfe": 0.024629231027231135,
+              "avg_mae": -0.030550819500323973,
+              "median_mae": -0.01865173775891915
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T13:30:00",
+          "close": 4704000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.018313374638659008,
+          "target_rs_7d_vs_btc": 0.005727089975012367,
+          "volume_ratio": 2.3665895753478687,
+          "hourly_pullback_return_8": -0.00235546038543899,
+          "fwd_ret_16": 0.001913265306122458,
+          "fwd_excess_ret_16": 0.008679909486497106,
+          "mfe_24": 0.006802721088435382,
+          "mae_24": -0.02529761904761907
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T19:00:00",
+          "close": 4704000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.023451961033234214,
+          "target_rs_7d_vs_btc": 0.00941424244123068,
+          "volume_ratio": 1.242098184153096,
+          "hourly_pullback_return_8": -0.0025510204081632404,
+          "fwd_ret_16": -0.026573129251700633,
+          "fwd_excess_ret_16": -0.005367877034550439,
+          "mfe_24": 0.006802721088435382,
+          "mae_24": -0.03932823129251706
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-27T21:00:00",
+          "close": 4512000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.019530456632874005,
+          "target_rs_7d_vs_btc": 0.03771935713217722,
+          "volume_ratio": 2.4269201103784837,
+          "hourly_pullback_return_8": 0.0008900756564307333,
+          "fwd_ret_16": 0.028368794326241176,
+          "fwd_excess_ret_16": 0.026551033147010017,
+          "mfe_24": 0.04632092198581561,
+          "mae_24": -0.00155141843971629
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-28T02:30:00",
+          "close": 4690000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.044944619958970145,
+          "target_rs_7d_vs_btc": 0.05898992730483954,
+          "volume_ratio": 4.8879614926553545,
+          "hourly_pullback_return_8": 0.001980633802816989,
+          "fwd_ret_16": 0.004690831556503294,
+          "fwd_excess_ret_16": -0.0009510873532370123,
+          "mfe_24": 0.021748400852878547,
+          "mae_24": -0.011727078891258014
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-28T09:00:00",
+          "close": 4705000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04348290448928993,
+          "target_rs_7d_vs_btc": 0.05222934915638333,
+          "volume_ratio": 1.8544550853819053,
+          "hourly_pullback_return_8": -0.0002132196162046851,
+          "fwd_ret_16": 0.014027630180658779,
+          "fwd_excess_ret_16": 0.015201568744540594,
+          "mfe_24": 0.019128586609989284,
+          "mae_24": -0.004675876726886297
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T04:00:00",
+          "close": 4600000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0439211504731809,
+          "target_rs_7d_vs_btc": 0.033403244310597824,
+          "volume_ratio": 12.063021812937441,
+          "hourly_pullback_return_8": 0.0011520737327188613,
+          "fwd_ret_16": 0.09695652173913039,
+          "fwd_excess_ret_16": 0.07161211118071198,
+          "mfe_24": 0.10608695652173905,
+          "mae_24": -0.00043478260869567187
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T09:00:00",
+          "close": 5037000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.12268952709986736,
+          "target_rs_7d_vs_btc": 0.11358250082994314,
+          "volume_ratio": 2.929168955849624,
+          "hourly_pullback_return_8": 0.0020072260136492215,
+          "fwd_ret_16": -0.006750049632717858,
+          "fwd_excess_ret_16": -0.002311072750253329,
+          "mfe_24": 0.04228707564026202,
+          "mae_24": -0.019058963668850515
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T19:00:00",
+          "close": 5080000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.13441924065111377,
+          "target_rs_7d_vs_btc": 0.12222514681872765,
+          "volume_ratio": 1.2194205855957112,
+          "hourly_pullback_return_8": -0.008280757097791747,
+          "fwd_ret_16": 0.012598425196850505,
+          "fwd_excess_ret_16": 0.024013480729553116,
+          "mfe_24": 0.039960629921259816,
+          "mae_24": -0.0023622047244094
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-22T07:30:00",
+          "close": 5269000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04696418678408465,
+          "target_rs_7d_vs_btc": 0.17809444734695457,
+          "volume_ratio": 1.3393939186873747,
+          "hourly_pullback_return_8": -0.005765904285988888,
+          "fwd_ret_16": -0.02144619472385656,
+          "fwd_excess_ret_16": -0.007950931983771836,
+          "mfe_24": 0.00037957866767879267,
+          "mae_24": -0.03416208009109889
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T13:30:00",
+          "close": 5227000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.013489811344434388,
+          "target_rs_7d_vs_btc": 0.2037035397437168,
+          "volume_ratio": 3.4373656713445713,
+          "hourly_pullback_return_8": -0.0009611687812379754,
+          "fwd_ret_16": 0.01970537593265731,
+          "fwd_excess_ret_16": 0.0181493701681259,
+          "mfe_24": 0.04247178113640704,
+          "mae_24": -0.013774631719915775
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T18:00:00",
+          "close": 5298000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.029366373301674464,
+          "target_rs_7d_vs_btc": 0.22345941661563962,
+          "volume_ratio": 2.1744548056946718,
+          "hourly_pullback_return_8": 0.0003800836183960321,
+          "fwd_ret_16": -0.0005662514156284937,
+          "fwd_excess_ret_16": 0.018597204030635917,
+          "mfe_24": 0.02850132125330318,
+          "mae_24": -0.06832767081917701
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T10:00:00",
+          "close": 5226000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0010195083334822996,
+          "target_rs_7d_vs_btc": 0.17332512245360787,
+          "volume_ratio": 3.955802321115905,
+          "hourly_pullback_return_8": -0.004401071565250714,
+          "fwd_ret_16": 0.016073478760045834,
+          "fwd_excess_ret_16": 0.014409412197383231,
+          "mfe_24": 0.017986988136241777,
+          "mae_24": -0.00574052812858783
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T16:30:00",
+          "close": 5270000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0018953227531690597,
+          "target_rs_7d_vs_btc": 0.18622743166735978,
+          "volume_ratio": 3.993901295836174,
+          "hourly_pullback_return_8": -0.001527592132900546,
+          "fwd_ret_16": 0.014421252371916493,
+          "fwd_excess_ret_16": 0.017709702339758104,
+          "mfe_24": 0.028273244781783724,
+          "mae_24": -0.0015180265654648473
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T23:30:00",
+          "close": 5380000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.028457334693234637,
+          "target_rs_7d_vs_btc": 0.22182055148341395,
+          "volume_ratio": 3.347322006262645,
+          "hourly_pullback_return_8": -0.0011301563382934976,
+          "fwd_ret_16": -0.006877323420074299,
+          "fwd_excess_ret_16": 0.0008985971804053028,
+          "mfe_24": 0.019330855018587334,
+          "mae_24": -0.01115241635687736
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-27T10:30:00",
+          "close": 5401000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.03393393738756123,
+          "target_rs_7d_vs_btc": 0.22272698595654017,
+          "volume_ratio": 2.044930073948991,
+          "hourly_pullback_return_8": -0.011072153533862372,
+          "fwd_ret_16": 0.00796148861321977,
+          "fwd_excess_ret_16": 0.015049258307540225,
+          "mfe_24": 0.016478429920385063,
+          "mae_24": -0.0003703017959637567
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-27T17:00:00",
+          "close": 5489000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04614260728774178,
+          "target_rs_7d_vs_btc": 0.24677319478660031,
+          "volume_ratio": 1.2238145464883403,
+          "hourly_pullback_return_8": -0.0007330034817665254,
+          "fwd_ret_16": -0.00637638914192018,
+          "fwd_excess_ret_16": -0.021349986674204402,
+          "mfe_24": 0.0010930952814720563,
+          "mae_24": -0.023501548551648765
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-28T19:00:00",
+          "close": 5429000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0026170836210737125,
+          "target_rs_7d_vs_btc": 0.08991633655830045,
+          "volume_ratio": 2.1276205438229967,
+          "hourly_pullback_return_8": 0.0014845054741139396,
+          "fwd_ret_16": -0.01841959845275376,
+          "fwd_excess_ret_16": -0.009635963751092658,
+          "mfe_24": 0.0012893718916928698,
+          "mae_24": -0.030760729416098753
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-31T18:30:00",
+          "close": 5226000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0004222939969718009,
+          "target_rs_7d_vs_btc": 0.008010317182302051,
+          "volume_ratio": 1.6280783958192044,
+          "hourly_pullback_return_8": -0.006495987772258349,
+          "fwd_ret_16": 0.008419441255262061,
+          "fwd_excess_ret_16": 0.013074236961450492,
+          "mfe_24": 0.026023727516264916,
+          "mae_24": -0.0011481056257175437
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-06-02T07:00:00",
+          "close": 5346000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.00907317077379477,
+          "target_rs_7d_vs_btc": 0.04295847967061972,
+          "volume_ratio": 2.503629519363658,
+          "hourly_pullback_return_8": 0.0015023474178403884,
+          "fwd_ret_16": -0.002992891881780757,
+          "fwd_excess_ret_16": -0.0047031778796060575,
+          "mfe_24": 0.004863449307893841,
+          "mae_24": -0.012532734754956976
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-09-24T17:30:00",
+          "close": 3555000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0012246225772796215,
+          "target_rs_7d_vs_btc": 0.06609419601936262,
+          "volume_ratio": 1.66856397318153,
+          "hourly_pullback_return_8": 0.0,
+          "fwd_ret_16": -0.01293952180028124,
+          "fwd_excess_ret_16": -0.0046001284295711375,
+          "mfe_24": 0.0011251758087200692,
+          "mae_24": -0.023909985935302358
+        }
+      ]
+    },
+    "regime_rs_trend_volume_breakout": {
+      "overall": {
+        "raw_event_count": 561,
+        "event_count": 301,
+        "horizons": {
+          "4": {
+            "avg_return": 0.0021203753196648596,
+            "median_return": 0.0,
+            "win_rate": 0.47840531561461797,
+            "avg_excess_return": 0.002684772733146292,
+            "median_excess_return": -0.0005958814826325654,
+            "excess_win_rate": 0.47840531561461797
+          },
+          "8": {
+            "avg_return": 0.0037383767573324128,
+            "median_return": 0.0,
+            "win_rate": 0.4883720930232558,
+            "avg_excess_return": 0.0038660253928694444,
+            "median_excess_return": 0.0001321605628727962,
+            "excess_win_rate": 0.5083056478405316
+          },
+          "16": {
+            "avg_return": 0.007107040703209868,
+            "median_return": 0.0016326530612245094,
+            "win_rate": 0.5348837209302325,
+            "avg_excess_return": 0.007520081788461683,
+            "median_excess_return": 0.002230224394179414,
+            "excess_win_rate": 0.5581395348837209
+          },
+          "24": {
+            "avg_return": 0.009923251452813999,
+            "median_return": 0.0031880977683316214,
+            "win_rate": 0.5415282392026578,
+            "avg_excess_return": 0.00944211074117026,
+            "median_excess_return": 0.002115947594533818,
+            "excess_win_rate": 0.5382059800664452
+          },
+          "48": {
+            "avg_return": 0.016491161460202557,
+            "median_return": 0.004057343792263968,
+            "win_rate": 0.5448504983388704,
+            "avg_excess_return": 0.015039711649535164,
+            "median_excess_return": 0.0018958842327043701,
+            "excess_win_rate": 0.5182724252491694
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.02422124731324147,
+            "median_mfe": 0.014153511159499255,
+            "avg_mae": -0.01577271097542878,
+            "median_mae": -0.011308861698183126
+          },
+          "24": {
+            "avg_mfe": 0.030461363916877884,
+            "median_mfe": 0.017500475556400996,
+            "avg_mae": -0.018596105749848522,
+            "median_mae": -0.013346613545816788
+          },
+          "48": {
+            "avg_mfe": 0.04551637654838357,
+            "median_mfe": 0.02629497825227367,
+            "avg_mae": -0.025680600109581588,
+            "median_mae": -0.017271589486858585
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 561,
+        "event_count": 301,
+        "horizons": {
+          "4": {
+            "avg_return": 0.0021203753196648596,
+            "median_return": 0.0,
+            "win_rate": 0.47840531561461797,
+            "avg_excess_return": 0.002684772733146292,
+            "median_excess_return": -0.0005958814826325654,
+            "excess_win_rate": 0.47840531561461797
+          },
+          "8": {
+            "avg_return": 0.0037383767573324128,
+            "median_return": 0.0,
+            "win_rate": 0.4883720930232558,
+            "avg_excess_return": 0.0038660253928694444,
+            "median_excess_return": 0.0001321605628727962,
+            "excess_win_rate": 0.5083056478405316
+          },
+          "16": {
+            "avg_return": 0.007107040703209868,
+            "median_return": 0.0016326530612245094,
+            "win_rate": 0.5348837209302325,
+            "avg_excess_return": 0.007520081788461683,
+            "median_excess_return": 0.002230224394179414,
+            "excess_win_rate": 0.5581395348837209
+          },
+          "24": {
+            "avg_return": 0.009923251452813999,
+            "median_return": 0.0031880977683316214,
+            "win_rate": 0.5415282392026578,
+            "avg_excess_return": 0.00944211074117026,
+            "median_excess_return": 0.002115947594533818,
+            "excess_win_rate": 0.5382059800664452
+          },
+          "48": {
+            "avg_return": 0.016491161460202557,
+            "median_return": 0.004057343792263968,
+            "win_rate": 0.5448504983388704,
+            "avg_excess_return": 0.015039711649535164,
+            "median_excess_return": 0.0018958842327043701,
+            "excess_win_rate": 0.5182724252491694
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.02422124731324147,
+            "median_mfe": 0.014153511159499255,
+            "avg_mae": -0.01577271097542878,
+            "median_mae": -0.011308861698183126
+          },
+          "24": {
+            "avg_mfe": 0.030461363916877884,
+            "median_mfe": 0.017500475556400996,
+            "avg_mae": -0.018596105749848522,
+            "median_mae": -0.013346613545816788
+          },
+          "48": {
+            "avg_mfe": 0.04551637654838357,
+            "median_mfe": 0.02629497825227367,
+            "avg_mae": -0.025680600109581588,
+            "median_mae": -0.017271589486858585
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 0,
+          "event_count": 0,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "24": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "48": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 279,
+          "event_count": 154,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0007790627112692202,
+              "median_return": -0.00028145229383619297,
+              "win_rate": 0.45454545454545453,
+              "avg_excess_return": 0.001508128058432338,
+              "median_excess_return": -0.0007063469673367351,
+              "excess_win_rate": 0.461038961038961
+            },
+            "8": {
+              "avg_return": 0.0017879152693698165,
+              "median_return": -0.0006330949379806938,
+              "win_rate": 0.4675324675324675,
+              "avg_excess_return": 0.0026317747430471615,
+              "median_excess_return": 0.0005249519654012547,
+              "excess_win_rate": 0.5454545454545454
+            },
+            "16": {
+              "avg_return": 0.00436923184034529,
+              "median_return": 0.0007940639000328931,
+              "win_rate": 0.512987012987013,
+              "avg_excess_return": 0.005076907951862251,
+              "median_excess_return": 0.002797456419432409,
+              "excess_win_rate": 0.577922077922078
+            },
+            "24": {
+              "avg_return": 0.00629890421802532,
+              "median_return": 0.0033406934879532946,
+              "win_rate": 0.5454545454545454,
+              "avg_excess_return": 0.006381330568113464,
+              "median_excess_return": 0.002414919812275429,
+              "excess_win_rate": 0.5584415584415584
+            },
+            "48": {
+              "avg_return": 0.00838430796246145,
+              "median_return": 0.003433847360640785,
+              "win_rate": 0.5324675324675324,
+              "avg_excess_return": 0.008532568859954874,
+              "median_excess_return": 0.0016843958588989016,
+              "excess_win_rate": 0.512987012987013
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.01751264821168343,
+              "median_mfe": 0.013082902024597165,
+              "avg_mae": -0.013201373525816774,
+              "median_mae": -0.01105219979300337
+            },
+            "24": {
+              "avg_mfe": 0.02150955584678617,
+              "median_mfe": 0.014910873095661636,
+              "avg_mae": -0.01604144613705605,
+              "median_mae": -0.0127564463546459
+            },
+            "48": {
+              "avg_mfe": 0.03237283367508982,
+              "median_mfe": 0.023586876394291245,
+              "avg_mae": -0.02163710039016775,
+              "median_mae": -0.016934961875022303
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 282,
+          "event_count": 147,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0035255599570317197,
+              "median_return": 0.00024820054604113295,
+              "win_rate": 0.5034013605442177,
+              "avg_excess_return": 0.003917448106656149,
+              "median_excess_return": -0.00031380827892624197,
+              "excess_win_rate": 0.4965986394557823
+            },
+            "8": {
+              "avg_return": 0.005781717363769418,
+              "median_return": 0.0012760527435133895,
+              "win_rate": 0.5102040816326531,
+              "avg_excess_return": 0.005159049883159455,
+              "median_excess_return": -0.0011390905297981035,
+              "excess_win_rate": 0.46938775510204084
+            },
+            "16": {
+              "avg_return": 0.009975221416687045,
+              "median_return": 0.0022708505367465825,
+              "win_rate": 0.5578231292517006,
+              "avg_excess_return": 0.010079597236327753,
+              "median_excess_return": 0.0019421002152595346,
+              "excess_win_rate": 0.5374149659863946
+            },
+            "24": {
+              "avg_return": 0.013720186651164043,
+              "median_return": 0.002361021678471742,
+              "win_rate": 0.5374149659863946,
+              "avg_excess_return": 0.012648642351039284,
+              "median_excess_return": 0.0015270205108255386,
+              "excess_win_rate": 0.5170068027210885
+            },
+            "48": {
+              "avg_return": 0.024984055600693243,
+              "median_return": 0.00496360026472531,
+              "win_rate": 0.5578231292517006,
+              "avg_excess_return": 0.021856718381476414,
+              "median_excess_return": 0.003725991226851244,
+              "excess_win_rate": 0.5238095238095238
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.031249303514873695,
+              "median_mfe": 0.016227720138334734,
+              "avg_mae": -0.018466493065498503,
+              "median_mae": -0.011549295774647916
+            },
+            "24": {
+              "avg_mfe": 0.039839448561735866,
+              "median_mfe": 0.021401693320790116,
+              "avg_mae": -0.021272415820393013,
+              "median_mae": -0.014326647564469885
+            },
+            "48": {
+              "avg_mfe": 0.0592858024156437,
+              "median_mfe": 0.030921645151606114,
+              "avg_mae": -0.0299166474346818,
+              "median_mae": -0.0176795580110497
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T13:30:00",
+          "close": 4704000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.018313374638659008,
+          "target_rs_7d_vs_btc": 0.005727089975012367,
+          "volume_ratio": 2.3665895753478687,
+          "hourly_pullback_return_8": -0.00235546038543899,
+          "fwd_ret_16": 0.001913265306122458,
+          "fwd_excess_ret_16": 0.008679909486497106,
+          "mfe_24": 0.006802721088435382,
+          "mae_24": -0.02529761904761907
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-24T19:00:00",
+          "close": 4704000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.023451961033234214,
+          "target_rs_7d_vs_btc": 0.00941424244123068,
+          "volume_ratio": 1.242098184153096,
+          "hourly_pullback_return_8": -0.0025510204081632404,
+          "fwd_ret_16": -0.026573129251700633,
+          "fwd_excess_ret_16": -0.005367877034550439,
+          "mfe_24": 0.006802721088435382,
+          "mae_24": -0.03932823129251706
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-04-28T09:00:00",
+          "close": 4705000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04348290448928993,
+          "target_rs_7d_vs_btc": 0.05222934915638333,
+          "volume_ratio": 1.8544550853819053,
+          "hourly_pullback_return_8": -0.0002132196162046851,
+          "fwd_ret_16": 0.014027630180658779,
+          "fwd_excess_ret_16": 0.015201568744540594,
+          "mfe_24": 0.019128586609989284,
+          "mae_24": -0.004675876726886297
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T04:00:00",
+          "close": 4600000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0439211504731809,
+          "target_rs_7d_vs_btc": 0.033403244310597824,
+          "volume_ratio": 12.063021812937441,
+          "hourly_pullback_return_8": 0.0011520737327188613,
+          "fwd_ret_16": 0.09695652173913039,
+          "fwd_excess_ret_16": 0.07161211118071198,
+          "mfe_24": 0.10608695652173905,
+          "mae_24": -0.00043478260869567187
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T09:00:00",
+          "close": 5037000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.12268952709986736,
+          "target_rs_7d_vs_btc": 0.11358250082994314,
+          "volume_ratio": 2.929168955849624,
+          "hourly_pullback_return_8": 0.0020072260136492215,
+          "fwd_ret_16": -0.006750049632717858,
+          "fwd_excess_ret_16": -0.002311072750253329,
+          "mfe_24": 0.04228707564026202,
+          "mae_24": -0.019058963668850515
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T19:00:00",
+          "close": 5080000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.13441924065111377,
+          "target_rs_7d_vs_btc": 0.12222514681872765,
+          "volume_ratio": 1.2194205855957112,
+          "hourly_pullback_return_8": -0.008280757097791747,
+          "fwd_ret_16": 0.012598425196850505,
+          "fwd_excess_ret_16": 0.024013480729553116,
+          "mfe_24": 0.039960629921259816,
+          "mae_24": -0.0023622047244094
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-22T07:30:00",
+          "close": 5269000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04696418678408465,
+          "target_rs_7d_vs_btc": 0.17809444734695457,
+          "volume_ratio": 1.3393939186873747,
+          "hourly_pullback_return_8": -0.005765904285988888,
+          "fwd_ret_16": -0.02144619472385656,
+          "fwd_excess_ret_16": -0.007950931983771836,
+          "mfe_24": 0.00037957866767879267,
+          "mae_24": -0.03416208009109889
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T13:30:00",
+          "close": 5227000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.013489811344434388,
+          "target_rs_7d_vs_btc": 0.2037035397437168,
+          "volume_ratio": 3.4373656713445713,
+          "hourly_pullback_return_8": -0.0009611687812379754,
+          "fwd_ret_16": 0.01970537593265731,
+          "fwd_excess_ret_16": 0.0181493701681259,
+          "mfe_24": 0.04247178113640704,
+          "mae_24": -0.013774631719915775
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-23T18:00:00",
+          "close": 5298000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.029366373301674464,
+          "target_rs_7d_vs_btc": 0.22345941661563962,
+          "volume_ratio": 2.1744548056946718,
+          "hourly_pullback_return_8": 0.0003800836183960321,
+          "fwd_ret_16": -0.0005662514156284937,
+          "fwd_excess_ret_16": 0.018597204030635917,
+          "mfe_24": 0.02850132125330318,
+          "mae_24": -0.06832767081917701
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T16:30:00",
+          "close": 5270000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0018953227531690597,
+          "target_rs_7d_vs_btc": 0.18622743166735978,
+          "volume_ratio": 3.993901295836174,
+          "hourly_pullback_return_8": -0.001527592132900546,
+          "fwd_ret_16": 0.014421252371916493,
+          "fwd_excess_ret_16": 0.017709702339758104,
+          "mfe_24": 0.028273244781783724,
+          "mae_24": -0.0015180265654648473
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-26T23:30:00",
+          "close": 5380000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.028457334693234637,
+          "target_rs_7d_vs_btc": 0.22182055148341395,
+          "volume_ratio": 3.347322006262645,
+          "hourly_pullback_return_8": -0.0011301563382934976,
+          "fwd_ret_16": -0.006877323420074299,
+          "fwd_excess_ret_16": 0.0008985971804053028,
+          "mfe_24": 0.019330855018587334,
+          "mae_24": -0.01115241635687736
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-27T10:30:00",
+          "close": 5401000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.03393393738756123,
+          "target_rs_7d_vs_btc": 0.22272698595654017,
+          "volume_ratio": 2.044930073948991,
+          "hourly_pullback_return_8": -0.011072153533862372,
+          "fwd_ret_16": 0.00796148861321977,
+          "fwd_excess_ret_16": 0.015049258307540225,
+          "mfe_24": 0.016478429920385063,
+          "mae_24": -0.0003703017959637567
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-27T17:00:00",
+          "close": 5489000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.04614260728774178,
+          "target_rs_7d_vs_btc": 0.24677319478660031,
+          "volume_ratio": 1.2238145464883403,
+          "hourly_pullback_return_8": -0.0007330034817665254,
+          "fwd_ret_16": -0.00637638914192018,
+          "fwd_excess_ret_16": -0.021349986674204402,
+          "mfe_24": 0.0010930952814720563,
+          "mae_24": -0.023501548551648765
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-28T19:00:00",
+          "close": 5429000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0026170836210737125,
+          "target_rs_7d_vs_btc": 0.08991633655830045,
+          "volume_ratio": 2.1276205438229967,
+          "hourly_pullback_return_8": 0.0014845054741139396,
+          "fwd_ret_16": -0.01841959845275376,
+          "fwd_excess_ret_16": -0.009635963751092658,
+          "mfe_24": 0.0012893718916928698,
+          "mae_24": -0.030760729416098753
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-06-02T07:00:00",
+          "close": 5346000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.00907317077379477,
+          "target_rs_7d_vs_btc": 0.04295847967061972,
+          "volume_ratio": 2.503629519363658,
+          "hourly_pullback_return_8": 0.0015023474178403884,
+          "fwd_ret_16": -0.002992891881780757,
+          "fwd_excess_ret_16": -0.0047031778796060575,
+          "mfe_24": 0.004863449307893841,
+          "mae_24": -0.012532734754956976
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-09-28T01:00:00",
+          "close": 3567000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.00875044811988257,
+          "target_rs_7d_vs_btc": 0.007661521478128153,
+          "volume_ratio": 1.2201355463134556,
+          "hourly_pullback_return_8": 0.0011328235627301453,
+          "fwd_ret_16": -0.0036445192038127017,
+          "fwd_excess_ret_16": 0.0012058419932977626,
+          "mfe_24": 0.007849733669750503,
+          "mae_24": -0.006167647883375427
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-10-13T07:30:00",
+          "close": 3347000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.007108511656284122,
+          "target_rs_7d_vs_btc": 0.008979433681289839,
+          "volume_ratio": 1.2374080960572111,
+          "hourly_pullback_return_8": 0.001501050735514875,
+          "fwd_ret_16": -0.006871825515386898,
+          "fwd_excess_ret_16": -0.0038389576919986013,
+          "mfe_24": 0.0002987750224081598,
+          "mae_24": -0.01105467582910069
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-10-14T13:00:00",
+          "close": 3408000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.005583452531524369,
+          "target_rs_7d_vs_btc": 0.016175166685002074,
+          "volume_ratio": 3.6430289528029403,
+          "hourly_pullback_return_8": 0.019825773505557143,
+          "fwd_ret_16": 0.004401408450704247,
+          "fwd_excess_ret_16": -0.0031213914196721593,
+          "mfe_24": 0.04166666666666674,
+          "mae_24": -0.007629107981220629
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-10-14T23:00:00",
+          "close": 3500000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0076909931224358186,
+          "target_rs_7d_vs_btc": 0.01780784870832597,
+          "volume_ratio": 3.3988981054308676,
+          "hourly_pullback_return_8": 0.002908667830133771,
+          "fwd_ret_16": 0.008000000000000007,
+          "fwd_excess_ret_16": 0.006553852063585275,
+          "mfe_24": 0.01457142857142868,
+          "mae_24": -0.0040000000000000036
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-10-15T22:30:00",
+          "close": 3605000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.00226254417453875,
+          "target_rs_7d_vs_btc": 0.016891080037930273,
+          "volume_ratio": 6.267382167832096,
+          "hourly_pullback_return_8": -0.0011347517730496692,
+          "fwd_ret_16": -0.02746185852981975,
+          "fwd_excess_ret_16": -0.014154810723018385,
+          "mfe_24": 0.0049930651872398535,
+          "mae_24": -0.04521497919556172
+        }
+      ]
+    },
+    "regime_rs_pullback_rebreakout": {
+      "overall": {
+        "raw_event_count": 19,
+        "event_count": 17,
+        "horizons": {
+          "4": {
+            "avg_return": 0.011818841130100637,
+            "median_return": 0.0041296060991105055,
+            "win_rate": 0.6470588235294118,
+            "avg_excess_return": 0.011141471309339382,
+            "median_excess_return": 0.0004955484643625052,
+            "excess_win_rate": 0.5294117647058824
+          },
+          "8": {
+            "avg_return": 0.009088676239532493,
+            "median_return": 0.003516430217048505,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.00898113227593018,
+            "median_excess_return": -0.0018499036511717692,
+            "excess_win_rate": 0.47058823529411764
+          },
+          "16": {
+            "avg_return": 0.018360257296072966,
+            "median_return": 0.004761904761904745,
+            "win_rate": 0.6470588235294118,
+            "avg_excess_return": 0.019805163201604793,
+            "median_excess_return": 0.0016020375286986965,
+            "excess_win_rate": 0.5882352941176471
+          },
+          "24": {
+            "avg_return": 0.025750876104211354,
+            "median_return": 0.001820388349514479,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.02440827301568059,
+            "median_excess_return": 0.002999977481389915,
+            "excess_win_rate": 0.5294117647058824
+          },
+          "48": {
+            "avg_return": 0.023902991351954905,
+            "median_return": 0.011417322834645693,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.01583679714087532,
+            "median_excess_return": -0.0037457498333972605,
+            "excess_win_rate": 0.47058823529411764
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.041170720234866,
+            "median_mfe": 0.014556331006979173,
+            "avg_mae": -0.01557303749982356,
+            "median_mae": -0.013227513227513255
+          },
+          "24": {
+            "avg_mfe": 0.056813386381386756,
+            "median_mfe": 0.016478429920385063,
+            "avg_mae": -0.015852423165679853,
+            "median_mae": -0.013227513227513255
+          },
+          "48": {
+            "avg_mfe": 0.06792619133745403,
+            "median_mfe": 0.02366581956797975,
+            "avg_mae": -0.022931225109813772,
+            "median_mae": -0.015552675430475893
+          }
+        }
+      },
+      "alt_only": {
+        "raw_event_count": 19,
+        "event_count": 17,
+        "horizons": {
+          "4": {
+            "avg_return": 0.011818841130100637,
+            "median_return": 0.0041296060991105055,
+            "win_rate": 0.6470588235294118,
+            "avg_excess_return": 0.011141471309339382,
+            "median_excess_return": 0.0004955484643625052,
+            "excess_win_rate": 0.5294117647058824
+          },
+          "8": {
+            "avg_return": 0.009088676239532493,
+            "median_return": 0.003516430217048505,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.00898113227593018,
+            "median_excess_return": -0.0018499036511717692,
+            "excess_win_rate": 0.47058823529411764
+          },
+          "16": {
+            "avg_return": 0.018360257296072966,
+            "median_return": 0.004761904761904745,
+            "win_rate": 0.6470588235294118,
+            "avg_excess_return": 0.019805163201604793,
+            "median_excess_return": 0.0016020375286986965,
+            "excess_win_rate": 0.5882352941176471
+          },
+          "24": {
+            "avg_return": 0.025750876104211354,
+            "median_return": 0.001820388349514479,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.02440827301568059,
+            "median_excess_return": 0.002999977481389915,
+            "excess_win_rate": 0.5294117647058824
+          },
+          "48": {
+            "avg_return": 0.023902991351954905,
+            "median_return": 0.011417322834645693,
+            "win_rate": 0.5294117647058824,
+            "avg_excess_return": 0.01583679714087532,
+            "median_excess_return": -0.0037457498333972605,
+            "excess_win_rate": 0.47058823529411764
+          }
+        },
+        "path": {
+          "16": {
+            "avg_mfe": 0.041170720234866,
+            "median_mfe": 0.014556331006979173,
+            "avg_mae": -0.01557303749982356,
+            "median_mae": -0.013227513227513255
+          },
+          "24": {
+            "avg_mfe": 0.056813386381386756,
+            "median_mfe": 0.016478429920385063,
+            "avg_mae": -0.015852423165679853,
+            "median_mae": -0.013227513227513255
+          },
+          "48": {
+            "avg_mfe": 0.06792619133745403,
+            "median_mfe": 0.02366581956797975,
+            "avg_mae": -0.022931225109813772,
+            "median_mae": -0.015552675430475893
+          }
+        }
+      },
+      "by_ticker": {
+        "KRW-BTC": {
+          "raw_event_count": 0,
+          "event_count": 0,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "8": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "16": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "24": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            },
+            "48": {
+              "avg_return": 0.0,
+              "median_return": 0.0,
+              "win_rate": 0.0,
+              "avg_excess_return": 0.0,
+              "median_excess_return": 0.0,
+              "excess_win_rate": 0.0
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "24": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            },
+            "48": {
+              "avg_mfe": 0.0,
+              "median_mfe": 0.0,
+              "avg_mae": 0.0,
+              "median_mae": 0.0
+            }
+          }
+        },
+        "KRW-ETH": {
+          "raw_event_count": 8,
+          "event_count": 7,
+          "horizons": {
+            "4": {
+              "avg_return": 0.0014349438413903126,
+              "median_return": 0.0014992503748125774,
+              "win_rate": 0.5714285714285714,
+              "avg_excess_return": 0.00242463765445449,
+              "median_excess_return": -0.00027866732087755697,
+              "excess_win_rate": 0.42857142857142855
+            },
+            "8": {
+              "avg_return": 0.002407146889800466,
+              "median_return": 0.006181455633100796,
+              "win_rate": 0.5714285714285714,
+              "avg_excess_return": 0.0043400990722043875,
+              "median_excess_return": 0.00315695097289459,
+              "excess_win_rate": 0.5714285714285714
+            },
+            "16": {
+              "avg_return": -0.004127002135648158,
+              "median_return": 0.0015952143569291088,
+              "win_rate": 0.5714285714285714,
+              "avg_excess_return": 0.003254770298296239,
+              "median_excess_return": 0.0016020375286986965,
+              "excess_win_rate": 0.7142857142857143
+            },
+            "24": {
+              "avg_return": 0.004525208246489768,
+              "median_return": 0.010738752082947611,
+              "win_rate": 0.5714285714285714,
+              "avg_excess_return": 0.009483471486142894,
+              "median_excess_return": 0.011389357223390961,
+              "excess_win_rate": 0.5714285714285714
+            },
+            "48": {
+              "avg_return": -0.0016272152646049007,
+              "median_return": -0.005696923661222986,
+              "win_rate": 0.42857142857142855,
+              "avg_excess_return": 0.003950047525779162,
+              "median_excess_return": -0.0037457498333972605,
+              "excess_win_rate": 0.42857142857142855
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.014309077193297468,
+              "median_mfe": 0.012865311308767557,
+              "avg_mae": -0.015804179805564922,
+              "median_mae": -0.014755732801595256
+            },
+            "24": {
+              "avg_mfe": 0.018529688186601785,
+              "median_mfe": 0.016478429920385063,
+              "avg_mae": -0.015804179805564922,
+              "median_mae": -0.014755732801595256
+            },
+            "48": {
+              "avg_mfe": 0.023763534913289894,
+              "median_mfe": 0.01747056589441698,
+              "avg_mae": -0.021749436928996398,
+              "median_mae": -0.015552675430475893
+            }
+          }
+        },
+        "KRW-XRP": {
+          "raw_event_count": 11,
+          "event_count": 10,
+          "horizons": {
+            "4": {
+              "avg_return": 0.019087569232197864,
+              "median_return": 0.006663510155689112,
+              "win_rate": 0.7,
+              "avg_excess_return": 0.017243254867758805,
+              "median_excess_return": 0.0005989995280830662,
+              "excess_win_rate": 0.6
+            },
+            "8": {
+              "avg_return": 0.013765746784344913,
+              "median_return": 0.000909935903483039,
+              "win_rate": 0.5,
+              "avg_excess_return": 0.012229855518538234,
+              "median_excess_return": -0.003561810805383314,
+              "excess_win_rate": 0.4
+            },
+            "16": {
+              "avg_return": 0.03410133889827775,
+              "median_return": 0.007387020342117467,
+              "win_rate": 0.7,
+              "avg_excess_return": 0.03139043823392078,
+              "median_excess_return": 0.0025345468441511088,
+              "excess_win_rate": 0.5
+            },
+            "24": {
+              "avg_return": 0.04060884360461646,
+              "median_return": -0.00042281600459320723,
+              "win_rate": 0.5,
+              "avg_excess_return": 0.03485563408635698,
+              "median_excess_return": -0.003224909250656771,
+              "excess_win_rate": 0.5
+            },
+            "48": {
+              "avg_return": 0.04177413598354677,
+              "median_return": 0.028556436167028854,
+              "win_rate": 0.6,
+              "avg_excess_return": 0.024157521871442635,
+              "median_excess_return": -0.0019327281388499817,
+              "excess_win_rate": 0.5
+            }
+          },
+          "path": {
+            "16": {
+              "avg_mfe": 0.059973870363963976,
+              "median_mfe": 0.015085786202291063,
+              "avg_mae": -0.015411237885804608,
+              "median_mae": -0.01192913577747029
+            },
+            "24": {
+              "avg_mfe": 0.08361197511773624,
+              "median_mfe": 0.01669251168644381,
+              "avg_mae": -0.015886193517760307,
+              "median_mae": -0.01192913577747029
+            },
+            "48": {
+              "avg_mfe": 0.09884005083436893,
+              "median_mfe": 0.03722994727774831,
+              "avg_mae": -0.023758476836385933,
+              "median_mae": -0.015646115832646967
+            }
+          }
+        }
+      },
+      "samples": [
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T08:00:00",
+          "close": 5015000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.1201774346897746,
+          "target_rs_7d_vs_btc": 0.10979919454405485,
+          "volume_ratio": 1.8789214381981287,
+          "hourly_pullback_return_8": -0.010036130068245663,
+          "fwd_ret_16": 0.0015952143569291088,
+          "fwd_excess_ret_16": 0.000628195860128411,
+          "mfe_24": 0.0333000997008972,
+          "mae_24": -0.014755732801595256
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-21T19:00:00",
+          "close": 5080000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.13441924065111377,
+          "target_rs_7d_vs_btc": 0.12222514681872765,
+          "volume_ratio": 1.2194205855957112,
+          "hourly_pullback_return_8": -0.008280757097791747,
+          "fwd_ret_16": 0.012598425196850505,
+          "fwd_excess_ret_16": 0.024013480729553116,
+          "mfe_24": 0.039960629921259816,
+          "mae_24": -0.0023622047244094
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-05-27T10:30:00",
+          "close": 5401000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.03393393738756123,
+          "target_rs_7d_vs_btc": 0.22272698595654017,
+          "volume_ratio": 2.044930073948991,
+          "hourly_pullback_return_8": -0.011072153533862372,
+          "fwd_ret_16": 0.00796148861321977,
+          "fwd_excess_ret_16": 0.015049258307540225,
+          "mfe_24": 0.016478429920385063,
+          "mae_24": -0.0003703017959637567
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2024-11-26T00:30:00",
+          "close": 4880000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.06702661154472978,
+          "target_rs_7d_vs_btc": 0.07672715321987167,
+          "volume_ratio": 1.7804459988540846,
+          "hourly_pullback_return_8": -0.02108745089931774,
+          "fwd_ret_16": -0.02479508196721314,
+          "fwd_excess_ret_16": 0.0016020375286986965,
+          "mfe_24": 0.010655737704918122,
+          "mae_24": -0.03668032786885245
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2025-04-26T17:00:00",
+          "close": 2633000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.019034755855433794,
+          "target_rs_7d_vs_btc": 0.030311901508939698,
+          "volume_ratio": 2.003587692743744,
+          "hourly_pullback_return_8": -0.008425890463424013,
+          "fwd_ret_16": -0.014052411697683231,
+          "fwd_excess_ret_16": -0.012357110836822671,
+          "mfe_24": 0.0018989745537409952,
+          "mae_24": -0.02544625902012909
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2025-05-02T09:00:00",
+          "close": 2668000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0023532988062284765,
+          "target_rs_7d_vs_btc": 0.009070221685724356,
+          "volume_ratio": 2.442239448071246,
+          "hourly_pullback_return_8": -0.010082150858849892,
+          "fwd_ret_16": -0.020614692653673217,
+          "fwd_excess_ret_16": -0.010889848537203872,
+          "mfe_24": 0.0037481259370315545,
+          "mae_24": -0.027361319340329815
+        },
+        {
+          "ticker": "KRW-ETH",
+          "timestamp": "2025-10-03T00:30:00",
+          "close": 6296000.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.003924506207110268,
+          "target_rs_7d_vs_btc": 0.03360415113341442,
+          "volume_ratio": 1.3698810514495487,
+          "hourly_pullback_return_8": -0.008286852589641458,
+          "fwd_ret_16": 0.008418043202033099,
+          "fwd_excess_ret_16": 0.004737379036179767,
+          "mfe_24": 0.02366581956797975,
+          "mae_24": -0.0036531130876746865
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2024-11-11T09:30:00",
+          "close": 824.7,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.013067651248663825,
+          "target_rs_7d_vs_btc": 0.00490023618582347,
+          "volume_ratio": 1.3859544650655602,
+          "hourly_pullback_return_8": -0.02406321082245888,
+          "fwd_ret_16": -0.011761852794955785,
+          "fwd_excess_ret_16": -0.0279246943152619,
+          "mfe_24": 0.01224687765247956,
+          "mae_24": -0.038438219958772946
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2024-11-16T12:30:00",
+          "close": 1279.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.07065199436912706,
+          "target_rs_7d_vs_btc": 0.4687661193912489,
+          "volume_ratio": 2.0178289072726123,
+          "hourly_pullback_return_8": -0.023273855702094615,
+          "fwd_ret_16": 0.15168100078186075,
+          "fwd_excess_ret_16": 0.15515643559996406,
+          "mfe_24": 0.3752931978107896,
+          "mae_24": -0.0023455824863174435
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2024-11-16T17:30:00",
+          "close": 1396.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.2094990416390854,
+          "target_rs_7d_vs_btc": 0.6104018457754596,
+          "volume_ratio": 1.94605362064467,
+          "hourly_pullback_return_8": -0.010144927536231862,
+          "fwd_ret_16": 0.14469914040114618,
+          "fwd_excess_ret_16": 0.15496579250518572,
+          "mfe_24": 0.26002865329512903,
+          "mae_24": -0.014326647564469885
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2024-12-12T13:00:00",
+          "close": 3489.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.017871123483102158,
+          "target_rs_7d_vs_btc": 0.1021462202151765,
+          "volume_ratio": 3.530396733025608,
+          "hourly_pullback_return_8": -0.011301072152999136,
+          "fwd_ret_16": -0.014617368873602765,
+          "fwd_excess_ret_16": -0.015714695450572802,
+          "mfe_24": 0.0071653768988249045,
+          "mae_24": -0.029807967899111443
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-01-15T22:30:00",
+          "close": 4233.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.08638002347374907,
+          "target_rs_7d_vs_btc": 0.19826958664484962,
+          "volume_ratio": 3.598782969779955,
+          "hourly_pullback_return_8": -0.03204524033930256,
+          "fwd_ret_16": 0.0571698558941649,
+          "fwd_excess_ret_16": 0.058317498785951716,
+          "mfe_24": 0.1079612567918733,
+          "mae_24": -0.010630758327427325
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-01-17T11:30:00",
+          "close": 4924.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.08664748513887632,
+          "target_rs_7d_vs_btc": 0.37572715998147976,
+          "volume_ratio": 1.5206001901638533,
+          "hourly_pullback_return_8": -0.016496945010183284,
+          "fwd_ret_16": -0.01584077985377741,
+          "fwd_excess_ret_16": -0.02828272082345573,
+          "mfe_24": 0.0012185215272135785,
+          "mae_24": -0.034118602761982086
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-02-15T10:00:00",
+          "close": 4159.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.07662248101178815,
+          "target_rs_7d_vs_btc": 0.13495596587361935,
+          "volume_ratio": 1.3114611125442965,
+          "hourly_pullback_return_8": -0.011010052656773572,
+          "fwd_ret_16": 0.014666987256552133,
+          "fwd_excess_ret_16": 0.015585817143706215,
+          "mfe_24": 0.02500601106035094,
+          "mae_24": -0.004568405866794856
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-07-10T10:30:00",
+          "close": 3296.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.029444407254156202,
+          "target_rs_7d_vs_btc": 0.06265128435419975,
+          "volume_ratio": 2.6710824587968522,
+          "hourly_pullback_return_8": -0.010064043915828047,
+          "fwd_ret_16": 0.01001213592233019,
+          "fwd_excess_ret_16": 0.008030691256988964,
+          "mfe_24": 0.014866504854369023,
+          "mae_24": -0.004854368932038833
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-07-12T10:00:00",
+          "close": 3780.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.08786622274322009,
+          "target_rs_7d_vs_btc": 0.1745069627442004,
+          "volume_ratio": 1.4404034546232107,
+          "hourly_pullback_return_8": -0.04697286012526092,
+          "fwd_ret_16": 0.004761904761904745,
+          "fwd_excess_ret_16": -0.0032681447946116826,
+          "mfe_24": 0.0185185185185186,
+          "mae_24": -0.013227513227513255
+        },
+        {
+          "ticker": "KRW-XRP",
+          "timestamp": "2025-09-29T22:30:00",
+          "close": 4126.0,
+          "btc_daily_regime_on": true,
+          "target_rs_24h_vs_btc": 0.0006309605651768635,
+          "target_rs_7d_vs_btc": 0.006256049319433243,
+          "volume_ratio": 3.072395720226166,
+          "hourly_pullback_return_8": -0.008737864077669855,
+          "fwd_ret_16": 0.0002423654871546166,
+          "fwd_excess_ret_16": -0.002961597568686747,
+          "mfe_24": 0.013814832767813812,
+          "mae_24": -0.006543868153174981
+        }
+      ]
+    }
+  },
+  "ranked_condition_sets": [
+    "regime_rs_trend_volume_breakout",
+    "regime_rs_volume_breakout",
+    "regime_rs_breakout",
+    "regime_breakout",
+    "breakout_only"
+  ],
+  "best_condition_set": "regime_rs_trend_volume_breakout",
+  "verdict": {
+    "label": "PASS",
+    "gates": {
+      "alt_events_ge_50": true,
+      "eth_events_ge_15": true,
+      "xrp_events_ge_15": true,
+      "avg_excess_16_positive": true,
+      "avg_excess_24_positive": true,
+      "median_excess_16_non_negative": true,
+      "median_excess_24_non_negative": true,
+      "excess_win_rate_16_ge_52pct": true,
+      "mae_24_not_extreme": true
+    },
+    "stats": {
+      "alt_event_count": 301,
+      "h16_avg_excess": 0.007520081788461683,
+      "h24_avg_excess": 0.00944211074117026,
+      "h16_median_excess": 0.002230224394179414,
+      "h24_median_excess": 0.002115947594533818
+    },
+    "recommendation": "Implement regime_relative_breakout_30m strategy next."
+  }
+}
