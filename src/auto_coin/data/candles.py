@@ -974,6 +974,167 @@ def enrich_regime_pullback_continuation_30m(
     return out
 
 
+def enrich_regime_relative_breakout_30m(
+    df: pd.DataFrame,
+    *,
+    daily_regime_df: pd.DataFrame | None = None,
+    daily_regime_ma_window: int = 100,
+    hourly_setup_df: pd.DataFrame | None = None,
+    hourly_ema_fast: int = 20,
+    hourly_ema_slow: int = 60,
+    hourly_slope_lookback: int = 3,
+    rs_reference_df: pd.DataFrame | None = None,
+    rs_24h_bars_30m: int = 48,
+    rs_7d_bars_30m: int = 336,
+    breakout_lookback_30m: int = 6,
+    volume_window_30m: int = 20,
+    atr_window: int = 14,
+) -> pd.DataFrame:
+    """Daily BTC regime + alt RS vs BTC + 1H trend + 30m breakout features.
+
+    No-lookahead safeguards:
+
+    - ``btc_daily_regime_on`` uses ``shift(1)`` at the daily level so that an
+      intra-day 30m bar sees only the last completed daily regime.
+    - All 1H features are ``shift(1)`` at the hourly level so that 30m bars
+      inside the currently forming 1H bar use the previous completed hour.
+    - ``prior_high_N`` and ``volume_ma_N`` are ``shift(1)`` at the 30m level.
+    - Relative-strength uses ``close.shift(bars)`` which only looks backward.
+
+    Side note: this enricher intentionally does not compute ``close_location_value``
+    with a shift — CLV is a same-bar candle shape metric.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if daily_regime_ma_window < 2:
+        raise ValueError("daily_regime_ma_window must be >= 2")
+    if hourly_ema_fast < 1:
+        raise ValueError("hourly_ema_fast must be >= 1")
+    if hourly_ema_slow <= hourly_ema_fast:
+        raise ValueError("hourly_ema_slow must be > hourly_ema_fast")
+    if hourly_slope_lookback < 1:
+        raise ValueError("hourly_slope_lookback must be >= 1")
+    if rs_24h_bars_30m < 1:
+        raise ValueError("rs_24h_bars_30m must be >= 1")
+    if rs_7d_bars_30m <= rs_24h_bars_30m:
+        raise ValueError("rs_7d_bars_30m must be > rs_24h_bars_30m")
+    if breakout_lookback_30m < 1:
+        raise ValueError("breakout_lookback_30m must be >= 1")
+    if volume_window_30m < 1:
+        raise ValueError("volume_window_30m must be >= 1")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if daily_regime_df is not None:
+        regime_missing = [c for c in REQUIRED_COLUMNS if c not in daily_regime_df.columns]
+        if regime_missing:
+            raise ValueError(f"daily_regime_df missing required columns: {regime_missing}")
+    if hourly_setup_df is not None:
+        hourly_missing = [c for c in REQUIRED_COLUMNS if c not in hourly_setup_df.columns]
+        if hourly_missing:
+            raise ValueError(f"hourly_setup_df missing required columns: {hourly_missing}")
+    if rs_reference_df is not None and "close" not in rs_reference_df.columns:
+        raise ValueError("rs_reference_df must contain 'close' column")
+
+    out = df.copy()
+
+    # --- 30m breakout/volume/CLV features ---
+    prior_high_col = f"prior_high_{breakout_lookback_30m}"
+    volume_ma_col = f"volume_ma_{volume_window_30m}"
+    out[prior_high_col] = out["high"].rolling(window=breakout_lookback_30m).max().shift(1)
+    out[volume_ma_col] = out["volume"].rolling(window=volume_window_30m).mean().shift(1)
+    candle_range = out["high"] - out["low"]
+    out["close_location_value"] = (
+        (out["close"] - out["low"]) / candle_range.where(candle_range > 0)
+    ).fillna(0.5)
+    out["volume_ratio"] = out["volume"] / out[volume_ma_col]
+
+    # --- daily BTC regime, no-lookahead (previous completed day only) ---
+    regime_source_df = daily_regime_df if daily_regime_df is not None else out
+    regime_close = regime_source_df["close"]
+    regime_sma_col = f"daily_regime_sma{daily_regime_ma_window}"
+    daily_frame = pd.DataFrame(index=regime_source_df.index)
+    daily_frame[regime_sma_col] = regime_close.rolling(window=daily_regime_ma_window).mean().shift(1)
+    # regime_on computed from close[d] vs sma[d-1]; then shifted by 1 daily bar so
+    # intraday 30m bars only consume day d-1's fully-confirmed regime value.
+    raw_regime_on = (regime_close >= daily_frame[regime_sma_col]).astype("boolean")
+    daily_frame["btc_daily_regime_on"] = raw_regime_on.shift(1)
+    if daily_regime_df is not None:
+        daily_projection = project_higher_timeframe_features(
+            daily_frame,
+            out.index,
+            columns=["btc_daily_regime_on"],
+        )
+        out["btc_daily_regime_on"] = daily_projection["btc_daily_regime_on"]
+    else:
+        out["btc_daily_regime_on"] = daily_frame["btc_daily_regime_on"]
+
+    # --- 1H trend features, no-lookahead ---
+    setup_df = hourly_setup_df if hourly_setup_df is not None else out
+    hourly_feats = pd.DataFrame(index=setup_df.index)
+    hourly_close = setup_df["close"]
+    fast_col = f"hourly_ema{hourly_ema_fast}"
+    slow_col = f"hourly_ema{hourly_ema_slow}"
+    slope_col = f"hourly_ema{hourly_ema_fast}_slope_{hourly_slope_lookback}"
+    below_col = f"hourly_close_below_ema{hourly_ema_fast}"
+    run_col = f"{below_col}_run"
+
+    hourly_feats["hourly_close"] = hourly_close
+    hourly_feats[fast_col] = hourly_close.ewm(span=hourly_ema_fast, adjust=False).mean()
+    hourly_feats[slow_col] = hourly_close.ewm(span=hourly_ema_slow, adjust=False).mean()
+    hourly_feats[slope_col] = (
+        hourly_feats[fast_col] - hourly_feats[fast_col].shift(hourly_slope_lookback)
+    )
+    below = (hourly_feats["hourly_close"] < hourly_feats[fast_col]).astype("int")
+    # Consecutive run length of True (below) values at each 1H bar (resets at False).
+    breaks = (below == 0).cumsum()
+    hourly_feats[run_col] = below.groupby(breaks).cumsum()
+    hourly_feats[below_col] = below.astype(bool)
+
+    hourly_cols = ["hourly_close", fast_col, slow_col, slope_col, below_col, run_col]
+    hourly_shifted = hourly_feats[hourly_cols].shift(1)
+    if hourly_setup_df is not None:
+        hourly_projection = project_higher_timeframe_features(
+            hourly_shifted,
+            out.index,
+            columns=hourly_cols,
+        )
+        out = out.join(hourly_projection, how="left")
+    else:
+        # Same-frame fallback: the df is being used as its own hourly source, just align by index.
+        out = out.join(hourly_shifted, how="left", rsuffix="_setup")
+
+    # --- relative strength vs BTC on 30m grid ---
+    if rs_reference_df is not None:
+        btc_close_aligned = rs_reference_df["close"].reindex(out.index).ffill()
+    else:
+        btc_close_aligned = out["close"]
+    target_close = out["close"]
+    out["target_rs_24h_vs_btc"] = (
+        (target_close / target_close.shift(rs_24h_bars_30m) - 1.0)
+        - (btc_close_aligned / btc_close_aligned.shift(rs_24h_bars_30m) - 1.0)
+    )
+    out["target_rs_7d_vs_btc"] = (
+        (target_close / target_close.shift(rs_7d_bars_30m) - 1.0)
+        - (btc_close_aligned / btc_close_aligned.shift(rs_7d_bars_30m) - 1.0)
+    )
+
+    # --- ATR for stop/trailing ---
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out[f"atr{atr_window}"] = tr.rolling(window=atr_window).mean().shift(1)
+    return out
+
+
 def enrich_for_strategy(
     df: pd.DataFrame,
     strategy_name: str,
@@ -983,6 +1144,7 @@ def enrich_for_strategy(
     k: float = 0.5,
     regime_df: pd.DataFrame | None = None,
     hourly_setup_df: pd.DataFrame | None = None,
+    rs_reference_df: pd.DataFrame | None = None,
     interval: str = "day",
 ) -> pd.DataFrame:
     """전략에 맞는 보조 컬럼 추가."""
@@ -1103,6 +1265,23 @@ def enrich_for_strategy(
             trigger_volume_window_30m=strategy_params.get("trigger_volume_window_30m", 20),
             atr_window=strategy_params.get("atr_window", 14),
         )
+    elif strategy_name == "regime_relative_breakout_30m":
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_regime_relative_breakout_30m(
+            enriched,
+            daily_regime_df=regime_df,
+            daily_regime_ma_window=strategy_params.get("daily_regime_ma_window", 100),
+            hourly_setup_df=hourly_setup_df,
+            hourly_ema_fast=strategy_params.get("hourly_ema_fast", 20),
+            hourly_ema_slow=strategy_params.get("hourly_ema_slow", 60),
+            hourly_slope_lookback=strategy_params.get("hourly_slope_lookback", 3),
+            rs_reference_df=rs_reference_df,
+            rs_24h_bars_30m=strategy_params.get("rs_24h_bars_30m", 48),
+            rs_7d_bars_30m=strategy_params.get("rs_7d_bars_30m", 336),
+            breakout_lookback_30m=strategy_params.get("breakout_lookback_30m", 6),
+            volume_window_30m=strategy_params.get("volume_window_30m", 20),
+            atr_window=strategy_params.get("atr_window", 14),
+        )
     else:
         # Default: at least do basic VB enrichment
         return enrich_daily(df, ma_window=ma_window, k=k)
@@ -1193,6 +1372,17 @@ def recommended_history_days(
             int(params.get("trigger_ema_slow_30m", 21)),
             int(params.get("trigger_breakout_lookback_30m", 6)),
             int(params.get("trigger_volume_window_30m", 20)),
+            int(params.get("atr_window", 14)),
+            base_window,
+        )
+    elif strategy_name == "regime_relative_breakout_30m":
+        window = max(
+            int(params.get("daily_regime_ma_window", 100)),
+            int(params.get("hourly_ema_slow", 60)),
+            int(params.get("rs_7d_bars_30m", 336)),
+            int(params.get("rs_24h_bars_30m", 48)),
+            int(params.get("breakout_lookback_30m", 6)),
+            int(params.get("volume_window_30m", 20)),
             int(params.get("atr_window", 14)),
             base_window,
         )

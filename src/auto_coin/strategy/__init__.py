@@ -12,9 +12,12 @@ from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
 from auto_coin.strategy.rcdb import RcdbStrategy
 from auto_coin.strategy.rcdb_v2 import RcdbV2Strategy
+from auto_coin.strategy.regime_pullback_continuation_30m import (
+    RegimePullbackContinuation30mStrategy,
+)
 from auto_coin.strategy.regime_reclaim_1h import RegimeReclaim1HStrategy
 from auto_coin.strategy.regime_reclaim_30m import RegimeReclaim30mStrategy
-from auto_coin.strategy.regime_pullback_continuation_30m import RegimePullbackContinuation30mStrategy
+from auto_coin.strategy.regime_relative_breakout_30m import RegimeRelativeBreakout30mStrategy
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -32,6 +35,7 @@ STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "regime_reclaim_1h": RegimeReclaim1HStrategy,
     "regime_reclaim_30m": RegimeReclaim30mStrategy,
     "regime_pullback_continuation_30m": RegimePullbackContinuation30mStrategy,
+    "regime_relative_breakout_30m": RegimeRelativeBreakout30mStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -669,6 +673,24 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "none=SMA touch, rsi=SMA touch+RSI>=50, consecutive=현재/전 bar SMA 위",
         },
     ],
+    "regime_relative_breakout_30m": [
+        {"name": "regime_ticker", "label": "Daily regime 기준 티커", "type": "text", "default": "KRW-BTC", "hint": "BTC daily regime 참조 자산"},
+        {"name": "daily_regime_ma_window", "label": "Daily regime SMA (일)", "type": "number", "min": "2", "max": "300", "default": 100, "hint": "BTC close > 전일 기준 SMA 일 때만 진입"},
+        {"name": "hourly_ema_fast", "label": "1H EMA fast", "type": "number", "min": "1", "max": "100", "default": 20, "hint": "1H 추세 fast EMA"},
+        {"name": "hourly_ema_slow", "label": "1H EMA slow", "type": "number", "min": "2", "max": "200", "default": 60, "hint": "1H 추세 slow EMA (fast보다 커야 함)"},
+        {"name": "hourly_slope_lookback", "label": "1H EMA slope lookback", "type": "number", "min": "1", "max": "20", "default": 3, "hint": "fast EMA - fast EMA.shift(N) >= 0 요구"},
+        {"name": "rs_24h_bars_30m", "label": "24h RS 기간 (30m bars)", "type": "number", "min": "1", "max": "240", "default": 48, "hint": "24시간 = 48 × 30m"},
+        {"name": "rs_7d_bars_30m", "label": "7d RS 기간 (30m bars)", "type": "number", "min": "2", "max": "720", "default": 336, "hint": "7일 = 336 × 30m"},
+        {"name": "breakout_lookback_30m", "label": "30m prior_high lookback", "type": "number", "min": "1", "max": "48", "default": 6, "hint": "close > 전 N개 high 최대값"},
+        {"name": "volume_window_30m", "label": "30m volume MA 윈도우", "type": "number", "min": "1", "max": "96", "default": 20, "hint": "volume > ma × 배수"},
+        {"name": "volume_mult", "label": "Volume multiplier", "type": "number", "step": "0.05", "min": "0.5", "max": "5.0", "default": 1.2, "hint": "기본 1.2배 이상 거래량"},
+        {"name": "close_location_min", "label": "CLV 최소값", "type": "number", "step": "0.01", "min": "0.0", "max": "1.0", "default": 0.55, "hint": "캔들 상단 55% 이상 마감"},
+        {"name": "atr_window", "label": "ATR window", "type": "number", "min": "1", "max": "100", "default": 14, "hint": "ATR stop/trailing 계산"},
+        {"name": "initial_stop_atr_mult", "label": "Initial stop ATR 배수", "type": "number", "step": "0.1", "min": "0.5", "max": "10.0", "default": 2.0, "hint": "entry - ATR × 배수"},
+        {"name": "atr_trailing_mult", "label": "ATR trailing 배수", "type": "number", "step": "0.1", "min": "0.5", "max": "10.0", "default": 3.0, "hint": "highest_high - ATR × 배수"},
+        {"name": "trend_exit_confirm_bars", "label": "Trend exit 확인 1H bars", "type": "number", "min": "1", "max": "10", "default": 2, "hint": "1H close < EMA20 연속 N 1H bar 확인"},
+        {"name": "max_hold_bars_30m", "label": "Max hold bars (30m)", "type": "number", "min": "1", "max": "240", "default": 48, "hint": "safety-only 시간 청산"},
+    ],
     "regime_pullback_continuation_30m": [
         {"name": "regime_ticker", "label": "Daily regime 기준 티커", "type": "text", "default": "KRW-BTC", "hint": "상위 risk-on 판단 기준"},
         {"name": "daily_regime_ma_window", "label": "Daily regime SMA", "type": "number", "min": "2", "max": "300", "default": 100, "hint": "BTC daily close > SMA"},
@@ -701,6 +723,7 @@ STRATEGY_LABELS: dict[str, str] = {
     "regime_reclaim_1h": "Daily Regime + 1H Reclaim Mean Reversion",
     "regime_reclaim_30m": "Daily Regime + 1H Setup + 30m Trigger Reclaim",
     "regime_pullback_continuation_30m": "Daily/1H Trend Pullback + 30m Continuation",
+    "regime_relative_breakout_30m": "BTC Regime + Alt RS + 1H Trend + 30m Breakout",
 }
 
 EXPERIMENTAL_STRATEGIES: set[str] = {
@@ -709,6 +732,7 @@ EXPERIMENTAL_STRATEGIES: set[str] = {
     "regime_reclaim_1h",
     "regime_reclaim_30m",
     "regime_pullback_continuation_30m",
+    "regime_relative_breakout_30m",
 }
 
 
@@ -745,6 +769,7 @@ STRATEGY_ENTRY_CONFIRMATION: dict[str, int] = {
     "regime_reclaim_1h": 0,          # 1H 봉 확정 reclaim 진입
     "regime_reclaim_30m": 0,         # 30m 봉 확정 reclaim 진입
     "regime_pullback_continuation_30m": 0,  # 30m 봉 확정 continuation 진입
+    "regime_relative_breakout_30m": 0,      # 30m 봉 확정 breakout 진입
 }
 
 # 전략별 실행 모드.
@@ -762,4 +787,5 @@ STRATEGY_EXECUTION_MODE: dict[str, str] = {
     "regime_reclaim_1h": "intraday",
     "regime_reclaim_30m": "intraday",
     "regime_pullback_continuation_30m": "intraday",
+    "regime_relative_breakout_30m": "intraday",
 }
