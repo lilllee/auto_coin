@@ -52,6 +52,7 @@ BASE_PARAMS: dict[str, Any] = {
 }
 
 CANDIDATES: list[dict[str, Any]] = [
+    # Original nine (kept for continuity with 0001 handoff).
     {"name": "base_stop2_trail3_hold48_confirm2", "overrides": {}},
     {"name": "stop15_trail3_hold48_confirm2", "overrides": {"initial_stop_atr_mult": 1.5}},
     {"name": "stop25_trail3_hold48_confirm2", "overrides": {"initial_stop_atr_mult": 2.5}},
@@ -61,6 +62,14 @@ CANDIDATES: list[dict[str, Any]] = [
     {"name": "stop2_trail3_hold72_confirm2", "overrides": {"max_hold_bars_30m": 72}},
     {"name": "stop2_trail3_hold48_confirm1", "overrides": {"trend_exit_confirm_bars": 1}},
     {"name": "stop2_trail3_hold48_confirm3", "overrides": {"trend_exit_confirm_bars": 3}},
+    # 0002 REVISE additions — frozen confirm=2, wider trailing (+ one with
+    # looser hold and one paired with wider initial stop).
+    {"name": "stop2_trail40_hold48_confirm2", "overrides": {"atr_trailing_mult": 4.0}},
+    {"name": "stop2_trail50_hold48_confirm2", "overrides": {"atr_trailing_mult": 5.0}},
+    {"name": "stop2_trail40_hold72_confirm2", "overrides": {"atr_trailing_mult": 4.0, "max_hold_bars_30m": 72}},
+    {"name": "stop2_trail50_hold72_confirm2", "overrides": {"atr_trailing_mult": 5.0, "max_hold_bars_30m": 72}},
+    {"name": "stop25_trail40_hold72_confirm2", "overrides": {"initial_stop_atr_mult": 2.5, "atr_trailing_mult": 4.0, "max_hold_bars_30m": 72}},
+    {"name": "stop25_trail50_hold72_confirm2", "overrides": {"initial_stop_atr_mult": 2.5, "atr_trailing_mult": 5.0, "max_hold_bars_30m": 72}},
 ]
 
 
@@ -108,6 +117,26 @@ def _benchmark_return(df: pd.DataFrame) -> float:
     first = float(closes.iloc[0])
     last = float(closes.iloc[-1])
     return last / first - 1.0 if first > 0 else 0.0
+
+
+def benchmark_mdd(close_series: pd.Series) -> float:
+    """Buy-and-hold max drawdown (negative number) over the sample window."""
+    closes = close_series.dropna()
+    if len(closes) < 2:
+        return 0.0
+    first = float(closes.iloc[0])
+    if first <= 0:
+        return 0.0
+    equity = closes / first
+    peak = equity.cummax()
+    drawdown = equity / peak - 1.0
+    return float(drawdown.min())
+
+
+def _ret_over_abs_mdd(ret: float, mdd_val: float) -> float:
+    if mdd_val >= 0:
+        return 0.0
+    return ret / abs(mdd_val)
 
 
 def _exit_mix(result) -> dict[str, dict[str, float | int]]:
@@ -161,13 +190,26 @@ def _run_one(
         interval="minute30",
     )
     benchmark = _benchmark_return(sample)
+    bench_mdd = benchmark_mdd(sample["close"])
+    strat_mdd = result.mdd
+    strat_r_over_m = _ret_over_abs_mdd(result.cumulative_return, strat_mdd)
+    bench_r_over_m = _ret_over_abs_mdd(benchmark, bench_mdd)
+    mdd_improvement_abs = strat_mdd - bench_mdd  # both negative; positive means strategy smaller drawdown
+    mdd_improvement_ratio = (
+        abs(strat_mdd) / abs(bench_mdd) if bench_mdd < 0 else 0.0
+    )  # lower is better; 1.0 = equal drawdown
     return {
         "start": str(sample.index[0]),
         "end": str(sample.index[-1]),
         "cumulative_return": result.cumulative_return,
         "benchmark_return": benchmark,
         "excess_return": result.cumulative_return - benchmark,
-        "mdd": result.mdd,
+        "mdd": strat_mdd,
+        "benchmark_mdd": bench_mdd,
+        "strategy_return_over_abs_mdd": strat_r_over_m,
+        "benchmark_return_over_abs_mdd": bench_r_over_m,
+        "mdd_improvement_abs": mdd_improvement_abs,
+        "mdd_improvement_ratio": mdd_improvement_ratio,
         "sharpe": result.sharpe_ratio,
         "total_trades": result.n_trades,
         "win_rate": result.win_rate,
@@ -219,69 +261,159 @@ def _summary(candidate: dict[str, Any]) -> dict[str, float | int]:
     }
 
 
-def _verdict(best: dict[str, Any]) -> dict[str, Any]:
-    results2 = best["results"]["2y"]
-    eth = results2["KRW-ETH"]
-    xrp = results2["KRW-XRP"]
-    eth_trades = eth["total_trades"]
-    xrp_trades = xrp["total_trades"]
+RISK_MDD_IMPROVEMENT_MIN = 0.20
+RISK_MDD_RATIO_MAX = 0.40
+RISK_ADJUSTED_MIN_TRADES_PER_ALT = 80
+HOLD_BARS_MIN = 4
+HOLD_BARS_MAX = 72
+TIME_EXIT_SHARE_MAX = 0.25
+
+
+def classify_verdict(
+    eth_2y: dict[str, Any],
+    xrp_2y: dict[str, Any],
+    summary: dict[str, Any],
+) -> dict[str, Any]:
+    """Pure verdict helper, testable without a full candidate.
+
+    Evaluates the 0002-spec gate set and returns label + pass_type + gates.
+    """
+    eth_trades = eth_2y["total_trades"]
+    xrp_trades = xrp_2y["total_trades"]
     alt_trades = eth_trades + xrp_trades
-    eth_expectancy = eth["expectancy"]
-    xrp_expectancy = xrp["expectancy"]
+    eth_exp = eth_2y["expectancy"]
+    xrp_exp = xrp_2y["expectancy"]
     alt_expectancy = (
-        (eth_expectancy * eth_trades + xrp_expectancy * xrp_trades) / alt_trades
-        if alt_trades
-        else 0.0
+        (eth_exp * eth_trades + xrp_exp * xrp_trades) / alt_trades if alt_trades else 0.0
     )
-    alt_excess = (eth["excess_return"] + xrp["excess_return"]) / 2.0
-    summary = best["summary"]
+    alt_excess = (eth_2y["excess_return"] + xrp_2y["excess_return"]) / 2.0
+    avg_hold_bars = summary.get("avg_hold_bars", 0.0)
+    time_exit_share = summary.get("time_exit_share", 0.0)
+
+    excess_positive = alt_excess > 0
+
+    eth_bench_mdd = eth_2y.get("benchmark_mdd", 0.0)
+    xrp_bench_mdd = xrp_2y.get("benchmark_mdd", 0.0)
+    risk_adjusted_ok = all(
+        [
+            eth_2y["cumulative_return"] > 0,
+            xrp_2y["cumulative_return"] > 0,
+            eth_exp > 0,
+            xrp_exp > 0,
+            eth_2y.get("mdd_improvement_abs", 0.0) > RISK_MDD_IMPROVEMENT_MIN,
+            xrp_2y.get("mdd_improvement_abs", 0.0) > RISK_MDD_IMPROVEMENT_MIN,
+            abs(eth_2y["mdd"]) <= abs(eth_bench_mdd) * RISK_MDD_RATIO_MAX
+            if eth_bench_mdd < 0
+            else False,
+            abs(xrp_2y["mdd"]) <= abs(xrp_bench_mdd) * RISK_MDD_RATIO_MAX
+            if xrp_bench_mdd < 0
+            else False,
+            eth_2y.get("strategy_return_over_abs_mdd", 0.0)
+            > eth_2y.get("benchmark_return_over_abs_mdd", 0.0),
+            xrp_2y.get("strategy_return_over_abs_mdd", 0.0)
+            > xrp_2y.get("benchmark_return_over_abs_mdd", 0.0),
+        ]
+    )
+    excess_or_risk = excess_positive or risk_adjusted_ok
+
+    # Stop-trigger condition: trade count sufficient but both alts negative on
+    # expectancy AND excess.
+    stop_trigger = (
+        eth_trades >= 20
+        and xrp_trades >= 20
+        and eth_exp < 0
+        and xrp_exp < 0
+        and eth_2y["excess_return"] < 0
+        and xrp_2y["excess_return"] < 0
+    )
+
     gates = {
         "alt_2y_trades_ge_50": alt_trades >= 50,
         "eth_2y_trades_ge_20": eth_trades >= 20,
         "xrp_2y_trades_ge_20": xrp_trades >= 20,
+        "eth_2y_trades_ge_80": eth_trades >= RISK_ADJUSTED_MIN_TRADES_PER_ALT,
+        "xrp_2y_trades_ge_80": xrp_trades >= RISK_ADJUSTED_MIN_TRADES_PER_ALT,
         "alt_2y_expectancy_positive": alt_expectancy > 0,
-        "eth_2y_expectancy_positive": eth_expectancy > 0,
-        "xrp_2y_expectancy_positive": xrp_expectancy > 0,
-        "alt_2y_excess_positive": alt_excess > 0,
-        "avg_hold_bars_between_4_and_48": 4 <= summary["avg_hold_bars"] <= 48,
-        "time_exit_share_le_25pct": summary["time_exit_share"] <= 0.25,
+        "eth_2y_expectancy_positive": eth_exp > 0,
+        "xrp_2y_expectancy_positive": xrp_exp > 0,
+        "eth_2y_cum_return_positive": eth_2y["cumulative_return"] > 0,
+        "xrp_2y_cum_return_positive": xrp_2y["cumulative_return"] > 0,
+        "alt_2y_excess_positive_raw": excess_positive,
+        "alt_2y_risk_adjusted_ok": risk_adjusted_ok,
+        "alt_2y_excess_or_risk_adjusted": excess_or_risk,
+        "avg_hold_bars_4_to_72": HOLD_BARS_MIN <= avg_hold_bars <= HOLD_BARS_MAX,
+        "time_exit_share_le_25pct": time_exit_share <= TIME_EXIT_SHARE_MAX,
     }
-    count_gates = [
-        gates["alt_2y_trades_ge_50"],
-        gates["eth_2y_trades_ge_20"],
-        gates["xrp_2y_trades_ge_20"],
-    ]
-    performance_gates = [
-        gates["alt_2y_expectancy_positive"],
-        gates["eth_2y_expectancy_positive"],
-        gates["xrp_2y_expectancy_positive"],
-        gates["alt_2y_excess_positive"],
-        gates["avg_hold_bars_between_4_and_48"],
-        gates["time_exit_share_le_25pct"],
-    ]
-    # STOP: trade count sufficient but ETH AND XRP both negative expectancy AND negative excess
-    stop_trigger = (
-        all(count_gates)
-        and eth_expectancy < 0
-        and xrp_expectancy < 0
-        and eth["excess_return"] < 0
-        and xrp["excess_return"] < 0
+
+    base_count_pass = (
+        gates["alt_2y_trades_ge_50"]
+        and gates["eth_2y_trades_ge_20"]
+        and gates["xrp_2y_trades_ge_20"]
     )
-    if all(gates.values()):
-        label = "PASS"
-    elif stop_trigger:
+    mdd_guard_pass = gates["eth_2y_trades_ge_80"] and gates["xrp_2y_trades_ge_80"]
+    perf_pass = (
+        gates["alt_2y_expectancy_positive"]
+        and gates["eth_2y_expectancy_positive"]
+        and gates["xrp_2y_expectancy_positive"]
+        and gates["eth_2y_cum_return_positive"]
+        and gates["xrp_2y_cum_return_positive"]
+        and gates["alt_2y_excess_or_risk_adjusted"]
+        and gates["avg_hold_bars_4_to_72"]
+        and gates["time_exit_share_le_25pct"]
+    )
+
+    pass_type: str | None = None
+    if base_count_pass and mdd_guard_pass and perf_pass:
+        if excess_positive:
+            label = "PASS"
+            pass_type = "pure_excess"
+        else:
+            label = "PASS_RISK_ADJUSTED"
+            pass_type = "risk_adjusted"
+    elif stop_trigger and base_count_pass:
         label = "STOP"
-    elif all(count_gates) and 1 <= sum(1 for g in performance_gates if not g) <= 3:
+    elif base_count_pass:
         label = "REVISE"
     else:
         label = "HOLD"
+
     return {
         "label": label,
+        "pass_type": pass_type,
         "gates": gates,
         "alt_2y_trades": alt_trades,
         "alt_2y_expectancy": alt_expectancy,
         "alt_2y_excess_return": alt_excess,
     }
+
+
+def _verdict(candidate: dict[str, Any]) -> dict[str, Any]:
+    results2 = candidate["results"]["2y"]
+    return classify_verdict(results2["KRW-ETH"], results2["KRW-XRP"], candidate["summary"])
+
+
+def _risk_adjusted_sort_key(candidate: dict[str, Any]) -> tuple:
+    """Sort tuple aligned with 0002 spec §4.4."""
+    verdict = candidate.get("verdict") or _verdict(candidate)
+    label = verdict["label"]
+    # Pass tier beats revise beats hold/stop.
+    tier = {"PASS": 3, "PASS_RISK_ADJUSTED": 2, "REVISE": 1}.get(label, 0)
+    risk_ok = verdict["gates"]["alt_2y_risk_adjusted_ok"]
+    summary = candidate["summary"]
+    eth2 = candidate["results"]["2y"]["KRW-ETH"]
+    xrp2 = candidate["results"]["2y"]["KRW-XRP"]
+    alt_return_over_abs_mdd = (
+        eth2.get("strategy_return_over_abs_mdd", 0.0)
+        + xrp2.get("strategy_return_over_abs_mdd", 0.0)
+    ) / 2.0
+    return (
+        tier,
+        risk_ok,
+        summary["alt_avg_expectancy"],
+        alt_return_over_abs_mdd,
+        -summary["time_exit_share"],
+        summary["alt_total_trades"],
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -313,16 +445,19 @@ def main(argv: list[str] | None = None) -> int:
             },
         }
         result["summary"] = _summary(result)
+        result["verdict"] = _verdict(result)
         candidates.append(result)
         print(
             f"  [{candidate['name']}] "
             f"alt2y trades={result['summary']['alt_total_trades']} "
             f"alt_expectancy={result['summary']['alt_avg_expectancy']:+.4f} "
-            f"alt_excess={result['summary']['alt_avg_excess_return']:+.4f}"
+            f"alt_excess={result['summary']['alt_avg_excess_return']:+.4f} "
+            f"risk_adj={result['verdict']['gates']['alt_2y_risk_adjusted_ok']}"
         )
 
     viable = [c for c in candidates if c["summary"]["alt_total_trades"] > 0]
     ranking_pool = viable if viable else candidates
+    # Previous (pure-expectancy) ranking kept for continuity with 0001 handoff.
     ranked = sorted(
         ranking_pool,
         key=lambda c: (
@@ -332,13 +467,20 @@ def main(argv: list[str] | None = None) -> int:
         ),
         reverse=True,
     )
-    best = ranked[0]
-    verdict = _verdict(best)
+    risk_adjusted_ranked = sorted(
+        ranking_pool,
+        key=_risk_adjusted_sort_key,
+        reverse=True,
+    )
+    # Use risk-adjusted top as the primary best (Codex directive in 0002).
+    best = risk_adjusted_ranked[0]
+    verdict = best["verdict"]
 
     report = {
         "as_of": AS_OF,
         "strategy": "regime_relative_breakout_30m",
         "scope": "Stage 2 in-sample only; no walk-forward/live/paper/UI/KPI",
+        "revision": "0002_risk_adjusted",
         "interval": "minute30",
         "tickers": TICKERS,
         "regime_ticker": REGIME_TICKER,
@@ -348,6 +490,7 @@ def main(argv: list[str] | None = None) -> int:
         "base_params": BASE_PARAMS,
         "candidate_count": len(candidates),
         "ranked_candidates": ranked,
+        "risk_adjusted_ranked_candidates": risk_adjusted_ranked,
         "best_candidate": best,
         "verdict": verdict,
     }

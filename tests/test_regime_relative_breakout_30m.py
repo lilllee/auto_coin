@@ -10,6 +10,9 @@ and daily regime.
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -20,6 +23,11 @@ from auto_coin.strategy.base import MarketSnapshot, PositionSnapshot, Signal
 from auto_coin.strategy.regime_relative_breakout_30m import (
     RegimeRelativeBreakout30mStrategy,
 )
+
+_SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
+if str(_SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPTS_DIR))
+import regime_relative_breakout_30m_stage2 as stage2  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Test helpers
@@ -373,3 +381,173 @@ def test_enrichment_daily_regime_uses_previous_completed_day_only() -> None:
     # under a no-shift implementation).
     final_regime = enriched["btc_daily_regime_on"].iloc[-1]
     assert bool(final_regime) is True
+
+
+# ---------------------------------------------------------------------------
+# Stage 2 (0002 REVISE) — benchmark MDD + risk-adjusted verdict
+# ---------------------------------------------------------------------------
+
+
+def test_benchmark_mdd_negative_on_drawdown_and_zero_on_flat() -> None:
+    # Peak then trough: equity goes 1.0 → 2.0 → 1.0 → MDD = -50 %.
+    series = pd.Series([100.0, 150.0, 200.0, 150.0, 120.0, 100.0])
+    assert stage2.benchmark_mdd(series) == pytest.approx(-0.5)
+    # Flat series (no drawdown) → 0.
+    flat = pd.Series([100.0] * 5)
+    assert stage2.benchmark_mdd(flat) == pytest.approx(0.0)
+    # Empty / one-point series → 0.
+    assert stage2.benchmark_mdd(pd.Series([], dtype=float)) == 0.0
+    assert stage2.benchmark_mdd(pd.Series([100.0])) == 0.0
+
+
+def _stage2_ticker_result(
+    *,
+    total_trades: int,
+    cumulative_return: float,
+    benchmark_return: float,
+    expectancy: float,
+    mdd: float,
+    benchmark_mdd_value: float,
+) -> dict:
+    strat_r_over_m = (
+        cumulative_return / abs(mdd) if mdd < 0 else 0.0
+    )
+    bench_r_over_m = (
+        benchmark_return / abs(benchmark_mdd_value) if benchmark_mdd_value < 0 else 0.0
+    )
+    return {
+        "total_trades": total_trades,
+        "cumulative_return": cumulative_return,
+        "benchmark_return": benchmark_return,
+        "excess_return": cumulative_return - benchmark_return,
+        "expectancy": expectancy,
+        "mdd": mdd,
+        "benchmark_mdd": benchmark_mdd_value,
+        "strategy_return_over_abs_mdd": strat_r_over_m,
+        "benchmark_return_over_abs_mdd": bench_r_over_m,
+        "mdd_improvement_abs": mdd - benchmark_mdd_value,
+        "mdd_improvement_ratio": (
+            abs(mdd) / abs(benchmark_mdd_value) if benchmark_mdd_value < 0 else 0.0
+        ),
+    }
+
+
+def _stage2_summary(avg_hold_bars: float = 12.0, time_exit_share: float = 0.10) -> dict:
+    return {"avg_hold_bars": avg_hold_bars, "time_exit_share": time_exit_share}
+
+
+def test_classify_verdict_pure_pass_on_positive_excess() -> None:
+    eth = _stage2_ticker_result(
+        total_trades=100,
+        cumulative_return=0.30,
+        benchmark_return=0.10,
+        expectancy=0.003,
+        mdd=-0.10,
+        benchmark_mdd_value=-0.50,
+    )
+    xrp = _stage2_ticker_result(
+        total_trades=95,
+        cumulative_return=0.25,
+        benchmark_return=0.05,
+        expectancy=0.004,
+        mdd=-0.12,
+        benchmark_mdd_value=-0.55,
+    )
+    out = stage2.classify_verdict(eth, xrp, _stage2_summary())
+    assert out["label"] == "PASS"
+    assert out["pass_type"] == "pure_excess"
+    assert out["gates"]["alt_2y_excess_or_risk_adjusted"] is True
+    assert out["gates"]["alt_2y_excess_positive_raw"] is True
+
+
+def test_classify_verdict_pass_risk_adjusted_label() -> None:
+    # Strategy underperforms a strong bull benchmark (negative excess) but
+    # delivers a much smaller drawdown with positive expectancy, so the
+    # risk-adjusted gate opens even though raw excess is negative.
+    eth = _stage2_ticker_result(
+        total_trades=100,
+        cumulative_return=0.30,
+        benchmark_return=0.80,
+        expectancy=0.002,
+        mdd=-0.10,
+        benchmark_mdd_value=-0.60,
+    )
+    xrp = _stage2_ticker_result(
+        total_trades=90,
+        cumulative_return=0.70,
+        benchmark_return=1.60,
+        expectancy=0.006,
+        mdd=-0.12,
+        benchmark_mdd_value=-0.65,
+    )
+    out = stage2.classify_verdict(eth, xrp, _stage2_summary())
+    assert out["label"] == "PASS_RISK_ADJUSTED"
+    assert out["pass_type"] == "risk_adjusted"
+    assert out["gates"]["alt_2y_excess_positive_raw"] is False
+    assert out["gates"]["alt_2y_risk_adjusted_ok"] is True
+
+
+def test_classify_verdict_revise_when_mdd_guard_fails() -> None:
+    # Risk-adjusted metrics pass on quality but trade counts below the
+    # 80-trade mdd guard → must not PASS_RISK_ADJUSTED; should REVISE.
+    eth = _stage2_ticker_result(
+        total_trades=40,
+        cumulative_return=0.20,
+        benchmark_return=0.80,
+        expectancy=0.002,
+        mdd=-0.15,
+        benchmark_mdd_value=-0.60,
+    )
+    xrp = _stage2_ticker_result(
+        total_trades=40,
+        cumulative_return=0.70,
+        benchmark_return=1.60,
+        expectancy=0.006,
+        mdd=-0.15,
+        benchmark_mdd_value=-0.65,
+    )
+    out = stage2.classify_verdict(eth, xrp, _stage2_summary())
+    assert out["label"] == "REVISE"
+    assert out["pass_type"] is None
+
+
+def test_classify_verdict_stop_when_both_alts_negative() -> None:
+    eth = _stage2_ticker_result(
+        total_trades=60,
+        cumulative_return=-0.20,
+        benchmark_return=+0.05,
+        expectancy=-0.003,
+        mdd=-0.25,
+        benchmark_mdd_value=-0.40,
+    )
+    xrp = _stage2_ticker_result(
+        total_trades=55,
+        cumulative_return=-0.30,
+        benchmark_return=+0.02,
+        expectancy=-0.005,
+        mdd=-0.30,
+        benchmark_mdd_value=-0.50,
+    )
+    out = stage2.classify_verdict(eth, xrp, _stage2_summary())
+    assert out["label"] == "STOP"
+
+
+def test_classify_verdict_hold_when_counts_too_low() -> None:
+    eth = _stage2_ticker_result(
+        total_trades=5,
+        cumulative_return=0.01,
+        benchmark_return=0.0,
+        expectancy=0.002,
+        mdd=-0.02,
+        benchmark_mdd_value=-0.30,
+    )
+    xrp = _stage2_ticker_result(
+        total_trades=3,
+        cumulative_return=0.0,
+        benchmark_return=0.0,
+        expectancy=0.0,
+        mdd=0.0,
+        benchmark_mdd_value=-0.10,
+    )
+    out = stage2.classify_verdict(eth, xrp, _stage2_summary())
+    assert out["label"] == "HOLD"
