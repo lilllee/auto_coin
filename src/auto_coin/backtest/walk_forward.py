@@ -30,8 +30,23 @@ DEFAULT_PARAM_GRIDS: dict[str, dict[str, list]] = {
     "volatility_breakout": {
         "k": [0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7],
     },
+    "sma200_regime": {
+        "ma_window": [180, 200, 220],
+        "buffer_pct": [0.0, 0.005, 0.01],
+    },
+    "ema_adx_atr_trend": {
+        "ema_fast_window": [20, 27, 35],
+        "ema_slow_window": [100, 125, 150],
+        "adx_threshold": [10.0, 14.0, 18.0],
+        "adx_window": 90,
+        "atr_window": 14,
+    },
     "sma200_ema_adx_composite": {
         "adx_threshold": [8.0, 10.0, 12.0, 14.0, 16.0, 18.0, 20.0],
+    },
+    "atr_channel_breakout": {
+        "atr_window": [7, 10, 14, 20, 30],
+        "channel_multiplier": [0.75, 1.0, 1.5, 2.0],
     },
 }
 

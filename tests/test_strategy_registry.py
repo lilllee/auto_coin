@@ -13,6 +13,8 @@ from auto_coin.strategy.ad_turtle import AdTurtleStrategy
 from auto_coin.strategy.atr_channel_breakout import AtrChannelBreakoutStrategy
 from auto_coin.strategy.base import Strategy
 from auto_coin.strategy.ema_adx_atr_trend import EmaAdxAtrTrendStrategy
+from auto_coin.strategy.rcdb import RcdbStrategy
+from auto_coin.strategy.rcdb_v2 import RcdbV2Strategy
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
@@ -153,19 +155,27 @@ def test_create_strategy_ema_adx_default_params():
     assert s.ema_slow_window == 125
     assert s.adx_window == 90
     assert s.adx_threshold == 14.0
+    assert s.atr_window == 14
     assert s.allow_sell_signal is False
 
 
 def test_create_strategy_ema_adx_custom_params():
     s = create_strategy(
         "ema_adx_atr_trend",
-        {"ema_fast_window": 10, "ema_slow_window": 50, "adx_window": 30, "adx_threshold": 20.0},
+        {
+            "ema_fast_window": 10,
+            "ema_slow_window": 50,
+            "adx_window": 30,
+            "adx_threshold": 20.0,
+            "atr_window": 21,
+        },
     )
     assert isinstance(s, EmaAdxAtrTrendStrategy)
     assert s.ema_fast_window == 10
     assert s.ema_slow_window == 50
     assert s.adx_window == 30
     assert s.adx_threshold == 20.0
+    assert s.atr_window == 21
 
 
 def test_create_strategy_ema_adx_is_strategy_subclass():
@@ -255,3 +265,120 @@ def test_create_strategy_composite_is_strategy_subclass():
 def test_composite_in_get_strategy_names():
     names = get_strategy_names()
     assert "sma200_ema_adx_composite" in names
+
+
+# --- RCDB ---
+
+
+def test_registry_contains_rcdb():
+    assert "rcdb" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["rcdb"] is RcdbStrategy
+
+
+def test_create_strategy_rcdb_default_params():
+    s = create_strategy("rcdb")
+    assert isinstance(s, RcdbStrategy)
+    assert s.regime_ticker == "KRW-BTC"
+    assert s.regime_ma_window == 120
+    assert s.dip_lookback_days == 5
+    assert s.dip_threshold_pct == -0.08
+    assert s.rsi_window == 14
+    assert s.rsi_threshold == 30.0
+    assert s.max_hold_days == 7
+    assert s.atr_window == 14
+    assert s.atr_trailing_mult == 2.5
+
+
+def test_create_strategy_rcdb_custom_params():
+    s = create_strategy(
+        "rcdb",
+        {
+            "regime_ticker": "KRW-ETH",
+            "regime_ma_window": 100,
+            "dip_lookback_days": 7,
+            "dip_threshold_pct": -0.1,
+            "rsi_window": 10,
+            "rsi_threshold": 35.0,
+            "max_hold_days": 5,
+            "atr_window": 10,
+            "atr_trailing_mult": 3.0,
+        },
+    )
+    assert isinstance(s, RcdbStrategy)
+    assert s.regime_ticker == "KRW-ETH"
+    assert s.regime_ma_window == 100
+    assert s.dip_lookback_days == 7
+    assert s.dip_threshold_pct == -0.1
+    assert s.rsi_window == 10
+    assert s.rsi_threshold == 35.0
+    assert s.max_hold_days == 5
+    assert s.atr_window == 10
+    assert s.atr_trailing_mult == 3.0
+
+
+def test_rcdb_hidden_from_default_strategy_names():
+    assert "rcdb" not in get_strategy_names()
+
+
+def test_rcdb_available_when_including_experimental():
+    assert "rcdb" in get_strategy_names(include_experimental=True)
+
+
+def test_registry_contains_rcdb_v2():
+    assert "rcdb_v2" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["rcdb_v2"] is RcdbV2Strategy
+
+
+def test_create_strategy_rcdb_v2_default_params():
+    s = create_strategy("rcdb_v2")
+    assert isinstance(s, RcdbV2Strategy)
+    assert s.regime_ticker == "KRW-BTC"
+    assert s.regime_ma_window == 120
+    assert s.dip_lookback_days == 5
+    assert s.vol_window == 20
+    assert s.dip_z_threshold == -1.75
+    assert s.rsi_window == 14
+    assert s.rsi_threshold == 35.0
+    assert s.reversal_ema_window == 5
+    assert s.max_hold_days == 5
+    assert s.atr_window == 14
+    assert s.atr_trailing_mult == 2.0
+
+
+def test_create_strategy_rcdb_v2_custom_params():
+    s = create_strategy(
+        "rcdb_v2",
+        {
+            "regime_ticker": "KRW-ETH",
+            "regime_ma_window": 100,
+            "dip_lookback_days": 3,
+            "vol_window": 15,
+            "dip_z_threshold": -2.0,
+            "rsi_window": 10,
+            "rsi_threshold": 40.0,
+            "reversal_ema_window": 3,
+            "max_hold_days": 7,
+            "atr_window": 10,
+            "atr_trailing_mult": 2.3,
+        },
+    )
+    assert isinstance(s, RcdbV2Strategy)
+    assert s.regime_ticker == "KRW-ETH"
+    assert s.regime_ma_window == 100
+    assert s.dip_lookback_days == 3
+    assert s.vol_window == 15
+    assert s.dip_z_threshold == -2.0
+    assert s.rsi_window == 10
+    assert s.rsi_threshold == 40.0
+    assert s.reversal_ema_window == 3
+    assert s.max_hold_days == 7
+    assert s.atr_window == 10
+    assert s.atr_trailing_mult == 2.3
+
+
+def test_rcdb_v2_hidden_from_default_strategy_names():
+    assert "rcdb_v2" not in get_strategy_names()
+
+
+def test_rcdb_v2_available_when_including_experimental():
+    assert "rcdb_v2" in get_strategy_names(include_experimental=True)

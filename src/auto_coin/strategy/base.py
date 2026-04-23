@@ -29,6 +29,24 @@ class MarketSnapshot:
     has_position: bool
 
 
+@dataclass(frozen=True)
+class PositionSnapshot:
+    """백테스트/리뷰용 포지션 상태 스냅샷."""
+
+    entry_price: float
+    hold_days: int
+    highest_close: float
+    highest_high: float
+
+
+@dataclass(frozen=True)
+class ExitDecision:
+    """전략 정의형 청산 결정."""
+
+    reason: str
+    exit_price: float | None = None
+
+
 class Strategy(ABC):
     """전략 인터페이스.
 
@@ -41,3 +59,15 @@ class Strategy(ABC):
     @abstractmethod
     def generate_signal(self, snap: MarketSnapshot) -> Signal:
         ...
+
+    def generate_exit(
+        self,
+        snap: MarketSnapshot,
+        position: PositionSnapshot,
+    ) -> ExitDecision | None:
+        """보유 포지션의 전략 정의형 청산 조건.
+
+        기본 구현은 아무 것도 하지 않는다. 기존 전략은 이 메서드를
+        구현하지 않아도 동작한다.
+        """
+        return None

@@ -59,17 +59,22 @@ class OrderStore:
     """JSON 파일 기반 상태 저장소.
 
     원자적 저장(임시파일 + os.replace)으로 부분 쓰기를 방지한다.
+    같은 프로세스 내에서는 lock으로 load/modify/save 경쟁을 직렬화한다.
     """
 
     def __init__(self, path: Path) -> None:
         self._path = path
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
 
     @property
     def path(self) -> Path:
         return self._path
 
     def load(self) -> State:
+        with self._lock:
+            return self._load_unlocked()
+
+    def _load_unlocked(self) -> State:
         if not self._path.exists():
             return State()
         try:
@@ -88,6 +93,10 @@ class OrderStore:
         )
 
     def save(self, state: State) -> None:
+        with self._lock:
+            self._save_unlocked(state)
+
+    def _save_unlocked(self, state: State) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
             "position": asdict(state.position) if state.position else None,
@@ -113,7 +122,7 @@ class OrderStore:
         같은 프로세스 내 동시 접근에 의한 lost-update를 방지한다.
         """
         with self._lock:
-            state = self.load()
+            state = self._load_unlocked()
             new_state = fn(state)
-            self.save(new_state)
+            self._save_unlocked(new_state)
             return new_state

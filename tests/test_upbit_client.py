@@ -186,7 +186,7 @@ def test_get_current_prices_none_raises(batch_client, mocker):
         "auto_coin.exchange.upbit_client.pyupbit.get_current_price",
         return_value=None,
     )
-    with pytest.raises(UpbitError, match="no prices returned"):
+    with pytest.raises(UpbitError, match="failed after"):
         batch_client.get_current_prices(["KRW-BTC"])
 
 
@@ -209,29 +209,85 @@ def test_throttle_lock_exists():
     assert hasattr(c, "_throttle_lock")
 
 
-def test_throttle_serializes_concurrent_calls(mocker):
-    """두 스레드가 동시에 _throttle()을 호출해도 _last_request_at이 올바르게 갱신된다."""
+def test_throttle_respects_min_interval_with_mocked_time(mocker):
+    c = UpbitClient(
+        access_key="",
+        secret_key="",
+        max_retries=1,
+        backoff_base=0.0,
+        min_request_interval=0.5,
+    )
+    now = {"value": 100.0}
+    sleep_calls: list[float] = []
+
+    def fake_monotonic() -> float:
+        return now["value"]
+
+    def fake_sleep(seconds: float) -> None:
+        sleep_calls.append(seconds)
+        now["value"] += seconds
+
+    mocker.patch("auto_coin.exchange.upbit_client.time.monotonic", side_effect=fake_monotonic)
+    mocker.patch("auto_coin.exchange.upbit_client.time.sleep", side_effect=fake_sleep)
+
+    c._throttle()
+    assert sleep_calls == []
+    assert c._last_request_at == pytest.approx(100.0)
+
+    now["value"] += 0.2
+    c._throttle()
+    assert sleep_calls == [pytest.approx(0.3)]
+    assert c._last_request_at == pytest.approx(100.5)
+
+
+def test_throttle_serializes_concurrent_calls_with_mocked_time(mocker):
     import threading
 
     c = UpbitClient(
-        access_key="", secret_key="",
-        max_retries=1, backoff_base=0.0,
-        min_request_interval=0.05,  # 50ms interval
+        access_key="",
+        secret_key="",
+        max_retries=1,
+        backoff_base=0.0,
+        min_request_interval=0.5,
     )
 
-    timestamps = []
+    class FakeClock:
+        def __init__(self) -> None:
+            self.value = 100.0
+            self.lock = threading.Lock()
+            self.sleep_calls: list[float] = []
 
-    def call_throttle():
-        c._throttle()
-        timestamps.append(c._last_request_at)
+        def monotonic(self) -> float:
+            with self.lock:
+                return self.value
 
-    t1 = threading.Thread(target=call_throttle)
-    t2 = threading.Thread(target=call_throttle)
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
+        def sleep(self, seconds: float) -> None:
+            with self.lock:
+                self.sleep_calls.append(seconds)
+                self.value += seconds
 
-    # lock으로 직렬화되므로 두 timestamp는 달라야 함 (최소 interval만큼 차이)
-    assert len(timestamps) == 2
-    assert timestamps[0] != timestamps[1]
+    clock = FakeClock()
+    barrier = threading.Barrier(2)
+    timestamps: list[float] = []
+    errors: list[Exception] = []
+
+    mocker.patch("auto_coin.exchange.upbit_client.time.monotonic", side_effect=clock.monotonic)
+    mocker.patch("auto_coin.exchange.upbit_client.time.sleep", side_effect=clock.sleep)
+
+    def call_throttle() -> None:
+        try:
+            barrier.wait()
+            c._throttle()
+            timestamps.append(c._last_request_at)
+        except Exception as exc:  # pragma: no cover - defensive capture for thread failures
+            errors.append(exc)
+
+    threads = [threading.Thread(target=call_throttle) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert sorted(timestamps) == pytest.approx([100.0, 100.5])
+    assert clock.sleep_calls == [pytest.approx(0.5)]

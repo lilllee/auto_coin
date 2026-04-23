@@ -1,0 +1,751 @@
+{
+  "as_of": "2026-04-21 09:00:00",
+  "fee": 0.0005,
+  "slippage": 0.0005,
+  "strategies": {
+    "sma200_regime": {
+      "default_params": {
+        "ma_window": 200,
+        "buffer_pct": 0.0,
+        "allow_sell_signal": true
+      },
+      "grid_size": 9,
+      "backtests": {
+        "KRW-BTC": {
+          "1y": {
+            "strategy_return": -0.009623098767115423,
+            "buy_hold_return": -0.16611603960743127,
+            "excess_return": 0.15649294084031584,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 2.0,
+            "expectancy": -0.009623098767115423
+          },
+          "2y": {
+            "strategy_return": 0.06912694886056636,
+            "buy_hold_return": 0.14844367353637433,
+            "excess_return": -0.07931672467580797,
+            "mdd": -0.10885227384386426,
+            "sharpe": 0.3026191388688856,
+            "calmar": 0.31265636626436133,
+            "profit_factor": 1.53320791654601,
+            "trades": 8,
+            "win_rate": 0.25,
+            "avg_hold_days": 42.25,
+            "expectancy": 0.01030840106775295
+          },
+          "full": {
+            "strategy_return": 17.6909784589374,
+            "buy_hold_return": 24.825899472084053,
+            "excess_return": -7.134921013146652,
+            "mdd": -0.14386907653122125,
+            "sharpe": 0.5165532789322773,
+            "calmar": 2.8288542502028253,
+            "profit_factor": 11.177255152199454,
+            "trades": 29,
+            "win_rate": 0.2413793103448276,
+            "avg_hold_days": 55.3448275862069,
+            "expectancy": 0.19211188276335678
+          }
+        },
+        "KRW-ETH": {
+          "1y": {
+            "strategy_return": -0.06931884636829877,
+            "buy_hold_return": 0.3519653315677558,
+            "excess_return": -0.42128417793605455,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 6.0,
+            "expectancy": -0.06931884636829877
+          },
+          "2y": {
+            "strategy_return": 0.23479152436810158,
+            "buy_hold_return": -0.269090109868249,
+            "excess_return": 0.5038816342363506,
+            "mdd": 0.0,
+            "sharpe": 0.6133345608252937,
+            "calmar": 0.0,
+            "profit_factor": 14.014085151215028,
+            "trades": 2,
+            "win_rate": 0.5,
+            "avg_hold_days": 109.5,
+            "expectancy": 0.11976965471895051
+          },
+          "full": {
+            "strategy_return": 14.60247153296909,
+            "buy_hold_return": 9.462131719670477,
+            "excess_return": 5.140339813298613,
+            "mdd": -0.4431726849581888,
+            "sharpe": 0.3719360838375456,
+            "calmar": 0.8521756943182218,
+            "profit_factor": 9.977398564889482,
+            "trades": 25,
+            "win_rate": 0.32,
+            "avg_hold_days": 61.24,
+            "expectancy": 0.4150897648513826
+          }
+        },
+        "KRW-XRP": {
+          "1y": {
+            "strategy_return": -0.04311418870316153,
+            "buy_hold_return": -0.33760372086873724,
+            "excess_return": 0.2944895321655757,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 1.0,
+            "expectancy": -0.04311418870316153
+          },
+          "2y": {
+            "strategy_return": 1.7765798704351083,
+            "buy_hold_return": 1.5994010953776971,
+            "excess_return": 0.1771787750574112,
+            "mdd": -0.20274276557067583,
+            "sharpe": 0.6351613356823425,
+            "calmar": 3.2922249345041252,
+            "profit_factor": 11.2656434169149,
+            "trades": 7,
+            "win_rate": 0.14285714285714285,
+            "avg_hold_days": 43.42857142857143,
+            "expectancy": 0.32318430119349917
+          },
+          "full": {
+            "strategy_return": -0.6644027861624988,
+            "buy_hold_return": 9.343823669192627,
+            "excess_return": -10.008226455355127,
+            "mdd": -0.8763023484277987,
+            "sharpe": 0.06545267061164002,
+            "calmar": -0.13642699979905504,
+            "profit_factor": 1.1804857615429463,
+            "trades": 50,
+            "win_rate": 0.14,
+            "avg_hold_days": 25.3,
+            "expectancy": 0.010514792285254863
+          }
+        },
+        "KRW-SOL": {
+          "1y": {
+            "strategy_return": 0.0,
+            "buy_hold_return": -0.41065454216099495,
+            "excess_return": 0.41065454216099495,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "expectancy": 0.0
+          },
+          "2y": {
+            "strategy_return": -0.3015713628742728,
+            "buy_hold_return": -0.4487894204374826,
+            "excess_return": 0.14721805756320983,
+            "mdd": -0.2730466956122701,
+            "sharpe": -1.0694158336332544,
+            "calmar": -0.6024071350857945,
+            "profit_factor": 0.1457650607296377,
+            "trades": 5,
+            "win_rate": 0.2,
+            "avg_hold_days": 41.6,
+            "expectancy": -0.0651714243157094
+          },
+          "full": {
+            "strategy_return": 2.3054302245088527,
+            "buy_hold_return": -0.3748833253170356,
+            "excess_return": 2.6803135498258883,
+            "mdd": -0.3321769633619705,
+            "sharpe": 0.41748294454046125,
+            "calmar": 0.9120267896865375,
+            "profit_factor": 6.181282511504037,
+            "trades": 17,
+            "win_rate": 0.29411764705882354,
+            "avg_hold_days": 37.94117647058823,
+            "expectancy": 0.2767277864947898
+          }
+        }
+      },
+      "sweep_2y_top3": [
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "buffer_pct": 0.0,
+            "ma_window": 180
+          },
+          "avg_excess": 0.4090388860204047,
+          "avg_sharpe": 0.739641096743101,
+          "avg_trades": 6.25
+        },
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "buffer_pct": 0.005,
+            "ma_window": 180
+          },
+          "avg_excess": 0.40561069048350584,
+          "avg_sharpe": 0.733617642833341,
+          "avg_trades": 5.75
+        },
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "buffer_pct": 0.01,
+            "ma_window": 180
+          },
+          "avg_excess": 0.3866345138085907,
+          "avg_sharpe": 0.7110610294261667,
+          "avg_trades": 5.25
+        }
+      ],
+      "walk_forward_2y": {
+        "KRW-BTC": {
+          "windows": 18,
+          "avg_test_return": 0.019224050942549,
+          "avg_test_bnh_cost": 0.018341484518240858,
+          "avg_test_excess_cost": 0.0008825664243081424,
+          "positive_excess_ratio_cost": 0.16666666666666666,
+          "train_test_ratio": 9.167104006417961,
+          "avg_test_trades": 0.8888888888888888
+        },
+        "KRW-ETH": {
+          "windows": 18,
+          "avg_test_return": 0.009278055722797718,
+          "avg_test_bnh_cost": 0.023277308253320275,
+          "avg_test_excess_cost": -0.013999252530522557,
+          "positive_excess_ratio_cost": 0.2777777777777778,
+          "train_test_ratio": 14.925910673153453,
+          "avg_test_trades": 0.7222222222222222
+        },
+        "KRW-XRP": {
+          "windows": 18,
+          "avg_test_return": 0.10647273187082103,
+          "avg_test_bnh_cost": 0.11742810649074592,
+          "avg_test_excess_cost": -0.010955374619924888,
+          "positive_excess_ratio_cost": 0.2777777777777778,
+          "train_test_ratio": 10.54292857194705,
+          "avg_test_trades": 1.2222222222222223
+        },
+        "KRW-SOL": {
+          "windows": 18,
+          "avg_test_return": 0.029381525410699525,
+          "avg_test_bnh_cost": -5.30791182753824e-05,
+          "avg_test_excess_cost": 0.02943460452897491,
+          "positive_excess_ratio_cost": 0.3333333333333333,
+          "train_test_ratio": 4.480465210631556,
+          "avg_test_trades": 0.5
+        }
+      }
+    },
+    "atr_channel_breakout": {
+      "default_params": {
+        "atr_window": 14,
+        "channel_multiplier": 1.0,
+        "allow_sell_signal": true
+      },
+      "grid_size": 20,
+      "backtests": {
+        "KRW-BTC": {
+          "1y": {
+            "strategy_return": 0.015363877371375567,
+            "buy_hold_return": -0.16611603960743127,
+            "excess_return": 0.18147991697880683,
+            "mdd": -0.1877574614305478,
+            "sharpe": 0.1721764415725371,
+            "calmar": 0.08205484455284517,
+            "profit_factor": 1.099967053097611,
+            "trades": 26,
+            "win_rate": 0.38461538461538464,
+            "avg_hold_days": 7.038461538461538,
+            "expectancy": 0.0013611502864820015
+          },
+          "2y": {
+            "strategy_return": 0.5981542179777222,
+            "buy_hold_return": 0.14844367353637433,
+            "excess_return": 0.44971054444134784,
+            "mdd": -0.18775746143054803,
+            "sharpe": 0.8519167009721096,
+            "calmar": 1.409200095084699,
+            "profit_factor": 1.7294347550161269,
+            "trades": 51,
+            "win_rate": 0.43137254901960786,
+            "avg_hold_days": 7.921568627450981,
+            "expectancy": 0.011214573174252972
+          },
+          "full": {
+            "strategy_return": 42.88316917613863,
+            "buy_hold_return": 24.825899472084053,
+            "excess_return": 18.057269704054576,
+            "mdd": -0.60225915059555,
+            "sharpe": 0.9714115041634455,
+            "calmar": 0.9202439314208244,
+            "profit_factor": 1.9167426848021323,
+            "trades": 233,
+            "win_rate": 0.40772532188841204,
+            "avg_hold_days": 7.579399141630901,
+            "expectancy": 0.022558651068387434
+          }
+        },
+        "KRW-ETH": {
+          "1y": {
+            "strategy_return": 0.40672014385751876,
+            "buy_hold_return": 0.3519653315677558,
+            "excess_return": 0.05475481228976298,
+            "mdd": -0.3599212737339607,
+            "sharpe": 0.8212745309357007,
+            "calmar": 1.133691265681962,
+            "profit_factor": 1.7369927380034864,
+            "trades": 27,
+            "win_rate": 0.4074074074074074,
+            "avg_hold_days": 6.296296296296297,
+            "expectancy": 0.017881329464986155
+          },
+          "2y": {
+            "strategy_return": -0.24634252780684796,
+            "buy_hold_return": -0.269090109868249,
+            "excess_return": 0.02274758206140104,
+            "mdd": -0.6446421104867159,
+            "sharpe": 0.025897716777743742,
+            "calmar": -0.20481737195240413,
+            "profit_factor": 1.0156073275352688,
+            "trades": 56,
+            "win_rate": 0.30357142857142855,
+            "avg_hold_days": 6.160714285714286,
+            "expectancy": 0.0005620210230162306
+          },
+          "full": {
+            "strategy_return": 9.579541891058312,
+            "buy_hold_return": 9.462131719670477,
+            "excess_return": 0.11741017138783505,
+            "mdd": -0.794950045381616,
+            "sharpe": 0.6746831305240361,
+            "calmar": 0.3983125748660793,
+            "profit_factor": 1.5266929274098142,
+            "trades": 239,
+            "win_rate": 0.35564853556485354,
+            "avg_hold_days": 7.317991631799163,
+            "expectancy": 0.01982636638300979
+          }
+        },
+        "KRW-XRP": {
+          "1y": {
+            "strategy_return": -0.031393212658920144,
+            "buy_hold_return": -0.33760372086873724,
+            "excess_return": 0.3062105082098171,
+            "mdd": -0.39589688073262064,
+            "sharpe": 0.10213677636651904,
+            "calmar": -0.0795108206551268,
+            "profit_factor": 1.0613347336611378,
+            "trades": 26,
+            "win_rate": 0.2692307692307692,
+            "avg_hold_days": 4.884615384615385,
+            "expectancy": 0.001599656573331821
+          },
+          "2y": {
+            "strategy_return": 2.700310094400576,
+            "buy_hold_return": 1.5994010953776971,
+            "excess_return": 1.1009089990228786,
+            "mdd": -0.3958968807326205,
+            "sharpe": 1.1683530412447691,
+            "calmar": 2.337341098203973,
+            "profit_factor": 2.2111537673261004,
+            "trades": 60,
+            "win_rate": 0.35,
+            "avg_hold_days": 5.35,
+            "expectancy": 0.029495203716868236
+          },
+          "full": {
+            "strategy_return": 2.9180633326512133,
+            "buy_hold_return": 9.343823669192627,
+            "excess_return": -6.425760336541414,
+            "mdd": -0.8854740164125852,
+            "sharpe": 0.5562526377635739,
+            "calmar": 0.19495494626731957,
+            "profit_factor": 1.5004711430469924,
+            "trades": 250,
+            "win_rate": 0.328,
+            "avg_hold_days": 5.688,
+            "expectancy": 0.019967127281945968
+          }
+        },
+        "KRW-SOL": {
+          "1y": {
+            "strategy_return": -0.3401059081844853,
+            "buy_hold_return": -0.41065454216099495,
+            "excess_return": 0.07054863397650968,
+            "mdd": -0.4493416756085815,
+            "sharpe": -1.0202534760131696,
+            "calmar": -0.7585743182322147,
+            "profit_factor": 0.6054407896918607,
+            "trades": 29,
+            "win_rate": 0.27586206896551724,
+            "avg_hold_days": 5.724137931034483,
+            "expectancy": -0.012289546910844149
+          },
+          "2y": {
+            "strategy_return": 0.06738779270608353,
+            "buy_hold_return": -0.4487894204374826,
+            "excess_return": 0.5161772131435661,
+            "mdd": -0.4493416756085816,
+            "sharpe": 0.31538025371986445,
+            "calmar": 0.07386545167884585,
+            "profit_factor": 1.2108486310130526,
+            "trades": 57,
+            "win_rate": 0.3157894736842105,
+            "avg_hold_days": 6.315789473684211,
+            "expectancy": 0.006909589647295086
+          },
+          "full": {
+            "strategy_return": 3.096761849665718,
+            "buy_hold_return": -0.3748833253170356,
+            "excess_return": 3.4716451749827537,
+            "mdd": -0.6000751043751091,
+            "sharpe": 0.6811798288182478,
+            "calmar": 0.610504333231658,
+            "profit_factor": 1.588643021318538,
+            "trades": 132,
+            "win_rate": 0.38636363636363635,
+            "avg_hold_days": 5.681818181818182,
+            "expectancy": 0.020840783006231232
+          }
+        }
+      },
+      "sweep_2y_top3": [
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "atr_window": 7,
+            "channel_multiplier": 1.0
+          },
+          "avg_excess": 1.192474302864301,
+          "avg_sharpe": 0.8108952127848224,
+          "avg_trades": 56.25
+        },
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "atr_window": 30,
+            "channel_multiplier": 1.5
+          },
+          "avg_excess": 0.528831642354209,
+          "avg_sharpe": 0.6854686958492118,
+          "avg_trades": 24.5
+        },
+        {
+          "params": {
+            "allow_sell_signal": true,
+            "atr_window": 14,
+            "channel_multiplier": 1.0
+          },
+          "avg_excess": 0.5223860846672984,
+          "avg_sharpe": 0.5903869281786217,
+          "avg_trades": 56.0
+        }
+      ],
+      "walk_forward_2y": {
+        "KRW-BTC": {
+          "windows": 18,
+          "avg_test_return": 0.03314570557832487,
+          "avg_test_bnh_cost": 0.018341484518240858,
+          "avg_test_excess_cost": 0.014804221060084012,
+          "positive_excess_ratio_cost": 0.5555555555555556,
+          "train_test_ratio": 11.112955844018494,
+          "avg_test_trades": 1.4444444444444444
+        },
+        "KRW-ETH": {
+          "windows": 18,
+          "avg_test_return": 0.038426096618868366,
+          "avg_test_bnh_cost": 0.023277308253320275,
+          "avg_test_excess_cost": 0.015148788365548092,
+          "positive_excess_ratio_cost": 0.5555555555555556,
+          "train_test_ratio": 12.688806452184965,
+          "avg_test_trades": 1.6111111111111112
+        },
+        "KRW-XRP": {
+          "windows": 18,
+          "avg_test_return": 0.10588845927852769,
+          "avg_test_bnh_cost": 0.11742810649074592,
+          "avg_test_excess_cost": -0.011539647212218253,
+          "positive_excess_ratio_cost": 0.5,
+          "train_test_ratio": 14.715683163655518,
+          "avg_test_trades": 2.0555555555555554
+        },
+        "KRW-SOL": {
+          "windows": 18,
+          "avg_test_return": 0.011295486167608233,
+          "avg_test_bnh_cost": -5.30791182753824e-05,
+          "avg_test_excess_cost": 0.011348565285883615,
+          "positive_excess_ratio_cost": 0.4444444444444444,
+          "train_test_ratio": 40.97293987482622,
+          "avg_test_trades": 2.0555555555555554
+        }
+      }
+    },
+    "ema_adx_atr_trend": {
+      "default_params": {
+        "ema_fast_window": 27,
+        "ema_slow_window": 125,
+        "adx_window": 90,
+        "adx_threshold": 14.0,
+        "atr_window": 14,
+        "allow_sell_signal": true
+      },
+      "grid_size": 27,
+      "backtests": {
+        "KRW-BTC": {
+          "1y": {
+            "strategy_return": 0.0,
+            "buy_hold_return": -0.16611603960743127,
+            "excess_return": 0.16611603960743127,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "expectancy": 0.0
+          },
+          "2y": {
+            "strategy_return": -0.08115305587610322,
+            "buy_hold_return": 0.14844367353637433,
+            "excess_return": -0.22959672941247755,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 103.0,
+            "expectancy": -0.08115305587610322
+          },
+          "full": {
+            "strategy_return": 12.486498785119629,
+            "buy_hold_return": 24.825899472084053,
+            "excess_return": -12.339400686964424,
+            "mdd": 0.0,
+            "sharpe": 0.8920376058180756,
+            "calmar": 0.0,
+            "profit_factor": 99.99,
+            "trades": 6,
+            "win_rate": 1.0,
+            "avg_hold_days": 180.5,
+            "expectancy": 0.617709042041697
+          }
+        },
+        "KRW-ETH": {
+          "1y": {
+            "strategy_return": 0.29720575347565825,
+            "buy_hold_return": 0.3519653315677558,
+            "excess_return": -0.05475957809209753,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 99.99,
+            "trades": 1,
+            "win_rate": 1.0,
+            "avg_hold_days": 179.0,
+            "expectancy": 0.29720575347565825
+          },
+          "2y": {
+            "strategy_return": -0.06317302437089012,
+            "buy_hold_return": -0.269090109868249,
+            "excess_return": 0.20591708549735888,
+            "mdd": -0.10876921442439487,
+            "sharpe": -0.0147477615506993,
+            "calmar": -0.2955348551461301,
+            "profit_factor": 0.969082704538558,
+            "trades": 3,
+            "win_rate": 0.3333333333333333,
+            "avg_hold_days": 97.0,
+            "expectancy": -0.002939814306163316
+          },
+          "full": {
+            "strategy_return": 2.04511074518418,
+            "buy_hold_return": 9.462131719670477,
+            "excess_return": -7.417020974486297,
+            "mdd": -0.15432994954605952,
+            "sharpe": 0.35899605068332496,
+            "calmar": 0.8984738849673061,
+            "profit_factor": 4.775764944583509,
+            "trades": 8,
+            "win_rate": 0.625,
+            "avg_hold_days": 126.125,
+            "expectancy": 0.3965879216865368
+          }
+        },
+        "KRW-XRP": {
+          "1y": {
+            "strategy_return": 0.0,
+            "buy_hold_return": -0.33760372086873724,
+            "excess_return": 0.33760372086873724,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "expectancy": 0.0
+          },
+          "2y": {
+            "strategy_return": 0.0417258421392217,
+            "buy_hold_return": 1.5994010953776971,
+            "excess_return": -1.5576752532384754,
+            "mdd": 0.0,
+            "sharpe": 0.14380615522147214,
+            "calmar": 0.0,
+            "profit_factor": 1.510144973744262,
+            "trades": 2,
+            "win_rate": 0.5,
+            "avg_hold_days": 90.5,
+            "expectancy": 0.03543590205982944
+          },
+          "full": {
+            "strategy_return": -0.12422644568148355,
+            "buy_hold_return": 9.343823669192627,
+            "excess_return": -9.46805011487411,
+            "mdd": -0.7502759399735359,
+            "sharpe": 0.1998748207777876,
+            "calmar": -0.020458448126052596,
+            "profit_factor": 2.1679313950996404,
+            "trades": 8,
+            "win_rate": 0.25,
+            "avg_hold_days": 77.75,
+            "expectancy": 0.20273633941359198
+          }
+        },
+        "KRW-SOL": {
+          "1y": {
+            "strategy_return": -0.1314147195091051,
+            "buy_hold_return": -0.41065454216099495,
+            "excess_return": 0.27923982265188985,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 1,
+            "win_rate": 0.0,
+            "avg_hold_days": 64.0,
+            "expectancy": -0.1314147195091051
+          },
+          "2y": {
+            "strategy_return": 0.0,
+            "buy_hold_return": -0.4487894204374826,
+            "excess_return": 0.4487894204374826,
+            "mdd": 0.0,
+            "sharpe": 0.0,
+            "calmar": 0.0,
+            "profit_factor": 0.0,
+            "trades": 0,
+            "win_rate": 0.0,
+            "avg_hold_days": 0.0,
+            "expectancy": 0.0
+          },
+          "full": {
+            "strategy_return": 0.8496489560038998,
+            "buy_hold_return": -0.3748833253170356,
+            "excess_return": 1.2245322813209354,
+            "mdd": 0.0,
+            "sharpe": 0.3305748985240149,
+            "calmar": 0.0,
+            "profit_factor": 5.725887087204284,
+            "trades": 2,
+            "win_rate": 0.5,
+            "avg_hold_days": 143.5,
+            "expectancy": 0.6253277914821803
+          }
+        }
+      },
+      "sweep_2y_top3": [
+        {
+          "params": {
+            "adx_window": 90,
+            "allow_sell_signal": true,
+            "atr_window": 14,
+            "adx_threshold": 14.0,
+            "ema_fast_window": 20,
+            "ema_slow_window": 100
+          },
+          "avg_excess": -0.1906846828206368,
+          "avg_sharpe": 0.12021781974338983,
+          "avg_trades": 1.5
+        },
+        {
+          "params": {
+            "adx_window": 90,
+            "allow_sell_signal": true,
+            "atr_window": 14,
+            "adx_threshold": 10.0,
+            "ema_fast_window": 20,
+            "ema_slow_window": 100
+          },
+          "avg_excess": -0.21534661458389712,
+          "avg_sharpe": -0.9185366932760208,
+          "avg_trades": 4.0
+        },
+        {
+          "params": {
+            "adx_window": 90,
+            "allow_sell_signal": true,
+            "atr_window": 14,
+            "adx_threshold": 14.0,
+            "ema_fast_window": 27,
+            "ema_slow_window": 100
+          },
+          "avg_excess": -0.256291175374873,
+          "avg_sharpe": 0.07133464302201435,
+          "avg_trades": 1.5
+        }
+      ],
+      "walk_forward_2y": {
+        "KRW-BTC": {
+          "windows": 18,
+          "avg_test_return": 0.03477708593895236,
+          "avg_test_bnh_cost": 0.018341484518240858,
+          "avg_test_excess_cost": 0.0164356014207115,
+          "positive_excess_ratio_cost": 0.5,
+          "train_test_ratio": 6.998594270974075,
+          "avg_test_trades": 0.2222222222222222
+        },
+        "KRW-ETH": {
+          "windows": 18,
+          "avg_test_return": -0.008527360970274019,
+          "avg_test_bnh_cost": 0.023277308253320275,
+          "avg_test_excess_cost": -0.03180466922359429,
+          "positive_excess_ratio_cost": 0.4444444444444444,
+          "train_test_ratio": 27.394888129600254,
+          "avg_test_trades": 0.16666666666666666
+        },
+        "KRW-XRP": {
+          "windows": 18,
+          "avg_test_return": -0.009539300709632,
+          "avg_test_bnh_cost": 0.11742810649074592,
+          "avg_test_excess_cost": -0.1269674072003779,
+          "positive_excess_ratio_cost": 0.3333333333333333,
+          "train_test_ratio": 41.81877169464865,
+          "avg_test_trades": 0.3333333333333333
+        },
+        "KRW-SOL": {
+          "windows": 18,
+          "avg_test_return": -0.0034966712457324906,
+          "avg_test_bnh_cost": -5.30791182753824e-05,
+          "avg_test_excess_cost": -0.003443592127457108,
+          "positive_excess_ratio_cost": 0.5,
+          "train_test_ratio": 0.0,
+          "avg_test_trades": 0.05555555555555555
+        }
+      }
+    }
+  }
+}

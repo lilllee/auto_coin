@@ -25,7 +25,12 @@ import pyupbit
 
 from auto_coin.data.candles import enrich_daily, enrich_for_strategy
 from auto_coin.strategy import STRATEGY_REGISTRY, create_strategy
-from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
+from auto_coin.strategy.base import (
+    MarketSnapshot,
+    PositionSnapshot,
+    Signal,
+    Strategy,
+)
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
 
 UPBIT_DEFAULT_FEE = 0.0005  # 0.05% (KRW 마켓 일반 수수료)
@@ -277,6 +282,8 @@ class _SimState:
     entry_price: float | None = None
     entry_day: int = 0
     hold_days: int = 0
+    highest_close: float = 0.0
+    highest_high: float = 0.0
 
 
 def backtest(
@@ -367,6 +374,37 @@ def backtest(
             current_price=close,
             has_position=state.has_position,
         )
+
+        # --- Phase 3a: Strategy-defined exit ---
+        if state.has_position and state.entry_price is not None:
+            position = PositionSnapshot(
+                entry_price=state.entry_price,
+                hold_days=state.hold_days,
+                highest_close=state.highest_close,
+                highest_high=state.highest_high,
+            )
+            exit_decision = strategy.generate_exit(snap, position)
+            if exit_decision is not None:
+                raw_exit_price = (
+                    exit_decision.exit_price
+                    if exit_decision.exit_price is not None
+                    else close
+                )
+                exit_price = raw_exit_price * (1.0 - slippage)
+                ret = (exit_price * (1.0 - fee)) / (state.entry_price * (1.0 + fee)) - 1.0
+                trades.append(
+                    Trade(
+                        entry_date=_to_dt(df.index[state.entry_day]),
+                        entry_price=state.entry_price,
+                        exit_date=_to_dt(df.index[i]),
+                        exit_price=exit_price,
+                        ret=ret,
+                        exit_type=exit_decision.reason,
+                    )
+                )
+                state = _SimState()
+                continue
+
         signal = strategy.generate_signal(snap)
 
         # --- Phase 4: Strategy SELL ---
@@ -394,10 +432,15 @@ def backtest(
                 entry_price=close * (1.0 + slippage),
                 entry_day=i,
                 hold_days=0,
+                highest_close=close,
+                highest_high=float(row["high"]) if _is_finite(row.get("high")) else close,
             )
 
         # --- Phase 6: Hold increment ---
         if state.has_position:
+            state.highest_close = max(state.highest_close, close)
+            high_for_peak = float(row["high"]) if _is_finite(row.get("high")) else close
+            state.highest_high = max(state.highest_high, high_for_peak)
             state.hold_days += 1
 
     # Mark-to-market: close open position at last close
@@ -458,12 +501,14 @@ def _run_generic(
     slippage: float,
     stop_loss: float | None,
     enable_time_exit: bool,
+    regime_df: pd.DataFrame | None = None,
 ) -> BacktestResult:
     """범용 전략 백테스트 실행."""
     enriched = enrich_for_strategy(
         df, strategy_name, params,
         k=params.get("k", 0.5),
         ma_window=params.get("ma_window", 5),
+        regime_df=regime_df,
     )
     strategy = create_strategy(strategy_name, params)
     return backtest(
@@ -517,6 +562,11 @@ def cli(argv: list[str] | None = None) -> int:
 
         params: dict = json.loads(args.params)
         slippage = args.slippage if args.slippage is not None else DEFAULT_SLIPPAGE
+        regime_df = None
+        if args.strategy in {"rcdb", "rcdb_v2"}:
+            regime_ticker = params.get("regime_ticker", "KRW-BTC")
+            if regime_ticker and regime_ticker != args.ticker:
+                regime_df = _fetch_candles(regime_ticker, args.days)
 
         # --enable-sell → allow_sell_signal 주입 (전략이 지원하는 경우에만)
         if args.enable_sell:
@@ -531,7 +581,7 @@ def cli(argv: list[str] | None = None) -> int:
         )
         r = _run_generic(
             raw, args.strategy, params, args.fee, slippage,
-            args.stop_loss, args.enable_time_exit,
+            args.stop_loss, args.enable_time_exit, regime_df=regime_df,
         )
         print(r.report())
         return 0

@@ -188,6 +188,27 @@ def test_sell_sets_last_exit_at(unauth_client, store):
     datetime.fromisoformat(state.last_exit_at)
 
 
+def test_sell_close_preserves_existing_state_fields(unauth_client, store):
+    """청산 경로가 기존 state 필드를 덮어쓰지 않고 보존해야 한다."""
+    ex = OrderExecutor(unauth_client, store, "KRW-BTC", live=False)
+    ex.execute(Decision(Action.BUY, reason="entry", krw_amount=10_000), current_price=100.0)
+
+    def seed_daily_fields(state):
+        state.daily_pnl_date = "2026-04-21"
+        return state
+
+    store.atomic_update(seed_daily_fields)
+
+    ex.execute(Decision(Action.SELL, reason="exit", volume=100.0), current_price=110.0)
+
+    state = store.load()
+    assert state.position is None
+    assert len(state.orders) == 2
+    assert [order.side for order in state.orders] == ["buy", "sell"]
+    assert state.daily_pnl_date == "2026-04-21"
+    assert state.last_exit_at != ""
+
+
 def test_sell_zero_volume_fallback(mocker, auth_client, store):
     """SELL decision.volume=0.0 일 때 store position.volume으로 폴백해 ValueError 없이 처리한다."""
     mocker.patch.object(

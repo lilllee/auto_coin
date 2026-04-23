@@ -10,6 +10,8 @@ from auto_coin.data.candles import (
     enrich_donchian,
     enrich_ema_adx,
     enrich_for_strategy,
+    enrich_rcdb,
+    enrich_rcdb_v2,
     enrich_sma,
     fetch_daily,
     recommended_history_days,
@@ -172,6 +174,36 @@ def test_recommended_history_days_unknown_strategy_falls_back_to_safe_minimum():
     assert days == 60
 
 
+def test_recommended_history_days_rcdb_uses_regime_window():
+    days = recommended_history_days(
+        "rcdb",
+        {
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "rsi_window": 14,
+            "atr_window": 14,
+        },
+        ma_window=5,
+    )
+    assert days == 170
+
+
+def test_recommended_history_days_rcdb_v2_uses_all_windows():
+    days = recommended_history_days(
+        "rcdb_v2",
+        {
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "vol_window": 20,
+            "rsi_window": 14,
+            "reversal_ema_window": 5,
+            "atr_window": 14,
+        },
+        ma_window=5,
+    )
+    assert days == 170
+
+
 # --- enrich_sma tests ---
 
 
@@ -250,6 +282,157 @@ def test_enrich_for_strategy_unknown_defaults_to_vb():
     assert "range" in out.columns
 
 
+def test_enrich_rcdb_adds_columns():
+    df = _sample_df(200)
+    out = enrich_rcdb(
+        df,
+        regime_ma_window=120,
+        dip_lookback_days=5,
+        rsi_window=14,
+        atr_window=14,
+    )
+    assert "regime_close" in out.columns
+    assert "regime_sma120" in out.columns
+    assert "regime_on" in out.columns
+    assert "dip_return_5" in out.columns
+    assert "rsi14" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_enrich_for_strategy_rcdb():
+    df = _sample_df(200)
+    out = enrich_for_strategy(
+        df,
+        "rcdb",
+        {
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "rsi_window": 14,
+            "atr_window": 14,
+        },
+        ma_window=5,
+        k=0.5,
+    )
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "regime_sma120" in out.columns
+    assert "dip_return_5" in out.columns
+    assert "rsi14" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_enrich_rcdb_v2_adds_columns():
+    df = _sample_df(200)
+    out = enrich_rcdb_v2(
+        df,
+        regime_ma_window=120,
+        dip_lookback_days=5,
+        vol_window=20,
+        rsi_window=14,
+        reversal_ema_window=5,
+        atr_window=14,
+    )
+    assert "regime_close" in out.columns
+    assert "regime_sma120" in out.columns
+    assert "regime_on" in out.columns
+    assert "lookback_return_5" in out.columns
+    assert "realized_vol_20" in out.columns
+    assert "dip_score_5_20" in out.columns
+    assert "rsi14" in out.columns
+    assert "reversal_ema5" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_enrich_for_strategy_rcdb_v2():
+    df = _sample_df(200)
+    out = enrich_for_strategy(
+        df,
+        "rcdb_v2",
+        {
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "vol_window": 20,
+            "rsi_window": 14,
+            "reversal_ema_window": 5,
+            "atr_window": 14,
+        },
+        ma_window=5,
+        k=0.5,
+    )
+    assert "target" in out.columns
+    assert "range" in out.columns
+    assert "regime_sma120" in out.columns
+    assert "lookback_return_5" in out.columns
+    assert "realized_vol_20" in out.columns
+    assert "dip_score_5_20" in out.columns
+    assert "rsi14" in out.columns
+    assert "reversal_ema5" in out.columns
+    assert "atr14" in out.columns
+
+
+def test_fetch_daily_rcdb_fetches_regime_reference_when_ticker_differs(mocker):
+    asset_df = _sample_df(200)
+    regime_df = _sample_df(200)
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[asset_df, regime_df],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=1,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_daily(
+        client,
+        "KRW-ETH",
+        count=200,
+        strategy_name="rcdb",
+        strategy_params={
+            "regime_ticker": "KRW-BTC",
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "rsi_window": 14,
+            "atr_window": 14,
+        },
+    )
+
+    assert "regime_close" in out.columns
+    assert get_ohlcv.call_count == 2
+    first_call = get_ohlcv.call_args_list[0]
+    second_call = get_ohlcv.call_args_list[1]
+    assert first_call.kwargs["count"] == 200
+    assert second_call.args[0] == "KRW-BTC"
+
+
+def test_fetch_daily_rcdb_v2_fetches_regime_reference_when_ticker_differs(mocker):
+    asset_df = _sample_df(200)
+    regime_df = _sample_df(200)
+    get_ohlcv = mocker.patch(
+        "auto_coin.data.candles.pyupbit.get_ohlcv",
+        side_effect=[asset_df, regime_df],
+    )
+    client = UpbitClient(access_key="", secret_key="", max_retries=1,
+                         backoff_base=0.0, min_request_interval=0.0)
+
+    out = fetch_daily(
+        client,
+        "KRW-ETH",
+        count=200,
+        strategy_name="rcdb_v2",
+        strategy_params={
+            "regime_ticker": "KRW-BTC",
+            "regime_ma_window": 120,
+            "dip_lookback_days": 5,
+            "vol_window": 20,
+            "rsi_window": 14,
+            "reversal_ema_window": 5,
+            "atr_window": 14,
+        },
+    )
+
+    assert "regime_close" in out.columns
+    assert "dip_score_5_20" in out.columns
+    assert get_ohlcv.call_count == 2
+
+
 # --- enrich_atr_channel tests ---
 
 
@@ -312,10 +495,11 @@ def test_enrich_for_strategy_atr_channel():
 
 def test_enrich_ema_adx_adds_columns():
     df = _sample_df(200)
-    out = enrich_ema_adx(df, ema_fast=27, ema_slow=125, adx_window=90)
+    out = enrich_ema_adx(df, ema_fast=27, ema_slow=125, adx_window=90, atr_window=14)
     assert "ema27" in out.columns
     assert "ema125" in out.columns
     assert "adx90" in out.columns
+    assert "atr14" in out.columns
     # EMA uses ewm so values appear early; shift(1) means first row is NaN
     assert pd.isna(out["ema27"].iloc[0])
     assert pd.isna(out["ema125"].iloc[0])
@@ -332,12 +516,24 @@ def test_enrich_ema_adx_missing_columns():
         enrich_ema_adx(df)
 
 
+def test_enrich_ema_adx_invalid_params():
+    df = _sample_df(200)
+    with pytest.raises(ValueError, match="ema_fast must be >= 1"):
+        enrich_ema_adx(df, ema_fast=0)
+    with pytest.raises(ValueError, match="ema_slow must be > ema_fast"):
+        enrich_ema_adx(df, ema_fast=20, ema_slow=20)
+    with pytest.raises(ValueError, match="adx_window must be >= 1"):
+        enrich_ema_adx(df, adx_window=0)
+    with pytest.raises(ValueError, match="atr_window must be >= 1"):
+        enrich_ema_adx(df, atr_window=0)
+
+
 def test_enrich_for_strategy_ema_adx():
     df = _sample_df(200)
     out = enrich_for_strategy(
         df,
         "ema_adx_atr_trend",
-        {"ema_fast_window": 27, "ema_slow_window": 125, "adx_window": 90},
+        {"ema_fast_window": 27, "ema_slow_window": 125, "adx_window": 90, "atr_window": 14},
         ma_window=5,
         k=0.5,
     )
@@ -347,6 +543,7 @@ def test_enrich_for_strategy_ema_adx():
     assert "ema27" in out.columns
     assert "ema125" in out.columns
     assert "adx90" in out.columns
+    assert "atr14" in out.columns
 
 
 # --- enrich_donchian tests ---

@@ -270,6 +270,11 @@ def test_dashboard_timeline_includes_audit_and_order_events(app_env):
 # ---- risk_dashboard 라우터 등록 ----
 
 
+def test_risk_dashboard_route_is_registered(app_env):
+    app = create_app()
+    assert app.url_path_for("risk_dashboard") == "/risk"
+
+
 def test_risk_dashboard_returns_200(app_env):
     """GET /risk 가 404가 아닌 200을 반환해야 한다."""
     app = create_app()

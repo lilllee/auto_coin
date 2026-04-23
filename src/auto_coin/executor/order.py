@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import replace
 
 from loguru import logger
 
@@ -324,11 +323,11 @@ class OrderExecutor:
             decision_exit_price: 의사결정 시점의 current_price. TradeLog에 원본 보존 →
                 나중에 슬리피지(decision vs fill) 계산 가능.
         """
-        with self._store._lock:
-            state = self._store.load()
+        def _update(state):
             if any(o.uuid == record.uuid for o in state.orders):
                 logger.warning("duplicate order uuid {} — skipping", record.uuid)
-                return
+                return state
+
             state.orders.append(record)
             # 일일 손익 누적 (fee-adjusted) — paper 전용 기존 동작 유지
             if state.position is not None and state.position.avg_entry_price > 0:
@@ -337,9 +336,8 @@ class OrderExecutor:
                     current_price * (1 - fee_rate)
                 ) / (state.position.avg_entry_price * (1 + fee_rate)) - 1
                 if not self._live:
-                    state = replace(state, daily_pnl_ratio=state.daily_pnl_ratio + ret_legacy)
+                    state.daily_pnl_ratio += ret_legacy
 
-                # Fire trade-closed callback (before position is cleared)
                 if self._on_trade_closed is not None:
                     try:
                         from datetime import datetime as _dt
@@ -392,7 +390,9 @@ class OrderExecutor:
 
             state.last_exit_at = now_iso()
             state.position = None
-            self._store.save(state)
+            return state
+
+        self._store.atomic_update(_update)
 
     @staticmethod
     def _new_uuid() -> str:

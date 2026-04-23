@@ -14,9 +14,11 @@ def _make_df(
     ema_fast: float = 50000.0,
     ema_slow: float = 49000.0,
     adx: float = 20.0,
+    atr: float = 1000.0,
     ema_fast_w: int = 27,
     ema_slow_w: int = 125,
     adx_w: int = 90,
+    atr_w: int = 14,
 ) -> pd.DataFrame:
     return pd.DataFrame(
         {
@@ -28,6 +30,7 @@ def _make_df(
             f"ema{ema_fast_w}": [ema_fast],
             f"ema{ema_slow_w}": [ema_slow],
             f"adx{adx_w}": [adx],
+            f"atr{atr_w}": [atr],
         }
     )
 
@@ -98,6 +101,21 @@ def test_hold_when_adx_nan():
     assert s.generate_signal(snap) is Signal.HOLD
 
 
+def test_hold_when_atr_missing():
+    df = _make_df().drop(columns=["atr14"])
+    s = EmaAdxAtrTrendStrategy()
+    snap = MarketSnapshot(df=df, current_price=50500.0, has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_hold_when_atr_nan():
+    df = _make_df()
+    df["atr14"] = np.nan
+    s = EmaAdxAtrTrendStrategy()
+    snap = MarketSnapshot(df=df, current_price=50500.0, has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
 def test_hold_when_df_empty():
     s = EmaAdxAtrTrendStrategy()
     snap = MarketSnapshot(df=pd.DataFrame(), current_price=50500.0, has_position=False)
@@ -152,16 +170,30 @@ def test_buy_at_exact_threshold():
 
 def test_custom_params():
     s = EmaAdxAtrTrendStrategy(
-        ema_fast_window=10, ema_slow_window=50, adx_window=30, adx_threshold=20.0
+        ema_fast_window=10,
+        ema_slow_window=50,
+        adx_window=30,
+        adx_threshold=20.0,
+        atr_window=21,
     )
     assert s.ema_fast_window == 10
     assert s.ema_slow_window == 50
     assert s.adx_window == 30
     assert s.adx_threshold == 20.0
+    assert s.atr_window == 21
     assert s.name == "ema_adx_atr_trend"
 
     # Use custom windows in signal generation
-    df = _make_df(ema_fast=100.0, ema_slow=90.0, adx=25.0, ema_fast_w=10, ema_slow_w=50, adx_w=30)
+    df = _make_df(
+        ema_fast=100.0,
+        ema_slow=90.0,
+        adx=25.0,
+        atr=5.0,
+        ema_fast_w=10,
+        ema_slow_w=50,
+        adx_w=30,
+        atr_w=21,
+    )
     snap = MarketSnapshot(df=df, current_price=100.0, has_position=False)
     assert s.generate_signal(snap) is Signal.BUY
 
@@ -179,6 +211,8 @@ def test_invalid_params():
         EmaAdxAtrTrendStrategy(ema_fast_window=0)
     with pytest.raises(ValueError, match="adx_window must be >= 1"):
         EmaAdxAtrTrendStrategy(adx_window=0)
+    with pytest.raises(ValueError, match="atr_window must be >= 1"):
+        EmaAdxAtrTrendStrategy(atr_window=0)
     with pytest.raises(ValueError, match="adx_threshold must be >= 0"):
         EmaAdxAtrTrendStrategy(adx_threshold=-1.0)
 

@@ -1,0 +1,138 @@
+{
+  "as_of": "2026-04-22",
+  "fee": 0.0005,
+  "slippage": 0.0005,
+  "period_days": 730,
+  "strategy": "rcdb",
+  "implementation_default_params": {
+    "regime_ticker": "KRW-BTC",
+    "regime_ma_window": 120,
+    "dip_lookback_days": 5,
+    "dip_threshold_pct": -0.08,
+    "rsi_window": 14,
+    "rsi_threshold": 30.0,
+    "max_hold_days": 7,
+    "atr_window": 14,
+    "atr_trailing_mult": 2.5
+  },
+  "stage2_candidate_params": {
+    "regime_ticker": "KRW-BTC",
+    "regime_ma_window": 120,
+    "dip_lookback_days": 5,
+    "dip_threshold_pct": -0.04,
+    "rsi_window": 14,
+    "rsi_threshold": 45.0,
+    "max_hold_days": 7,
+    "atr_window": 14,
+    "atr_trailing_mult": 3.0
+  },
+  "default_strict_results": {
+    "KRW-BTC": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": 0.026364718323307335,
+      "benchmark_return": 0.1923820890608281,
+      "excess_return": -0.16601737073752076,
+      "mdd": 0.0,
+      "sharpe": 0.0,
+      "total_trades": 1,
+      "win_rate": 1.0,
+      "avg_hold_days": 7.0,
+      "expectancy": 0.026364718323307335,
+      "exit_counts": {
+        "rcdb_time_exit": 1
+      }
+    },
+    "KRW-ETH": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": 0.004625905570696309,
+      "benchmark_return": -0.23645743766122096,
+      "excess_return": 0.24108334323191727,
+      "mdd": 0.0,
+      "sharpe": 0.0,
+      "total_trades": 1,
+      "win_rate": 1.0,
+      "avg_hold_days": 7.0,
+      "expectancy": 0.004625905570696309,
+      "exit_counts": {
+        "rcdb_time_exit": 1
+      }
+    },
+    "KRW-XRP": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": -0.045295268245247544,
+      "benchmark_return": 1.6640257489477595,
+      "excess_return": -1.709321017193007,
+      "mdd": 0.0,
+      "sharpe": 0.0,
+      "total_trades": 1,
+      "win_rate": 0.0,
+      "avg_hold_days": 7.0,
+      "expectancy": -0.045295268245247544,
+      "exit_counts": {
+        "rcdb_time_exit": 1
+      }
+    }
+  },
+  "stage2_candidate_results": {
+    "KRW-BTC": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": 0.08306899447687366,
+      "benchmark_return": 0.1923820890608281,
+      "excess_return": -0.10931309458395444,
+      "mdd": -0.026730882114770357,
+      "sharpe": 0.35770694255390156,
+      "total_trades": 9,
+      "win_rate": 0.5555555555555556,
+      "avg_hold_days": 6.333333333333333,
+      "expectancy": 0.01076219183235462,
+      "exit_counts": {
+        "rcdb_trailing_exit": 1,
+        "rcdb_time_exit": 7,
+        "rcdb_regime_off": 1
+      }
+    },
+    "KRW-ETH": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": 0.23368400881399887,
+      "benchmark_return": -0.23645743766122096,
+      "excess_return": 0.4701414464752198,
+      "mdd": -0.196469525143427,
+      "sharpe": 0.45427711965570755,
+      "total_trades": 16,
+      "win_rate": 0.5,
+      "avg_hold_days": 6.5625,
+      "expectancy": 0.01823504160494261,
+      "exit_counts": {
+        "rcdb_time_exit": 13,
+        "rcdb_regime_off": 3
+      }
+    },
+    "KRW-XRP": {
+      "start": "2024-04-22",
+      "end": "2026-04-22",
+      "cumulative_return": 0.09425372315006286,
+      "benchmark_return": 1.6640257489477595,
+      "excess_return": -1.5697720257976966,
+      "mdd": -0.35471298843228544,
+      "sharpe": 0.293911597404623,
+      "total_trades": 19,
+      "win_rate": 0.631578947368421,
+      "avg_hold_days": 6.315789473684211,
+      "expectancy": 0.008876987913044705,
+      "exit_counts": {
+        "rcdb_time_exit": 16,
+        "rcdb_trailing_exit": 1,
+        "rcdb_regime_off": 2
+      }
+    }
+  },
+  "notes": [
+    "default_strict_results shows the spec-like first-pass configuration",
+    "stage2_candidate_results uses the least-bad bounded neighborhood that raised trade count without changing the RCDB logic family"
+  ]
+}

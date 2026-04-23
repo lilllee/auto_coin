@@ -109,6 +109,8 @@ def test_atomic_update_exception_releases_lock(tmp_path):
     with pytest.raises(ValueError, match="test error"):
         store.atomic_update(bad_fn)
 
+    assert store.load().daily_pnl_ratio == pytest.approx(0.05)
+
     # lock이 풀렸으므로 이후 정상 작업 가능
     result = store.atomic_update(lambda s: State(
         daily_pnl_ratio=s.daily_pnl_ratio + 0.01,

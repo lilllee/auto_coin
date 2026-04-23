@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 from auto_coin.backtest.walk_forward import (
+    DEFAULT_PARAM_GRIDS,
     WalkForwardResult,
     WalkForwardWindow,
     _param_combos,
@@ -67,6 +68,13 @@ def test_param_combos_mixed():
     for combo in result:
         assert combo["ma_window"] == 5
         assert combo["k"] in (0.3, 0.5)
+
+
+def test_default_param_grids_cover_new_candidates():
+    assert "sma200_regime" in DEFAULT_PARAM_GRIDS
+    assert "ema_adx_atr_trend" in DEFAULT_PARAM_GRIDS
+    assert DEFAULT_PARAM_GRIDS["sma200_regime"]["ma_window"] == [180, 200, 220]
+    assert DEFAULT_PARAM_GRIDS["ema_adx_atr_trend"]["atr_window"] == 14
 
 
 # ===================================================================

@@ -15,7 +15,8 @@ class EmaAdxAtrTrendStrategy(Strategy):
         2) ema_fast > ema_slow (골든크로스 상태)
         3) adx >= adx_threshold (추세 강도 확인)
 
-    청산/손절은 외부 RiskManager(ATR 기반)가 처리.
+    ATR 컬럼은 외부 RiskManager의 초기 스탑/트레일링 계산용으로 함께 요구한다.
+    청산/손절은 기본적으로 외부 RiskManager(ATR 기반)가 처리한다.
     allow_sell_signal=True 시 ema_fast <= ema_slow에서 SELL.
     """
 
@@ -24,6 +25,7 @@ class EmaAdxAtrTrendStrategy(Strategy):
     ema_slow_window: int = 125
     adx_window: int = 90
     adx_threshold: float = 14.0
+    atr_window: int = 14
     allow_sell_signal: bool = False
 
     def __post_init__(self) -> None:
@@ -33,6 +35,8 @@ class EmaAdxAtrTrendStrategy(Strategy):
             raise ValueError("ema_slow_window must be > ema_fast_window")
         if self.adx_window < 1:
             raise ValueError(f"adx_window must be >= 1, got {self.adx_window}")
+        if self.atr_window < 1:
+            raise ValueError(f"atr_window must be >= 1, got {self.atr_window}")
         if self.adx_threshold < 0:
             raise ValueError(f"adx_threshold must be >= 0, got {self.adx_threshold}")
 
@@ -47,13 +51,15 @@ class EmaAdxAtrTrendStrategy(Strategy):
         ema_fast_col = f"ema{self.ema_fast_window}"
         ema_slow_col = f"ema{self.ema_slow_window}"
         adx_col = f"adx{self.adx_window}"
+        atr_col = f"atr{self.atr_window}"
 
         ema_fast = last.get(ema_fast_col)
         ema_slow = last.get(ema_slow_col)
         adx = last.get(adx_col)
+        atr = last.get(atr_col)
 
         # Missing data guard
-        for val, _name in [(ema_fast, ema_fast_col), (ema_slow, ema_slow_col), (adx, adx_col)]:
+        for val in (ema_fast, ema_slow, adx, atr):
             if val is None or (isinstance(val, float) and math.isnan(val)):
                 return Signal.HOLD
 
