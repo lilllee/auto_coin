@@ -172,7 +172,9 @@ def _compute_hourly_features(hourly_df: pd.DataFrame) -> pd.DataFrame:
 
 def _btc_daily_regime_projection(btc_daily: pd.DataFrame, target_index: pd.Index) -> pd.Series:
     sma = btc_daily["close"].rolling(BTC_DAILY_SMA_WINDOW).mean().shift(1)
-    regime_on = (btc_daily["close"] >= sma).astype("boolean")
+    # shift(1) so that 30m bars inside day d see regime derived from day d-1's
+    # close only; day d's close isn't confirmed until end of day d.
+    regime_on = (btc_daily["close"] >= sma).astype("boolean").shift(1)
     proj = project_higher_timeframe_features(
         regime_on.to_frame("btc_daily_regime_on"),
         target_index,
