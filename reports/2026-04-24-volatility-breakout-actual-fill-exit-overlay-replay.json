@@ -1,0 +1,440 @@
+{
+  "as_of": "2026-04-24",
+  "strategy": "volatility_breakout",
+  "scope": "actual-fill replay only; no strategy/live/paper/UI/KPI/settings changes",
+  "input_source": "state_files",
+  "orders_file": null,
+  "fee": 0.0005,
+  "slippage": 0.0005,
+  "period_start": "2026-04-16T12:55:32",
+  "period_end": "2026-04-16T22:54:12",
+  "tickers": [
+    "KRW-DOGE",
+    "KRW-XRP"
+  ],
+  "orders_parsed": 5,
+  "matched_closed_trades": 2,
+  "unmatched_sells": [],
+  "open_buys": [
+    {
+      "ts": "2026-04-16 18:15:37",
+      "ticker": "KRW-XRP",
+      "side": "buy",
+      "volume": 28.58344858691962,
+      "price": 2090.0,
+      "gross_krw": 59739.407546662005,
+      "fee_krw": 29.869703773331004,
+      "net_krw": 59769.277250435334,
+      "source": "state_file",
+      "note": "client_uuid=d63cba4b-ce37-407e-99f7-cc42678e2fcd | open-lot"
+    }
+  ],
+  "incomplete_orders_from_state": [],
+  "baseline_totals": {
+    "total_allocated_cost_krw": 107840.7336867133,
+    "total_baseline_pnl_krw": -2348.6321346726763,
+    "total_baseline_return_on_cost": -0.021778710644677703,
+    "wins": 0,
+    "losses": 2
+  },
+  "overlay_aggregates": {
+    "failed_breakout_60m": {
+      "overlay": "failed_breakout_60m",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -1988.7084472865754,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.018441162066496562,
+      "delta_pnl_krw": 359.92368738610094,
+      "delta_return_on_cost": 0.00333754857818114,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.018834087296629318,
+      "worst_trade_return": -0.022301104656005172,
+      "best_trade_return": -0.015367069937253463,
+      "early_exit_count": 2,
+      "missed_gain_sum_krw": 24.975367686885875,
+      "saved_loss_sum_krw": 384.8990550729868,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -1988.7084472865754,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 359.92368738610094,
+          "early_exits": 2
+        }
+      },
+      "exit_reason_counts": {
+        "failed_breakout_60m": 2
+      }
+    },
+    "failed_breakout_120m": {
+      "overlay": "failed_breakout_120m",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -2348.6321346726763,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.021778710644677703,
+      "delta_pnl_krw": 0.0,
+      "delta_return_on_cost": 0.0,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.021778710644677703,
+      "worst_trade_return": -0.021778710644677724,
+      "best_trade_return": -0.021778710644677683,
+      "early_exit_count": 0,
+      "missed_gain_sum_krw": 0.0,
+      "saved_loss_sum_krw": 0.0,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -2348.6321346726763,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 0.0,
+          "early_exits": 0
+        }
+      },
+      "exit_reason_counts": {
+        "actual_sell": 2
+      }
+    },
+    "trailing_1p5_atr25": {
+      "overlay": "trailing_1p5_atr25",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -2348.6321346726763,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.021778710644677703,
+      "delta_pnl_krw": 0.0,
+      "delta_return_on_cost": 0.0,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.021778710644677703,
+      "worst_trade_return": -0.021778710644677724,
+      "best_trade_return": -0.021778710644677683,
+      "early_exit_count": 0,
+      "missed_gain_sum_krw": 0.0,
+      "saved_loss_sum_krw": 0.0,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -2348.6321346726763,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 0.0,
+          "early_exits": 0
+        }
+      },
+      "exit_reason_counts": {
+        "actual_sell": 2
+      }
+    },
+    "trailing_2p0_atr30": {
+      "overlay": "trailing_2p0_atr30",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -2348.6321346726763,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.021778710644677703,
+      "delta_pnl_krw": 0.0,
+      "delta_return_on_cost": 0.0,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.021778710644677703,
+      "worst_trade_return": -0.021778710644677724,
+      "best_trade_return": -0.021778710644677683,
+      "early_exit_count": 0,
+      "missed_gain_sum_krw": 0.0,
+      "saved_loss_sum_krw": 0.0,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -2348.6321346726763,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 0.0,
+          "early_exits": 0
+        }
+      },
+      "exit_reason_counts": {
+        "actual_sell": 2
+      }
+    },
+    "time_decay_4h_flat": {
+      "overlay": "time_decay_4h_flat",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -2348.6321346726763,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.021778710644677703,
+      "delta_pnl_krw": 0.0,
+      "delta_return_on_cost": 0.0,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.021778710644677703,
+      "worst_trade_return": -0.021778710644677724,
+      "best_trade_return": -0.021778710644677683,
+      "early_exit_count": 0,
+      "missed_gain_sum_krw": 0.0,
+      "saved_loss_sum_krw": 0.0,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -2348.6321346726763,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 0.0,
+          "early_exits": 0
+        }
+      },
+      "exit_reason_counts": {
+        "actual_sell": 2
+      }
+    },
+    "all_conservative": {
+      "overlay": "all_conservative",
+      "total_trades": 2,
+      "total_allocated_cost_krw": 107840.7336867133,
+      "total_baseline_pnl_krw": -2348.6321346726763,
+      "total_overlay_pnl_krw": -2348.6321346726763,
+      "total_baseline_return_on_cost": -0.021778710644677703,
+      "total_overlay_return_on_cost": -0.021778710644677703,
+      "delta_pnl_krw": 0.0,
+      "delta_return_on_cost": 0.0,
+      "win_rate": 0.0,
+      "avg_win_return": 0.0,
+      "avg_loss_return": -0.021778710644677703,
+      "worst_trade_return": -0.021778710644677724,
+      "best_trade_return": -0.021778710644677683,
+      "early_exit_count": 0,
+      "missed_gain_sum_krw": 0.0,
+      "saved_loss_sum_krw": 0.0,
+      "by_ticker": {
+        "KRW-DOGE": {
+          "trades": 2,
+          "total_overlay_pnl_krw": -2348.6321346726763,
+          "total_baseline_pnl_krw": -2348.6321346726763,
+          "delta_pnl_krw": 0.0,
+          "early_exits": 0
+        }
+      },
+      "exit_reason_counts": {
+        "actual_sell": 2
+      }
+    }
+  },
+  "per_overlay_trades": {
+    "failed_breakout_60m": [
+      {
+        "overlay": "failed_breakout_60m",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:00:00",
+        "exit_reason": "failed_breakout_60m",
+        "exit_price": 142.0,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -922.5050136138234,
+        "overlay_return": -0.015367069937253463,
+        "delta_pnl_krw": 384.8990550729868,
+        "delta_return": 0.006411640707424261
+      },
+      {
+        "overlay": "failed_breakout_60m",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:30:00",
+        "exit_reason": "failed_breakout_60m",
+        "exit_price": 141.0,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1066.203433672752,
+        "overlay_return": -0.022301104656005172,
+        "delta_pnl_krw": -24.975367686885875,
+        "delta_return": -0.00052239401132749
+      }
+    ],
+    "failed_breakout_120m": [
+      {
+        "overlay": "failed_breakout_120m",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:16:39",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -1307.4040686868102,
+        "overlay_return": -0.021778710644677724,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      },
+      {
+        "overlay": "failed_breakout_120m",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:54:12",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1041.2280659858661,
+        "overlay_return": -0.021778710644677683,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      }
+    ],
+    "trailing_1p5_atr25": [
+      {
+        "overlay": "trailing_1p5_atr25",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:16:39",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -1307.4040686868102,
+        "overlay_return": -0.021778710644677724,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      },
+      {
+        "overlay": "trailing_1p5_atr25",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:54:12",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1041.2280659858661,
+        "overlay_return": -0.021778710644677683,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      }
+    ],
+    "trailing_2p0_atr30": [
+      {
+        "overlay": "trailing_2p0_atr30",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:16:39",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -1307.4040686868102,
+        "overlay_return": -0.021778710644677724,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      },
+      {
+        "overlay": "trailing_2p0_atr30",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:54:12",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1041.2280659858661,
+        "overlay_return": -0.021778710644677683,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      }
+    ],
+    "time_decay_4h_flat": [
+      {
+        "overlay": "time_decay_4h_flat",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:16:39",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -1307.4040686868102,
+        "overlay_return": -0.021778710644677724,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      },
+      {
+        "overlay": "time_decay_4h_flat",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:54:12",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1041.2280659858661,
+        "overlay_return": -0.021778710644677683,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      }
+    ],
+    "all_conservative": [
+      {
+        "overlay": "all_conservative",
+        "trade_index": 0,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T12:55:32",
+        "sell_ts_baseline": "2026-04-16T14:16:39",
+        "exit_ts_overlay": "2026-04-16T14:16:39",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1307.4040686868102,
+        "baseline_return": -0.021778710644677724,
+        "overlay_pnl_krw": -1307.4040686868102,
+        "overlay_return": -0.021778710644677724,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      },
+      {
+        "overlay": "all_conservative",
+        "trade_index": 1,
+        "ticker": "KRW-DOGE",
+        "buy_ts": "2026-04-16T21:13:02",
+        "sell_ts_baseline": "2026-04-16T22:54:12",
+        "exit_ts_overlay": "2026-04-16T22:54:12",
+        "exit_reason": "actual_sell",
+        "exit_price": 141.0048,
+        "baseline_pnl_krw": -1041.2280659858661,
+        "baseline_return": -0.021778710644677683,
+        "overlay_pnl_krw": -1041.2280659858661,
+        "overlay_return": -0.021778710644677683,
+        "delta_pnl_krw": 0.0,
+        "delta_return": 0.0
+      }
+    ]
+  },
+  "recommendation": {
+    "label": "RETEST_WITH_MORE_FILLS",
+    "reason": "Only 2 matched closed trades available (< 20). Codex 0008 decision rule requires more fills before an overlay verdict can be issued.",
+    "matched_count": 2
+  },
+  "caveat": "Actual-fill replay assumes hypothetical overlay sells would have been filled at the rule price with configured fee + slippage; real market conditions at overlay times may differ from the 30m OHLCV close/high/low snapshots."
+}
