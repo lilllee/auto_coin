@@ -1,0 +1,1366 @@
+{
+  "as_of": "2026-04-23",
+  "strategy": "regime_relative_breakout_30m",
+  "scope": "walk-forward diagnostics only; no strategy/paper/live changes",
+  "wf_report_path": "reports/2026-04-23-regime-relative-breakout-30m-walk-forward.json",
+  "num_folds": 9,
+  "num_problem_samples": 10,
+  "mfe_mae_skipped_reason": "trade objects do not carry per-trade MFE/MAE and reconstructing them from OHLCV windows adds cost for little diagnostic signal beyond the exit-reason breakdown",
+  "fold_diagnostics": [
+    {
+      "fold": 0,
+      "test_start": "2024-10-21T19:00:00",
+      "test_end": "2024-12-20T19:00:00",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 10,
+          "expectancy": 0.004907693905290144,
+          "cumulative_return": 0.04739276468832587,
+          "benchmark_return": 0.32398165632586995,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2880,
+            "rs_24h_positive_count": 1089,
+            "rs_7d_positive_count": 1196,
+            "rs_both_positive_count": 648,
+            "hourly_trend_count": 1104,
+            "breakout_count": 243,
+            "volume_count": 827,
+            "regime_and_rs_count": 648,
+            "regime_rs_trend_count": 530,
+            "regime_rs_trend_breakout_count": 61,
+            "full_entry_count": 36,
+            "full_entry_except_volume": 25,
+            "full_entry_except_breakout": 101,
+            "full_entry_except_rs_7d": 10,
+            "full_entry_except_hourly_trend": 6
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.378125,
+            "rs_7d_positive_count_ratio": 0.4152777777777778,
+            "rs_both_positive_count_ratio": 0.225,
+            "hourly_trend_count_ratio": 0.38333333333333336,
+            "breakout_count_ratio": 0.084375,
+            "volume_count_ratio": 0.28715277777777776,
+            "regime_and_rs_count_ratio": 0.225,
+            "regime_rs_trend_count_ratio": 0.1840277777777778,
+            "regime_rs_trend_breakout_count_ratio": 0.021180555555555557,
+            "full_entry_count_ratio": 0.0125,
+            "full_entry_except_volume_ratio": 0.008680555555555556,
+            "full_entry_except_breakout_ratio": 0.035069444444444445,
+            "full_entry_except_rs_7d_ratio": 0.003472222222222222,
+            "full_entry_except_hourly_trend_ratio": 0.0020833333333333333
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 2232,
+            "hourly_trend_absent": 118,
+            "breakout_absent": 469,
+            "volume_absent": 25
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 23,
+          "expectancy": 0.033463750936111064,
+          "cumulative_return": 0.8743948719358059,
+          "benchmark_return": 3.223128535718984,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2880,
+            "rs_24h_positive_count": 1387,
+            "rs_7d_positive_count": 1605,
+            "rs_both_positive_count": 1096,
+            "hourly_trend_count": 1324,
+            "breakout_count": 277,
+            "volume_count": 830,
+            "regime_and_rs_count": 1096,
+            "regime_rs_trend_count": 848,
+            "regime_rs_trend_breakout_count": 110,
+            "full_entry_count": 72,
+            "full_entry_except_volume": 38,
+            "full_entry_except_breakout": 159,
+            "full_entry_except_rs_7d": 10,
+            "full_entry_except_hourly_trend": 17
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.48159722222222223,
+            "rs_7d_positive_count_ratio": 0.5572916666666666,
+            "rs_both_positive_count_ratio": 0.38055555555555554,
+            "hourly_trend_count_ratio": 0.4597222222222222,
+            "breakout_count_ratio": 0.09618055555555556,
+            "volume_count_ratio": 0.2881944444444444,
+            "regime_and_rs_count_ratio": 0.38055555555555554,
+            "regime_rs_trend_count_ratio": 0.29444444444444445,
+            "regime_rs_trend_breakout_count_ratio": 0.03819444444444445,
+            "full_entry_count_ratio": 0.025,
+            "full_entry_except_volume_ratio": 0.013194444444444444,
+            "full_entry_except_breakout_ratio": 0.05520833333333333,
+            "full_entry_except_rs_7d_ratio": 0.003472222222222222,
+            "full_entry_except_hourly_trend_ratio": 0.005902777777777778
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 1784,
+            "hourly_trend_absent": 248,
+            "breakout_absent": 738,
+            "volume_absent": 38
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 1,
+      "test_start": "2024-12-20T19:00:00",
+      "test_end": "2025-02-18T19:00:00",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 7,
+          "expectancy": -0.0079118557146352,
+          "cumulative_return": -0.05510987120789468,
+          "benchmark_return": -0.1638534376286538,
+          "status": "negative_expectancy",
+          "counts": {
+            "bars_total": 2869,
+            "btc_daily_regime_on_count": 2869,
+            "rs_24h_positive_count": 1286,
+            "rs_7d_positive_count": 780,
+            "rs_both_positive_count": 502,
+            "hourly_trend_count": 644,
+            "breakout_count": 204,
+            "volume_count": 789,
+            "regime_and_rs_count": 502,
+            "regime_rs_trend_count": 238,
+            "regime_rs_trend_breakout_count": 19,
+            "full_entry_count": 12,
+            "full_entry_except_volume": 7,
+            "full_entry_except_breakout": 40,
+            "full_entry_except_rs_7d": 18,
+            "full_entry_except_hourly_trend": 10
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.44823980481003833,
+            "rs_7d_positive_count_ratio": 0.2718717323109097,
+            "rs_both_positive_count_ratio": 0.17497385848727778,
+            "hourly_trend_count_ratio": 0.22446845590798187,
+            "breakout_count_ratio": 0.07110491460439178,
+            "volume_count_ratio": 0.2750087138375741,
+            "regime_and_rs_count_ratio": 0.17497385848727778,
+            "regime_rs_trend_count_ratio": 0.08295573370512374,
+            "regime_rs_trend_breakout_count_ratio": 0.006622516556291391,
+            "full_entry_count_ratio": 0.004182642035552457,
+            "full_entry_except_volume_ratio": 0.0024398745207389336,
+            "full_entry_except_breakout_ratio": 0.013942140118508192,
+            "full_entry_except_rs_7d_ratio": 0.006273963053328686,
+            "full_entry_except_hourly_trend_ratio": 0.003485535029627048
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 2367,
+            "hourly_trend_absent": 264,
+            "breakout_absent": 219,
+            "volume_absent": 7
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 14,
+          "expectancy": 0.006593491206121349,
+          "cumulative_return": 0.08718597007565232,
+          "benchmark_return": 0.23052763819095468,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2869,
+            "btc_daily_regime_on_count": 2869,
+            "rs_24h_positive_count": 1376,
+            "rs_7d_positive_count": 1389,
+            "rs_both_positive_count": 791,
+            "hourly_trend_count": 824,
+            "breakout_count": 206,
+            "volume_count": 752,
+            "regime_and_rs_count": 791,
+            "regime_rs_trend_count": 535,
+            "regime_rs_trend_breakout_count": 59,
+            "full_entry_count": 46,
+            "full_entry_except_volume": 13,
+            "full_entry_except_breakout": 96,
+            "full_entry_except_rs_7d": 4,
+            "full_entry_except_hourly_trend": 15
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.4796096200766818,
+            "rs_7d_positive_count_ratio": 0.48414081561519695,
+            "rs_both_positive_count_ratio": 0.2757058208434995,
+            "hourly_trend_count_ratio": 0.2872080864412687,
+            "breakout_count_ratio": 0.07180202161031718,
+            "volume_count_ratio": 0.262112234227954,
+            "regime_and_rs_count_ratio": 0.2757058208434995,
+            "regime_rs_trend_count_ratio": 0.18647612408504705,
+            "regime_rs_trend_breakout_count_ratio": 0.02056465667479958,
+            "full_entry_count_ratio": 0.01603346113628442,
+            "full_entry_except_volume_ratio": 0.004531195538515162,
+            "full_entry_except_breakout_ratio": 0.03346113628441966,
+            "full_entry_except_rs_7d_ratio": 0.0013942140118508191,
+            "full_entry_except_hourly_trend_ratio": 0.005228302544440571
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 2078,
+            "hourly_trend_absent": 256,
+            "breakout_absent": 476,
+            "volume_absent": 13
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 2,
+      "test_start": "2025-02-18T19:00:00",
+      "test_end": "2025-04-19T19:00:00",
+      "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+          "trades": 2,
+          "expectancy": -0.01244763297680862,
+          "cumulative_return": -0.024754256931160845,
+          "benchmark_return": -0.4309283427727161,
+          "status": "negative_expectancy",
+          "counts": {
+            "bars_total": 2869,
+            "btc_daily_regime_on_count": 172,
+            "rs_24h_positive_count": 1102,
+            "rs_7d_positive_count": 679,
+            "rs_both_positive_count": 396,
+            "hourly_trend_count": 562,
+            "breakout_count": 188,
+            "volume_count": 797,
+            "regime_and_rs_count": 61,
+            "regime_rs_trend_count": 18,
+            "regime_rs_trend_breakout_count": 2,
+            "full_entry_count": 2,
+            "full_entry_except_volume": 0,
+            "full_entry_except_breakout": 10,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 1
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.05995120250958522,
+            "rs_24h_positive_count_ratio": 0.3841059602649007,
+            "rs_7d_positive_count_ratio": 0.23666782851167653,
+            "rs_both_positive_count_ratio": 0.1380271871732311,
+            "hourly_trend_count_ratio": 0.19588706866504008,
+            "breakout_count_ratio": 0.0655280585569885,
+            "volume_count_ratio": 0.2777971418612757,
+            "regime_and_rs_count_ratio": 0.02126176368072499,
+            "regime_rs_trend_count_ratio": 0.006273963053328686,
+            "regime_rs_trend_breakout_count_ratio": 0.0006971070059254096,
+            "full_entry_count_ratio": 0.0006971070059254096,
+            "full_entry_except_volume_ratio": 0.0,
+            "full_entry_except_breakout_ratio": 0.003485535029627048,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0003485535029627048
+          },
+          "stage_drops": {
+            "btc_regime_off": 2697,
+            "relative_strength_absent": 111,
+            "hourly_trend_absent": 43,
+            "breakout_absent": 16,
+            "volume_absent": 0
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+          "trades": 0,
+          "expectancy": 0.0,
+          "cumulative_return": 0.0,
+          "benchmark_return": -0.22799385875127942,
+          "status": "zero_trade",
+          "counts": {
+            "bars_total": 2870,
+            "btc_daily_regime_on_count": 172,
+            "rs_24h_positive_count": 1103,
+            "rs_7d_positive_count": 1268,
+            "rs_both_positive_count": 521,
+            "hourly_trend_count": 738,
+            "breakout_count": 208,
+            "volume_count": 796,
+            "regime_and_rs_count": 55,
+            "regime_rs_trend_count": 31,
+            "regime_rs_trend_breakout_count": 1,
+            "full_entry_count": 0,
+            "full_entry_except_volume": 1,
+            "full_entry_except_breakout": 6,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 5
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.059930313588850176,
+            "rs_24h_positive_count_ratio": 0.3843205574912892,
+            "rs_7d_positive_count_ratio": 0.4418118466898955,
+            "rs_both_positive_count_ratio": 0.18153310104529616,
+            "hourly_trend_count_ratio": 0.2571428571428571,
+            "breakout_count_ratio": 0.07247386759581882,
+            "volume_count_ratio": 0.27735191637630663,
+            "regime_and_rs_count_ratio": 0.01916376306620209,
+            "regime_rs_trend_count_ratio": 0.010801393728222997,
+            "regime_rs_trend_breakout_count_ratio": 0.0003484320557491289,
+            "full_entry_count_ratio": 0.0,
+            "full_entry_except_volume_ratio": 0.0003484320557491289,
+            "full_entry_except_breakout_ratio": 0.0020905923344947735,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0017421602787456446
+          },
+          "stage_drops": {
+            "btc_regime_off": 2698,
+            "relative_strength_absent": 117,
+            "hourly_trend_absent": 24,
+            "breakout_absent": 30,
+            "volume_absent": 1
+          },
+          "primary_blocker": "btc_regime_off"
+        }
+      }
+    },
+    {
+      "fold": 3,
+      "test_start": "2025-04-19T19:00:00",
+      "test_end": "2025-06-18T19:00:00",
+      "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+          "trades": 19,
+          "expectancy": 0.005961470498357175,
+          "cumulative_return": 0.09461237467152084,
+          "benchmark_return": 0.5173160173160174,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2516,
+            "rs_24h_positive_count": 1411,
+            "rs_7d_positive_count": 1759,
+            "rs_both_positive_count": 1072,
+            "hourly_trend_count": 1030,
+            "breakout_count": 257,
+            "volume_count": 782,
+            "regime_and_rs_count": 996,
+            "regime_rs_trend_count": 614,
+            "regime_rs_trend_breakout_count": 79,
+            "full_entry_count": 56,
+            "full_entry_except_volume": 23,
+            "full_entry_except_breakout": 127,
+            "full_entry_except_rs_7d": 11,
+            "full_entry_except_hourly_trend": 23
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.8736111111111111,
+            "rs_24h_positive_count_ratio": 0.48993055555555554,
+            "rs_7d_positive_count_ratio": 0.6107638888888889,
+            "rs_both_positive_count_ratio": 0.37222222222222223,
+            "hourly_trend_count_ratio": 0.3576388888888889,
+            "breakout_count_ratio": 0.08923611111111111,
+            "volume_count_ratio": 0.27152777777777776,
+            "regime_and_rs_count_ratio": 0.3458333333333333,
+            "regime_rs_trend_count_ratio": 0.21319444444444444,
+            "regime_rs_trend_breakout_count_ratio": 0.027430555555555555,
+            "full_entry_count_ratio": 0.019444444444444445,
+            "full_entry_except_volume_ratio": 0.00798611111111111,
+            "full_entry_except_breakout_ratio": 0.044097222222222225,
+            "full_entry_except_rs_7d_ratio": 0.0038194444444444443,
+            "full_entry_except_hourly_trend_ratio": 0.00798611111111111
+          },
+          "stage_drops": {
+            "btc_regime_off": 364,
+            "relative_strength_absent": 1520,
+            "hourly_trend_absent": 382,
+            "breakout_absent": 535,
+            "volume_absent": 23
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+          "trades": 6,
+          "expectancy": 0.0006766748358854602,
+          "cumulative_return": 0.0033859394274071697,
+          "benchmark_return": -0.009628154050464799,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2516,
+            "rs_24h_positive_count": 1077,
+            "rs_7d_positive_count": 674,
+            "rs_both_positive_count": 424,
+            "hourly_trend_count": 742,
+            "breakout_count": 228,
+            "volume_count": 796,
+            "regime_and_rs_count": 390,
+            "regime_rs_trend_count": 245,
+            "regime_rs_trend_breakout_count": 20,
+            "full_entry_count": 14,
+            "full_entry_except_volume": 6,
+            "full_entry_except_breakout": 65,
+            "full_entry_except_rs_7d": 20,
+            "full_entry_except_hourly_trend": 9
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.8736111111111111,
+            "rs_24h_positive_count_ratio": 0.37395833333333334,
+            "rs_7d_positive_count_ratio": 0.23402777777777778,
+            "rs_both_positive_count_ratio": 0.14722222222222223,
+            "hourly_trend_count_ratio": 0.25763888888888886,
+            "breakout_count_ratio": 0.07916666666666666,
+            "volume_count_ratio": 0.2763888888888889,
+            "regime_and_rs_count_ratio": 0.13541666666666666,
+            "regime_rs_trend_count_ratio": 0.08506944444444445,
+            "regime_rs_trend_breakout_count_ratio": 0.006944444444444444,
+            "full_entry_count_ratio": 0.004861111111111111,
+            "full_entry_except_volume_ratio": 0.0020833333333333333,
+            "full_entry_except_breakout_ratio": 0.022569444444444444,
+            "full_entry_except_rs_7d_ratio": 0.006944444444444444,
+            "full_entry_except_hourly_trend_ratio": 0.003125
+          },
+          "stage_drops": {
+            "btc_regime_off": 364,
+            "relative_strength_absent": 2126,
+            "hourly_trend_absent": 145,
+            "breakout_absent": 225,
+            "volume_absent": 6
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 4,
+      "test_start": "2025-06-18T19:00:00",
+      "test_end": "2025-08-17T19:00:00",
+      "selected_candidate": "wf_d_stop2_trail35_hold48_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_d_stop2_trail35_hold48_confirm2",
+          "trades": 35,
+          "expectancy": 0.0012327871353868996,
+          "cumulative_return": 0.036324395003647814,
+          "benchmark_return": 0.802175780131692,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2870,
+            "btc_daily_regime_on_count": 2870,
+            "rs_24h_positive_count": 1652,
+            "rs_7d_positive_count": 2048,
+            "rs_both_positive_count": 1318,
+            "hourly_trend_count": 1439,
+            "breakout_count": 271,
+            "volume_count": 771,
+            "regime_and_rs_count": 1318,
+            "regime_rs_trend_count": 1052,
+            "regime_rs_trend_breakout_count": 139,
+            "full_entry_count": 93,
+            "full_entry_except_volume": 46,
+            "full_entry_except_breakout": 230,
+            "full_entry_except_rs_7d": 8,
+            "full_entry_except_hourly_trend": 20
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.5756097560975609,
+            "rs_7d_positive_count_ratio": 0.713588850174216,
+            "rs_both_positive_count_ratio": 0.4592334494773519,
+            "hourly_trend_count_ratio": 0.5013937282229965,
+            "breakout_count_ratio": 0.09442508710801394,
+            "volume_count_ratio": 0.2686411149825784,
+            "regime_and_rs_count_ratio": 0.4592334494773519,
+            "regime_rs_trend_count_ratio": 0.36655052264808363,
+            "regime_rs_trend_breakout_count_ratio": 0.04843205574912892,
+            "full_entry_count_ratio": 0.03240418118466899,
+            "full_entry_except_volume_ratio": 0.01602787456445993,
+            "full_entry_except_breakout_ratio": 0.08013937282229965,
+            "full_entry_except_rs_7d_ratio": 0.0027874564459930314,
+            "full_entry_except_hourly_trend_ratio": 0.006968641114982578
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 1552,
+            "hourly_trend_absent": 266,
+            "breakout_absent": 913,
+            "volume_absent": 46
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_d_stop2_trail35_hold48_confirm2",
+          "trades": 24,
+          "expectancy": 0.005365829856266267,
+          "cumulative_return": 0.12340630456179746,
+          "benchmark_return": 0.46096904441453557,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2870,
+            "btc_daily_regime_on_count": 2870,
+            "rs_24h_positive_count": 1545,
+            "rs_7d_positive_count": 1601,
+            "rs_both_positive_count": 992,
+            "hourly_trend_count": 1084,
+            "breakout_count": 290,
+            "volume_count": 796,
+            "regime_and_rs_count": 992,
+            "regime_rs_trend_count": 735,
+            "regime_rs_trend_breakout_count": 111,
+            "full_entry_count": 75,
+            "full_entry_except_volume": 36,
+            "full_entry_except_breakout": 167,
+            "full_entry_except_rs_7d": 10,
+            "full_entry_except_hourly_trend": 6
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 1.0,
+            "rs_24h_positive_count_ratio": 0.5383275261324042,
+            "rs_7d_positive_count_ratio": 0.5578397212543554,
+            "rs_both_positive_count_ratio": 0.3456445993031359,
+            "hourly_trend_count_ratio": 0.37770034843205574,
+            "breakout_count_ratio": 0.10104529616724739,
+            "volume_count_ratio": 0.27735191637630663,
+            "regime_and_rs_count_ratio": 0.3456445993031359,
+            "regime_rs_trend_count_ratio": 0.25609756097560976,
+            "regime_rs_trend_breakout_count_ratio": 0.03867595818815331,
+            "full_entry_count_ratio": 0.02613240418118467,
+            "full_entry_except_volume_ratio": 0.012543554006968641,
+            "full_entry_except_breakout_ratio": 0.05818815331010453,
+            "full_entry_except_rs_7d_ratio": 0.003484320557491289,
+            "full_entry_except_hourly_trend_ratio": 0.0020905923344947735
+          },
+          "stage_drops": {
+            "btc_regime_off": 0,
+            "relative_strength_absent": 1878,
+            "hourly_trend_absent": 257,
+            "breakout_absent": 624,
+            "volume_absent": 36
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 5,
+      "test_start": "2025-08-17T19:00:00",
+      "test_end": "2025-10-16T19:00:00",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 12,
+          "expectancy": -0.003091043033954643,
+          "cumulative_return": -0.037341522670932825,
+          "benchmark_return": -0.027052832590706566,
+          "status": "negative_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2688,
+            "rs_24h_positive_count": 1249,
+            "rs_7d_positive_count": 1054,
+            "rs_both_positive_count": 550,
+            "hourly_trend_count": 882,
+            "breakout_count": 243,
+            "volume_count": 767,
+            "regime_and_rs_count": 550,
+            "regime_rs_trend_count": 410,
+            "regime_rs_trend_breakout_count": 50,
+            "full_entry_count": 34,
+            "full_entry_except_volume": 16,
+            "full_entry_except_breakout": 68,
+            "full_entry_except_rs_7d": 13,
+            "full_entry_except_hourly_trend": 5
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.9333333333333333,
+            "rs_24h_positive_count_ratio": 0.43368055555555557,
+            "rs_7d_positive_count_ratio": 0.3659722222222222,
+            "rs_both_positive_count_ratio": 0.1909722222222222,
+            "hourly_trend_count_ratio": 0.30625,
+            "breakout_count_ratio": 0.084375,
+            "volume_count_ratio": 0.26631944444444444,
+            "regime_and_rs_count_ratio": 0.1909722222222222,
+            "regime_rs_trend_count_ratio": 0.1423611111111111,
+            "regime_rs_trend_breakout_count_ratio": 0.017361111111111112,
+            "full_entry_count_ratio": 0.011805555555555555,
+            "full_entry_except_volume_ratio": 0.005555555555555556,
+            "full_entry_except_breakout_ratio": 0.02361111111111111,
+            "full_entry_except_rs_7d_ratio": 0.0045138888888888885,
+            "full_entry_except_hourly_trend_ratio": 0.001736111111111111
+          },
+          "stage_drops": {
+            "btc_regime_off": 192,
+            "relative_strength_absent": 2138,
+            "hourly_trend_absent": 140,
+            "breakout_absent": 360,
+            "volume_absent": 16
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+          "trades": 14,
+          "expectancy": -0.006648891505509189,
+          "cumulative_return": -0.089661374008415,
+          "benchmark_return": -0.15139626125086547,
+          "status": "negative_expectancy",
+          "counts": {
+            "bars_total": 2880,
+            "btc_daily_regime_on_count": 2688,
+            "rs_24h_positive_count": 1270,
+            "rs_7d_positive_count": 736,
+            "rs_both_positive_count": 459,
+            "hourly_trend_count": 780,
+            "breakout_count": 242,
+            "volume_count": 808,
+            "regime_and_rs_count": 459,
+            "regime_rs_trend_count": 337,
+            "regime_rs_trend_breakout_count": 41,
+            "full_entry_count": 37,
+            "full_entry_except_volume": 4,
+            "full_entry_except_breakout": 70,
+            "full_entry_except_rs_7d": 9,
+            "full_entry_except_hourly_trend": 5
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.9333333333333333,
+            "rs_24h_positive_count_ratio": 0.4409722222222222,
+            "rs_7d_positive_count_ratio": 0.25555555555555554,
+            "rs_both_positive_count_ratio": 0.159375,
+            "hourly_trend_count_ratio": 0.2708333333333333,
+            "breakout_count_ratio": 0.08402777777777778,
+            "volume_count_ratio": 0.28055555555555556,
+            "regime_and_rs_count_ratio": 0.159375,
+            "regime_rs_trend_count_ratio": 0.11701388888888889,
+            "regime_rs_trend_breakout_count_ratio": 0.01423611111111111,
+            "full_entry_count_ratio": 0.012847222222222222,
+            "full_entry_except_volume_ratio": 0.001388888888888889,
+            "full_entry_except_breakout_ratio": 0.024305555555555556,
+            "full_entry_except_rs_7d_ratio": 0.003125,
+            "full_entry_except_hourly_trend_ratio": 0.001736111111111111
+          },
+          "stage_drops": {
+            "btc_regime_off": 192,
+            "relative_strength_absent": 2229,
+            "hourly_trend_absent": 122,
+            "breakout_absent": 296,
+            "volume_absent": 4
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 6,
+      "test_start": "2025-10-16T19:00:00",
+      "test_end": "2025-12-15T19:00:00",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 1,
+          "expectancy": -0.011575463380047779,
+          "cumulative_return": -0.011575463380047779,
+          "benchmark_return": -0.2364347401010266,
+          "status": "negative_expectancy",
+          "counts": {
+            "bars_total": 2868,
+            "btc_daily_regime_on_count": 880,
+            "rs_24h_positive_count": 1376,
+            "rs_7d_positive_count": 1352,
+            "rs_both_positive_count": 770,
+            "hourly_trend_count": 664,
+            "breakout_count": 227,
+            "volume_count": 771,
+            "regime_and_rs_count": 165,
+            "regime_rs_trend_count": 46,
+            "regime_rs_trend_breakout_count": 3,
+            "full_entry_count": 1,
+            "full_entry_except_volume": 2,
+            "full_entry_except_breakout": 7,
+            "full_entry_except_rs_7d": 11,
+            "full_entry_except_hourly_trend": 3
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.3068340306834031,
+            "rs_24h_positive_count_ratio": 0.4797768479776848,
+            "rs_7d_positive_count_ratio": 0.4714086471408647,
+            "rs_both_positive_count_ratio": 0.2684797768479777,
+            "hourly_trend_count_ratio": 0.2315202231520223,
+            "breakout_count_ratio": 0.07914923291492329,
+            "volume_count_ratio": 0.2688284518828452,
+            "regime_and_rs_count_ratio": 0.05753138075313807,
+            "regime_rs_trend_count_ratio": 0.01603905160390516,
+            "regime_rs_trend_breakout_count_ratio": 0.0010460251046025104,
+            "full_entry_count_ratio": 0.0003486750348675035,
+            "full_entry_except_volume_ratio": 0.000697350069735007,
+            "full_entry_except_breakout_ratio": 0.0024407252440725243,
+            "full_entry_except_rs_7d_ratio": 0.0038354253835425384,
+            "full_entry_except_hourly_trend_ratio": 0.0010460251046025104
+          },
+          "stage_drops": {
+            "btc_regime_off": 1988,
+            "relative_strength_absent": 715,
+            "hourly_trend_absent": 119,
+            "breakout_absent": 43,
+            "volume_absent": 2
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 5,
+          "expectancy": 0.0010934950220206525,
+          "cumulative_return": 0.0038674106699327915,
+          "benchmark_return": -0.19599350297780183,
+          "status": "positive_expectancy",
+          "counts": {
+            "bars_total": 2868,
+            "btc_daily_regime_on_count": 880,
+            "rs_24h_positive_count": 1305,
+            "rs_7d_positive_count": 1380,
+            "rs_both_positive_count": 742,
+            "hourly_trend_count": 654,
+            "breakout_count": 224,
+            "volume_count": 757,
+            "regime_and_rs_count": 329,
+            "regime_rs_trend_count": 148,
+            "regime_rs_trend_breakout_count": 19,
+            "full_entry_count": 14,
+            "full_entry_except_volume": 5,
+            "full_entry_except_breakout": 34,
+            "full_entry_except_rs_7d": 1,
+            "full_entry_except_hourly_trend": 10
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.3068340306834031,
+            "rs_24h_positive_count_ratio": 0.45502092050209203,
+            "rs_7d_positive_count_ratio": 0.4811715481171548,
+            "rs_both_positive_count_ratio": 0.25871687587168757,
+            "hourly_trend_count_ratio": 0.2280334728033473,
+            "breakout_count_ratio": 0.07810320781032078,
+            "volume_count_ratio": 0.2639470013947001,
+            "regime_and_rs_count_ratio": 0.11471408647140864,
+            "regime_rs_trend_count_ratio": 0.05160390516039052,
+            "regime_rs_trend_breakout_count_ratio": 0.006624825662482566,
+            "full_entry_count_ratio": 0.0048814504881450485,
+            "full_entry_except_volume_ratio": 0.0017433751743375174,
+            "full_entry_except_breakout_ratio": 0.011854951185495118,
+            "full_entry_except_rs_7d_ratio": 0.0003486750348675035,
+            "full_entry_except_hourly_trend_ratio": 0.003486750348675035
+          },
+          "stage_drops": {
+            "btc_regime_off": 1988,
+            "relative_strength_absent": 551,
+            "hourly_trend_absent": 181,
+            "breakout_absent": 129,
+            "volume_absent": 5
+          },
+          "primary_blocker": "no_problem_entries_exist"
+        }
+      }
+    },
+    {
+      "fold": 7,
+      "test_start": "2025-12-15T19:00:00",
+      "test_end": "2026-02-13T19:00:00",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 0,
+          "expectancy": 0.0,
+          "cumulative_return": 0.0,
+          "benchmark_return": -0.3893842887473461,
+          "status": "zero_trade",
+          "counts": {
+            "bars_total": 2872,
+            "btc_daily_regime_on_count": 0,
+            "rs_24h_positive_count": 1261,
+            "rs_7d_positive_count": 1033,
+            "rs_both_positive_count": 479,
+            "hourly_trend_count": 800,
+            "breakout_count": 179,
+            "volume_count": 773,
+            "regime_and_rs_count": 0,
+            "regime_rs_trend_count": 0,
+            "regime_rs_trend_breakout_count": 0,
+            "full_entry_count": 0,
+            "full_entry_except_volume": 0,
+            "full_entry_except_breakout": 0,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 0
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.0,
+            "rs_24h_positive_count_ratio": 0.439066852367688,
+            "rs_7d_positive_count_ratio": 0.35967966573816157,
+            "rs_both_positive_count_ratio": 0.16678272980501394,
+            "hourly_trend_count_ratio": 0.2785515320334262,
+            "breakout_count_ratio": 0.06232590529247911,
+            "volume_count_ratio": 0.26915041782729804,
+            "regime_and_rs_count_ratio": 0.0,
+            "regime_rs_trend_count_ratio": 0.0,
+            "regime_rs_trend_breakout_count_ratio": 0.0,
+            "full_entry_count_ratio": 0.0,
+            "full_entry_except_volume_ratio": 0.0,
+            "full_entry_except_breakout_ratio": 0.0,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0
+          },
+          "stage_drops": {
+            "btc_regime_off": 2872,
+            "relative_strength_absent": 0,
+            "hourly_trend_absent": 0,
+            "breakout_absent": 0,
+            "volume_absent": 0
+          },
+          "primary_blocker": "btc_regime_off"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 0,
+          "expectancy": 0.0,
+          "cumulative_return": 0.0,
+          "benchmark_return": -0.3258238063214526,
+          "status": "zero_trade",
+          "counts": {
+            "bars_total": 2872,
+            "btc_daily_regime_on_count": 0,
+            "rs_24h_positive_count": 1113,
+            "rs_7d_positive_count": 742,
+            "rs_both_positive_count": 418,
+            "hourly_trend_count": 464,
+            "breakout_count": 211,
+            "volume_count": 787,
+            "regime_and_rs_count": 0,
+            "regime_rs_trend_count": 0,
+            "regime_rs_trend_breakout_count": 0,
+            "full_entry_count": 0,
+            "full_entry_except_volume": 0,
+            "full_entry_except_breakout": 0,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 0
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.0,
+            "rs_24h_positive_count_ratio": 0.38753481894150416,
+            "rs_7d_positive_count_ratio": 0.25835654596100277,
+            "rs_both_positive_count_ratio": 0.14554317548746518,
+            "hourly_trend_count_ratio": 0.1615598885793872,
+            "breakout_count_ratio": 0.07346796657381616,
+            "volume_count_ratio": 0.27402506963788303,
+            "regime_and_rs_count_ratio": 0.0,
+            "regime_rs_trend_count_ratio": 0.0,
+            "regime_rs_trend_breakout_count_ratio": 0.0,
+            "full_entry_count_ratio": 0.0,
+            "full_entry_except_volume_ratio": 0.0,
+            "full_entry_except_breakout_ratio": 0.0,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0
+          },
+          "stage_drops": {
+            "btc_regime_off": 2872,
+            "relative_strength_absent": 0,
+            "hourly_trend_absent": 0,
+            "breakout_absent": 0,
+            "volume_absent": 0
+          },
+          "primary_blocker": "btc_regime_off"
+        }
+      }
+    },
+    {
+      "fold": 8,
+      "test_start": "2026-02-13T19:00:00",
+      "test_end": "2026-04-14T19:00:00",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "per_ticker": {
+        "KRW-ETH": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 0,
+          "expectancy": 0.0,
+          "cumulative_return": 0.0,
+          "benchmark_return": 0.2250087077673284,
+          "status": "zero_trade",
+          "counts": {
+            "bars_total": 2870,
+            "btc_daily_regime_on_count": 0,
+            "rs_24h_positive_count": 1449,
+            "rs_7d_positive_count": 1680,
+            "rs_both_positive_count": 902,
+            "hourly_trend_count": 964,
+            "breakout_count": 203,
+            "volume_count": 746,
+            "regime_and_rs_count": 0,
+            "regime_rs_trend_count": 0,
+            "regime_rs_trend_breakout_count": 0,
+            "full_entry_count": 0,
+            "full_entry_except_volume": 0,
+            "full_entry_except_breakout": 0,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 0
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.0,
+            "rs_24h_positive_count_ratio": 0.5048780487804878,
+            "rs_7d_positive_count_ratio": 0.5853658536585366,
+            "rs_both_positive_count_ratio": 0.3142857142857143,
+            "hourly_trend_count_ratio": 0.3358885017421603,
+            "breakout_count_ratio": 0.07073170731707316,
+            "volume_count_ratio": 0.25993031358885016,
+            "regime_and_rs_count_ratio": 0.0,
+            "regime_rs_trend_count_ratio": 0.0,
+            "regime_rs_trend_breakout_count_ratio": 0.0,
+            "full_entry_count_ratio": 0.0,
+            "full_entry_except_volume_ratio": 0.0,
+            "full_entry_except_breakout_ratio": 0.0,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0
+          },
+          "stage_drops": {
+            "btc_regime_off": 2870,
+            "relative_strength_absent": 0,
+            "hourly_trend_absent": 0,
+            "breakout_absent": 0,
+            "volume_absent": 0
+          },
+          "primary_blocker": "btc_regime_off"
+        },
+        "KRW-XRP": {
+          "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+          "trades": 0,
+          "expectancy": 0.0,
+          "cumulative_return": 0.0,
+          "benchmark_return": 0.0074664011946241615,
+          "status": "zero_trade",
+          "counts": {
+            "bars_total": 2870,
+            "btc_daily_regime_on_count": 0,
+            "rs_24h_positive_count": 1140,
+            "rs_7d_positive_count": 806,
+            "rs_both_positive_count": 383,
+            "hourly_trend_count": 642,
+            "breakout_count": 198,
+            "volume_count": 775,
+            "regime_and_rs_count": 0,
+            "regime_rs_trend_count": 0,
+            "regime_rs_trend_breakout_count": 0,
+            "full_entry_count": 0,
+            "full_entry_except_volume": 0,
+            "full_entry_except_breakout": 0,
+            "full_entry_except_rs_7d": 0,
+            "full_entry_except_hourly_trend": 0
+          },
+          "ratios": {
+            "btc_daily_regime_on_count_ratio": 0.0,
+            "rs_24h_positive_count_ratio": 0.397212543554007,
+            "rs_7d_positive_count_ratio": 0.2808362369337979,
+            "rs_both_positive_count_ratio": 0.13344947735191637,
+            "hourly_trend_count_ratio": 0.22369337979094076,
+            "breakout_count_ratio": 0.06898954703832752,
+            "volume_count_ratio": 0.2700348432055749,
+            "regime_and_rs_count_ratio": 0.0,
+            "regime_rs_trend_count_ratio": 0.0,
+            "regime_rs_trend_breakout_count_ratio": 0.0,
+            "full_entry_count_ratio": 0.0,
+            "full_entry_except_volume_ratio": 0.0,
+            "full_entry_except_breakout_ratio": 0.0,
+            "full_entry_except_rs_7d_ratio": 0.0,
+            "full_entry_except_hourly_trend_ratio": 0.0
+          },
+          "stage_drops": {
+            "btc_regime_off": 2870,
+            "relative_strength_absent": 0,
+            "hourly_trend_absent": 0,
+            "breakout_absent": 0,
+            "volume_absent": 0
+          },
+          "primary_blocker": "btc_regime_off"
+        }
+      }
+    }
+  ],
+  "negative_fold_breakdowns": [
+    {
+      "fold": 1,
+      "ticker": "KRW-ETH",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "trades": 7,
+      "expectancy": -0.0079118557146352,
+      "cumulative_return": -0.05510987120789468,
+      "exit_summary": {
+        "total_trades": 7,
+        "by_category": {
+          "initial_stop": {
+            "trade_count": 4,
+            "ratio": 0.5714285714285714,
+            "avg_return_weighted": -0.017649033541728948,
+            "avg_hold_bars_weighted": 8.0
+          },
+          "time_exit": {
+            "trade_count": 1,
+            "ratio": 0.14285714285714285,
+            "avg_return_weighted": 0.033039877306397125,
+            "avg_hold_bars_weighted": 72.0
+          },
+          "trailing_exit": {
+            "trade_count": 2,
+            "ratio": 0.2857142857142857,
+            "avg_return_weighted": -0.008913366570963865,
+            "avg_hold_bars_weighted": 30.0
+          }
+        }
+      }
+    },
+    {
+      "fold": 2,
+      "ticker": "KRW-ETH",
+      "selected_candidate": "wf_c_stop2_trail40_hold72_confirm2",
+      "trades": 2,
+      "expectancy": -0.01244763297680862,
+      "cumulative_return": -0.024754256931160845,
+      "exit_summary": {
+        "total_trades": 2,
+        "by_category": {
+          "initial_stop": {
+            "trade_count": 2,
+            "ratio": 1.0,
+            "avg_return_weighted": -0.01244763297680862,
+            "avg_hold_bars_weighted": 2.0
+          }
+        }
+      }
+    },
+    {
+      "fold": 5,
+      "ticker": "KRW-ETH",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "trades": 12,
+      "expectancy": -0.003091043033954643,
+      "cumulative_return": -0.037341522670932825,
+      "exit_summary": {
+        "total_trades": 12,
+        "by_category": {
+          "initial_stop": {
+            "trade_count": 4,
+            "ratio": 0.3333333333333333,
+            "avg_return_weighted": -0.01405785797645645,
+            "avg_hold_bars_weighted": 5.5
+          },
+          "trailing_exit": {
+            "trade_count": 8,
+            "ratio": 0.6666666666666666,
+            "avg_return_weighted": 0.0023923644372962627,
+            "avg_hold_bars_weighted": 28.25
+          }
+        }
+      }
+    },
+    {
+      "fold": 5,
+      "ticker": "KRW-XRP",
+      "selected_candidate": "wf_b_stop25_trail40_hold72_confirm2",
+      "trades": 14,
+      "expectancy": -0.006648891505509189,
+      "cumulative_return": -0.089661374008415,
+      "exit_summary": {
+        "total_trades": 14,
+        "by_category": {
+          "initial_stop": {
+            "trade_count": 6,
+            "ratio": 0.42857142857142855,
+            "avg_return_weighted": -0.012807958375909515,
+            "avg_hold_bars_weighted": 8.0
+          },
+          "trailing_exit": {
+            "trade_count": 8,
+            "ratio": 0.5714285714285714,
+            "avg_return_weighted": -0.0020295913527089426,
+            "avg_hold_bars_weighted": 26.125
+          }
+        }
+      }
+    },
+    {
+      "fold": 6,
+      "ticker": "KRW-ETH",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "trades": 1,
+      "expectancy": -0.011575463380047779,
+      "cumulative_return": -0.011575463380047779,
+      "exit_summary": {
+        "total_trades": 1,
+        "by_category": {
+          "initial_stop": {
+            "trade_count": 1,
+            "ratio": 1.0,
+            "avg_return_weighted": -0.011575463380047779,
+            "avg_hold_bars_weighted": 5.0
+          }
+        }
+      }
+    }
+  ],
+  "zero_trade_fold_focus": {
+    "fold_7": {
+      "test_start": "2025-12-15T19:00:00",
+      "test_end": "2026-02-13T19:00:00",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "eth": {
+        "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+        "trades": 0,
+        "expectancy": 0.0,
+        "cumulative_return": 0.0,
+        "benchmark_return": -0.3893842887473461,
+        "status": "zero_trade",
+        "counts": {
+          "bars_total": 2872,
+          "btc_daily_regime_on_count": 0,
+          "rs_24h_positive_count": 1261,
+          "rs_7d_positive_count": 1033,
+          "rs_both_positive_count": 479,
+          "hourly_trend_count": 800,
+          "breakout_count": 179,
+          "volume_count": 773,
+          "regime_and_rs_count": 0,
+          "regime_rs_trend_count": 0,
+          "regime_rs_trend_breakout_count": 0,
+          "full_entry_count": 0,
+          "full_entry_except_volume": 0,
+          "full_entry_except_breakout": 0,
+          "full_entry_except_rs_7d": 0,
+          "full_entry_except_hourly_trend": 0
+        },
+        "ratios": {
+          "btc_daily_regime_on_count_ratio": 0.0,
+          "rs_24h_positive_count_ratio": 0.439066852367688,
+          "rs_7d_positive_count_ratio": 0.35967966573816157,
+          "rs_both_positive_count_ratio": 0.16678272980501394,
+          "hourly_trend_count_ratio": 0.2785515320334262,
+          "breakout_count_ratio": 0.06232590529247911,
+          "volume_count_ratio": 0.26915041782729804,
+          "regime_and_rs_count_ratio": 0.0,
+          "regime_rs_trend_count_ratio": 0.0,
+          "regime_rs_trend_breakout_count_ratio": 0.0,
+          "full_entry_count_ratio": 0.0,
+          "full_entry_except_volume_ratio": 0.0,
+          "full_entry_except_breakout_ratio": 0.0,
+          "full_entry_except_rs_7d_ratio": 0.0,
+          "full_entry_except_hourly_trend_ratio": 0.0
+        },
+        "stage_drops": {
+          "btc_regime_off": 2872,
+          "relative_strength_absent": 0,
+          "hourly_trend_absent": 0,
+          "breakout_absent": 0,
+          "volume_absent": 0
+        },
+        "primary_blocker": "btc_regime_off"
+      },
+      "xrp": {
+        "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+        "trades": 0,
+        "expectancy": 0.0,
+        "cumulative_return": 0.0,
+        "benchmark_return": -0.3258238063214526,
+        "status": "zero_trade",
+        "counts": {
+          "bars_total": 2872,
+          "btc_daily_regime_on_count": 0,
+          "rs_24h_positive_count": 1113,
+          "rs_7d_positive_count": 742,
+          "rs_both_positive_count": 418,
+          "hourly_trend_count": 464,
+          "breakout_count": 211,
+          "volume_count": 787,
+          "regime_and_rs_count": 0,
+          "regime_rs_trend_count": 0,
+          "regime_rs_trend_breakout_count": 0,
+          "full_entry_count": 0,
+          "full_entry_except_volume": 0,
+          "full_entry_except_breakout": 0,
+          "full_entry_except_rs_7d": 0,
+          "full_entry_except_hourly_trend": 0
+        },
+        "ratios": {
+          "btc_daily_regime_on_count_ratio": 0.0,
+          "rs_24h_positive_count_ratio": 0.38753481894150416,
+          "rs_7d_positive_count_ratio": 0.25835654596100277,
+          "rs_both_positive_count_ratio": 0.14554317548746518,
+          "hourly_trend_count_ratio": 0.1615598885793872,
+          "breakout_count_ratio": 0.07346796657381616,
+          "volume_count_ratio": 0.27402506963788303,
+          "regime_and_rs_count_ratio": 0.0,
+          "regime_rs_trend_count_ratio": 0.0,
+          "regime_rs_trend_breakout_count_ratio": 0.0,
+          "full_entry_count_ratio": 0.0,
+          "full_entry_except_volume_ratio": 0.0,
+          "full_entry_except_breakout_ratio": 0.0,
+          "full_entry_except_rs_7d_ratio": 0.0,
+          "full_entry_except_hourly_trend_ratio": 0.0
+        },
+        "stage_drops": {
+          "btc_regime_off": 2872,
+          "relative_strength_absent": 0,
+          "hourly_trend_absent": 0,
+          "breakout_absent": 0,
+          "volume_absent": 0
+        },
+        "primary_blocker": "btc_regime_off"
+      },
+      "explanation": {
+        "summary_lines": [
+          "KRW-ETH: bars=2872, btc_regime_on=0 (0.0%), rs_both=479 (16.7%), trend=800 (27.9%), breakout=179 (6.2%), volume=773 (26.9%), full=0, near-miss (-vol=0, -brk=0, -rs7=0, -trend=0), blocker=btc_regime_off",
+          "KRW-XRP: bars=2872, btc_regime_on=0 (0.0%), rs_both=418 (14.6%), trend=464 (16.2%), breakout=211 (7.3%), volume=787 (27.4%), full=0, near-miss (-vol=0, -brk=0, -rs7=0, -trend=0), blocker=btc_regime_off"
+        ]
+      }
+    },
+    "fold_8": {
+      "test_start": "2026-02-13T19:00:00",
+      "test_end": "2026-04-14T19:00:00",
+      "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+      "eth": {
+        "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+        "trades": 0,
+        "expectancy": 0.0,
+        "cumulative_return": 0.0,
+        "benchmark_return": 0.2250087077673284,
+        "status": "zero_trade",
+        "counts": {
+          "bars_total": 2870,
+          "btc_daily_regime_on_count": 0,
+          "rs_24h_positive_count": 1449,
+          "rs_7d_positive_count": 1680,
+          "rs_both_positive_count": 902,
+          "hourly_trend_count": 964,
+          "breakout_count": 203,
+          "volume_count": 746,
+          "regime_and_rs_count": 0,
+          "regime_rs_trend_count": 0,
+          "regime_rs_trend_breakout_count": 0,
+          "full_entry_count": 0,
+          "full_entry_except_volume": 0,
+          "full_entry_except_breakout": 0,
+          "full_entry_except_rs_7d": 0,
+          "full_entry_except_hourly_trend": 0
+        },
+        "ratios": {
+          "btc_daily_regime_on_count_ratio": 0.0,
+          "rs_24h_positive_count_ratio": 0.5048780487804878,
+          "rs_7d_positive_count_ratio": 0.5853658536585366,
+          "rs_both_positive_count_ratio": 0.3142857142857143,
+          "hourly_trend_count_ratio": 0.3358885017421603,
+          "breakout_count_ratio": 0.07073170731707316,
+          "volume_count_ratio": 0.25993031358885016,
+          "regime_and_rs_count_ratio": 0.0,
+          "regime_rs_trend_count_ratio": 0.0,
+          "regime_rs_trend_breakout_count_ratio": 0.0,
+          "full_entry_count_ratio": 0.0,
+          "full_entry_except_volume_ratio": 0.0,
+          "full_entry_except_breakout_ratio": 0.0,
+          "full_entry_except_rs_7d_ratio": 0.0,
+          "full_entry_except_hourly_trend_ratio": 0.0
+        },
+        "stage_drops": {
+          "btc_regime_off": 2870,
+          "relative_strength_absent": 0,
+          "hourly_trend_absent": 0,
+          "breakout_absent": 0,
+          "volume_absent": 0
+        },
+        "primary_blocker": "btc_regime_off"
+      },
+      "xrp": {
+        "selected_candidate": "wf_a_stop2_trail50_hold72_confirm2",
+        "trades": 0,
+        "expectancy": 0.0,
+        "cumulative_return": 0.0,
+        "benchmark_return": 0.0074664011946241615,
+        "status": "zero_trade",
+        "counts": {
+          "bars_total": 2870,
+          "btc_daily_regime_on_count": 0,
+          "rs_24h_positive_count": 1140,
+          "rs_7d_positive_count": 806,
+          "rs_both_positive_count": 383,
+          "hourly_trend_count": 642,
+          "breakout_count": 198,
+          "volume_count": 775,
+          "regime_and_rs_count": 0,
+          "regime_rs_trend_count": 0,
+          "regime_rs_trend_breakout_count": 0,
+          "full_entry_count": 0,
+          "full_entry_except_volume": 0,
+          "full_entry_except_breakout": 0,
+          "full_entry_except_rs_7d": 0,
+          "full_entry_except_hourly_trend": 0
+        },
+        "ratios": {
+          "btc_daily_regime_on_count_ratio": 0.0,
+          "rs_24h_positive_count_ratio": 0.397212543554007,
+          "rs_7d_positive_count_ratio": 0.2808362369337979,
+          "rs_both_positive_count_ratio": 0.13344947735191637,
+          "hourly_trend_count_ratio": 0.22369337979094076,
+          "breakout_count_ratio": 0.06898954703832752,
+          "volume_count_ratio": 0.2700348432055749,
+          "regime_and_rs_count_ratio": 0.0,
+          "regime_rs_trend_count_ratio": 0.0,
+          "regime_rs_trend_breakout_count_ratio": 0.0,
+          "full_entry_count_ratio": 0.0,
+          "full_entry_except_volume_ratio": 0.0,
+          "full_entry_except_breakout_ratio": 0.0,
+          "full_entry_except_rs_7d_ratio": 0.0,
+          "full_entry_except_hourly_trend_ratio": 0.0
+        },
+        "stage_drops": {
+          "btc_regime_off": 2870,
+          "relative_strength_absent": 0,
+          "hourly_trend_absent": 0,
+          "breakout_absent": 0,
+          "volume_absent": 0
+        },
+        "primary_blocker": "btc_regime_off"
+      },
+      "explanation": {
+        "summary_lines": [
+          "KRW-ETH: bars=2870, btc_regime_on=0 (0.0%), rs_both=902 (31.4%), trend=964 (33.6%), breakout=203 (7.1%), volume=746 (26.0%), full=0, near-miss (-vol=0, -brk=0, -rs7=0, -trend=0), blocker=btc_regime_off",
+          "KRW-XRP: bars=2870, btc_regime_on=0 (0.0%), rs_both=383 (13.3%), trend=642 (22.4%), breakout=198 (6.9%), volume=775 (27.0%), full=0, near-miss (-vol=0, -brk=0, -rs7=0, -trend=0), blocker=btc_regime_off"
+        ]
+      }
+    }
+  },
+  "diagnostic_verdict": {
+    "label": "STANDOFF_VALID",
+    "counts": {
+      "standoff": 5,
+      "overfiltered": 0,
+      "combined": 0,
+      "has_entries_but_negative": 5
+    },
+    "ratios": {
+      "standoff": 0.5,
+      "overfiltered": 0.0,
+      "combined": 0.0,
+      "has_entries_but_negative": 0.5
+    },
+    "problem_sample_count": 10
+  }
+}
