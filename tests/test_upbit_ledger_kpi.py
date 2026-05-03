@@ -289,6 +289,40 @@ def test_parse_skips_invalid_rows_silently():
     assert len(events) == 2
 
 
+def test_parse_handles_no_space_currency_suffix():
+    """Upbit 웹 카피는 숫자와 통화 코드가 붙어 있다 — `12.70119121XRP`, `2,074.0KRW`."""
+    text = (
+        "체결시간\t코인\t마켓\t종류\t거래수량\t거래단가\t거래금액\t수수료\t정산금액\t주문시간\n"
+        "2026-05-03 21:07:00\tXRP\tKRW\t매수\t12.70119121XRP\t2,074.0KRW\t26,343KRW\t13.17KRW\t26,356KRW\t2026-05-03 21:07:00\n"
+    )
+    events = parse_korean_upbit_table(text)
+    assert len(events) == 1
+    e = events[0]
+    assert e.quantity == pytest.approx(12.70119121)
+    assert e.price == pytest.approx(2074.0)
+    assert e.gross_krw == pytest.approx(26_343.0)
+    assert e.fee_krw == pytest.approx(13.17)
+    assert e.net_krw == pytest.approx(26_356.0)
+
+
+def test_equal_timestamp_buy_processed_before_sell():
+    """동일 timestamp 의 BUY/SELL은 BUY 먼저 처리해야 unmatched SELL이 안 생긴다.
+
+    Upbit 웹 카피는 newest-first 순으로 SELL이 먼저 등장하지만, 인과상 BUY 가
+    같은 분(minute)에 먼저 발생했음 — 보유 없이 SELL은 불가능.
+    """
+    events = [
+        _ev(ts=datetime(2026, 4, 18, 18, 31), asset="XRP", side=SIDE_SELL,
+            qty=23.31, price=2144.0, fee=24.98),
+        _ev(ts=datetime(2026, 4, 18, 18, 31), asset="XRP", side=SIDE_BUY,
+            qty=23.31, price=2145.0, fee=24.99),
+    ]
+    r = compute_ledger_kpi(events)
+    assert r.matched_trade_count == 1
+    assert r.unmatched_buy_count == 0
+    assert r.unmatched_sell_count == 0
+
+
 # ---------------------------------------------------------------------------
 # CLI script
 # ---------------------------------------------------------------------------

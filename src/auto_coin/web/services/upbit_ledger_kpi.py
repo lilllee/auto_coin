@@ -19,6 +19,7 @@ FIFO 매칭으로 실현손익/승률/수수료/미체결 보유분을 계산한
 
 from __future__ import annotations
 
+import re
 import statistics
 from collections import defaultdict, deque
 from collections.abc import Iterable
@@ -252,7 +253,15 @@ def compute_ledger_kpi(events: Iterable[LedgerEvent]) -> LedgerKpiResult:
     - DEPOSIT/WITHDRAW는 cash flow에만 반영.
     """
 
-    events_sorted = sorted(events, key=lambda e: e.timestamp)
+    # 동일 timestamp tie-break: BUY < SELL < DEPOSIT/WITHDRAW.
+    # 실거래 인과상 같은 분(minute)에 BUY/SELL 둘 다 있으면 BUY가 먼저 발생했고
+    # SELL이 그 직후 close 라고 보는 게 자연스럽다 (보유 없는 자산을 팔 수 없음).
+    # 입금/출금은 그 사이에 끼지 않게 뒤로.
+    _SIDE_ORDER = {SIDE_BUY: 0, SIDE_SELL: 1, SIDE_DEPOSIT: 2, SIDE_WITHDRAW: 3}
+    events_sorted = sorted(
+        events,
+        key=lambda e: (e.timestamp, _SIDE_ORDER.get(e.side, 9)),
+    )
     if not events_sorted:
         return _empty_result()
 
@@ -432,13 +441,17 @@ _BUY_TOKENS = ("매수", "buy", "BUY")
 _SELL_TOKENS = ("매도", "sell", "SELL")
 
 
+_TRAILING_UNIT_RE = re.compile(r"[A-Za-z]+\s*$")
+
+
 def _parse_korean_number(token: str) -> float:
-    """``"1,234.567"`` / ``"-1,234"`` / ``"0.5 KRW"`` 같은 표기를 float로."""
+    """``"1,234.567"`` / ``"-1,234"`` / ``"0.5 KRW"`` / ``"12.70119121XRP"`` 표기를 float로.
+
+    Upbit 웹 카피는 숫자와 통화 코드 사이 공백 없이 연결돼 있어 (``"2,074.0KRW"``)
+    공백 분리 suffix만 보면 안 되고 trailing 알파벳 자체를 제거해야 한다.
+    """
     s = token.strip()
-    # 통화/단위 접미사 제거
-    for suffix in (" KRW", "KRW", " BTC", " ETH", " XRP", " DOGE", " SOL"):
-        if s.endswith(suffix):
-            s = s[: -len(suffix)].strip()
+    s = _TRAILING_UNIT_RE.sub("", s).strip()
     s = s.replace(",", "")
     if not s or s in ("-", "—"):
         return 0.0
@@ -465,13 +478,14 @@ def _parse_korean_datetime(token: str) -> datetime:
     raise ValueError(f"unrecognized timestamp: {token!r} ({last_err})")
 
 
+_ROW_SPLIT_RE = re.compile(r"\s{2,}|\|")
+
+
 def _split_row(line: str) -> list[str]:
     """탭 우선, 없으면 2칸 이상 공백으로 split. 단일 공백은 보존."""
     if "\t" in line:
         return [c.strip() for c in line.split("\t")]
-    # 2칸 이상 공백으로 분리
-    import re
-    return [c.strip() for c in re.split(r"\s{2,}|\|", line) if c.strip()]
+    return [c.strip() for c in _ROW_SPLIT_RE.split(line) if c.strip()]
 
 
 def parse_korean_upbit_table(text: str, *, source: str = "manual_text") -> list[LedgerEvent]:
