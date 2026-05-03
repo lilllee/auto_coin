@@ -333,3 +333,387 @@ def test_cooldown_negative_value_rejected():
         simulate_execution_trades(
             _execution_df(), {}, execution_mode="next_open", cooldown_bars=-1,
         )
+
+
+# =============================================================================
+# P2 — entry-side filter tests
+# Test spec: .omx/plans/test-spec-vwap-ema-pullback-p2-2026-05-04.md
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# §2 Enricher tests
+# ---------------------------------------------------------------------------
+
+def _daily_df(n: int = 30) -> pd.DataFrame:
+    """Synthetic daily candles (any close, fixed volume) for daily regime tests."""
+    close = np.linspace(100.0, 130.0, n)
+    return pd.DataFrame(
+        {
+            "open": close - 0.2,
+            "high": close + 0.5,
+            "low": close - 0.5,
+            "close": close,
+            "volume": np.full(n, 1000.0),
+        },
+        index=pd.date_range("2026-01-01", periods=n, freq="D"),
+    )
+
+
+def _htf_df(n: int = 60) -> pd.DataFrame:
+    """Synthetic 4h candles."""
+    close = np.linspace(100.0, 150.0, n)
+    return pd.DataFrame(
+        {
+            "open": close - 0.3,
+            "high": close + 1.0,
+            "low": close - 1.0,
+            "close": close,
+            "volume": np.full(n, 500.0),
+        },
+        index=pd.date_range("2026-01-01", periods=n, freq="4h"),
+    )
+
+
+def test_enrich_default_does_not_add_p2_columns():
+    """P1 default 호출 시 P2 컬럼 0건 추가 — backward compat."""
+    out = enrich_vwap_ema_pullback(_raw_df(80))
+    p2_cols = {
+        "rsi14", "volume_mean20",
+        "htf_close_projected", "htf_ema20_projected", "htf_close_above_ema",
+        "daily_close_projected", "daily_sma200_projected", "daily_above_sma",
+    }
+    assert not (p2_cols & set(out.columns)), \
+        f"P1 default should not add P2 columns, found: {p2_cols & set(out.columns)}"
+
+
+def test_enrich_with_rsi_window_adds_rsi_column():
+    # RSI requires both up and down moves — _raw_df 의 monotonic rise 만으로는 NaN.
+    # 작은 noise 추가해 finite 결과 보장.
+    rng = np.random.default_rng(42)
+    base = _raw_df(80)
+    base["close"] = base["close"] + rng.normal(0, 0.5, 80)
+    base["high"] = base[["high", "close"]].max(axis=1) + 0.1
+    base["low"] = base[["low", "close"]].min(axis=1) - 0.1
+    out = enrich_vwap_ema_pullback(base, rsi_window=14)
+    assert "rsi14" in out.columns
+    last_val = float(out["rsi14"].dropna().iloc[-1])
+    assert 0 <= last_val <= 100
+    assert np.isfinite(last_val)
+
+
+def test_enrich_with_volume_mean_window_adds_volume_mean_column():
+    out = enrich_vwap_ema_pullback(_raw_df(80), volume_mean_window=20)
+    assert "volume_mean20" in out.columns
+    # shifted: row N's volume_mean = mean of rows N-20..N-1's volume
+    vol_mean_last = float(out["volume_mean20"].dropna().iloc[-1])
+    assert vol_mean_last == pytest.approx(100.0)  # fixture has constant volume=100
+
+
+def test_enrich_with_htf_df_adds_htf_columns():
+    base_1h = _raw_df(200, volume=100.0)
+    base_1h.index = pd.date_range("2026-01-01", periods=200, freq="60min")
+    htf = _htf_df(60)
+    out = enrich_vwap_ema_pullback(
+        base_1h, htf_df=htf, htf_ema_window=20, htf_ema_slow_window=60,
+    )
+    for col in (
+        "htf_close_projected",
+        "htf_ema20_projected",
+        "htf_ema60_projected",
+        "htf_close_above_ema",
+        "htf_ema_fast_above_slow",
+    ):
+        assert col in out.columns, f"missing {col}"
+    # Projected boolean values exist as a real series
+    above = out["htf_close_above_ema"].dropna()
+    if not above.empty:
+        # values are bool / boolean dtype
+        assert bool(above.iloc[-1]) in (True, False)
+
+
+def test_enrich_with_daily_df_adds_daily_regime_columns():
+    base_1h = _raw_df(200)
+    base_1h.index = pd.date_range("2026-01-01", periods=200, freq="60min")
+    daily = _daily_df(30)
+    out = enrich_vwap_ema_pullback(
+        base_1h, daily_df=daily, daily_regime_ma_window=10,
+    )
+    assert "daily_close_projected" in out.columns
+    assert "daily_sma10_projected" in out.columns
+    assert "daily_above_sma" in out.columns
+
+
+def test_enrich_handles_short_data_for_p2_columns():
+    short = _raw_df(10)
+    out = enrich_vwap_ema_pullback(short, rsi_window=14, volume_mean_window=20)
+    assert "rsi14" in out.columns
+    assert "volume_mean20" in out.columns
+    # All NaN is fine; no exception raised.
+
+
+def test_enrich_rsi_window_too_small_rejected():
+    with pytest.raises(ValueError, match="rsi_window"):
+        enrich_vwap_ema_pullback(_raw_df(80), rsi_window=1)
+
+
+def test_enrich_volume_mean_window_too_small_rejected():
+    with pytest.raises(ValueError, match="volume_mean_window"):
+        enrich_vwap_ema_pullback(_raw_df(80), volume_mean_window=0)
+
+
+# ---------------------------------------------------------------------------
+# §3 Strategy filter tests
+# ---------------------------------------------------------------------------
+
+def _entry_df_with_p2_cols(
+    *,
+    htf_close_above_ema: bool | None = None,
+    htf_ema_fast_above_slow: bool | None = None,
+    rsi_value: float | None = None,
+    rsi_window: int = 14,
+    volume_value: float | None = None,
+    volume_mean_value: float | None = None,
+    volume_mean_window: int = 20,
+    daily_above_sma: bool | None = None,
+) -> pd.DataFrame:
+    """`_entry_df()` 위에 P2 컬럼을 마지막 row 에 set 한 fixture."""
+    df = _entry_df()
+    last_idx = df.index[-1]
+    if htf_close_above_ema is not None:
+        df.loc[last_idx, "htf_close_above_ema"] = htf_close_above_ema
+    if htf_ema_fast_above_slow is not None:
+        df.loc[last_idx, "htf_ema_fast_above_slow"] = htf_ema_fast_above_slow
+    if rsi_value is not None:
+        df.loc[last_idx, f"rsi{rsi_window}"] = rsi_value
+    if volume_value is not None:
+        df.loc[last_idx, "volume"] = volume_value
+    if volume_mean_value is not None:
+        df.loc[last_idx, f"volume_mean{volume_mean_window}"] = volume_mean_value
+    if daily_above_sma is not None:
+        df.loc[last_idx, "daily_above_sma"] = daily_above_sma
+    return df
+
+
+def test_filter_default_off_preserves_p1_buy():
+    df = _entry_df()
+    s = VwapEmaPullbackStrategy()
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+# Axis A — htf_trend_filter
+
+def test_htf_close_above_ema_blocks_when_below():
+    df = _entry_df_with_p2_cols(htf_close_above_ema=False)
+    s = VwapEmaPullbackStrategy(htf_trend_filter_mode="htf_close_above_ema")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_htf_close_above_ema_allows_when_true():
+    df = _entry_df_with_p2_cols(htf_close_above_ema=True)
+    s = VwapEmaPullbackStrategy(htf_trend_filter_mode="htf_close_above_ema")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_htf_filter_blocks_when_column_missing():
+    """mode 만 켜고 enricher 안 켰을 때 false BUY 만들지 않도록 보수."""
+    df = _entry_df()  # htf_close_above_ema 컬럼 자체 없음
+    s = VwapEmaPullbackStrategy(htf_trend_filter_mode="htf_close_above_ema")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_htf_ema_fast_slow_blocks_when_inverted():
+    df = _entry_df_with_p2_cols(htf_ema_fast_above_slow=False)
+    s = VwapEmaPullbackStrategy(htf_trend_filter_mode="htf_ema_fast_slow")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_htf_ema_fast_slow_allows_when_aligned():
+    df = _entry_df_with_p2_cols(htf_ema_fast_above_slow=True)
+    s = VwapEmaPullbackStrategy(htf_trend_filter_mode="htf_ema_fast_slow")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+# Axis B — rsi_filter
+
+def test_rsi_lt_70_blocks_when_overbought():
+    df = _entry_df_with_p2_cols(rsi_value=75.0)
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="lt_70")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_rsi_lt_70_allows_when_below_70():
+    df = _entry_df_with_p2_cols(rsi_value=55.0)
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="lt_70")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_rsi_in_30_70_blocks_when_below_30():
+    df = _entry_df_with_p2_cols(rsi_value=25.0)
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="in_30_70")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_rsi_in_40_70_blocks_when_between_30_and_40():
+    df = _entry_df_with_p2_cols(rsi_value=35.0)
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="in_40_70")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_rsi_filter_blocks_when_column_missing():
+    df = _entry_df()  # rsi14 컬럼 없음
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="lt_70")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_rsi_lt_75_allows_at_72():
+    df = _entry_df_with_p2_cols(rsi_value=72.0)
+    s = VwapEmaPullbackStrategy(rsi_filter_mode="lt_75")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+# Axis C — volume_filter
+
+def test_volume_ge_1_0_blocks_below_mean():
+    df = _entry_df_with_p2_cols(volume_value=50.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_0")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_volume_ge_1_0_allows_at_or_above_mean():
+    df = _entry_df_with_p2_cols(volume_value=100.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_0")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_volume_ge_1_2_blocks_at_mean():
+    df = _entry_df_with_p2_cols(volume_value=100.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_2")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_volume_filter_blocks_when_column_missing():
+    df = _entry_df()  # volume_mean20 컬럼 없음
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_0")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+# Axis D — daily_regime_filter
+
+def test_daily_sma200_blocks_in_bear_regime():
+    df = _entry_df_with_p2_cols(daily_above_sma=False)
+    s = VwapEmaPullbackStrategy(daily_regime_filter_mode="self_above_sma200",
+                                daily_regime_ma_window=200)
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+def test_daily_sma200_allows_in_bull_regime():
+    df = _entry_df_with_p2_cols(daily_above_sma=True)
+    s = VwapEmaPullbackStrategy(daily_regime_filter_mode="self_above_sma200",
+                                daily_regime_ma_window=200)
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_daily_filter_blocks_when_column_missing():
+    df = _entry_df()  # daily_above_sma 컬럼 없음
+    s = VwapEmaPullbackStrategy(daily_regime_filter_mode="self_above_sma200",
+                                daily_regime_ma_window=200)
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+# Combined
+
+def test_all_filters_active_requires_all_pass():
+    df = _entry_df_with_p2_cols(
+        htf_close_above_ema=True,
+        rsi_value=55.0,
+        volume_value=120.0,
+        volume_mean_value=100.0,
+        daily_above_sma=True,
+    )
+    s = VwapEmaPullbackStrategy(
+        htf_trend_filter_mode="htf_close_above_ema",
+        rsi_filter_mode="lt_70",
+        volume_filter_mode="ge_1_0",
+        daily_regime_filter_mode="self_above_sma200",
+        daily_regime_ma_window=200,
+    )
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_all_filters_active_blocks_if_any_fails():
+    df = _entry_df_with_p2_cols(
+        htf_close_above_ema=True,
+        rsi_value=55.0,
+        volume_value=120.0,
+        volume_mean_value=100.0,
+        daily_above_sma=False,  # ← only this fails
+    )
+    s = VwapEmaPullbackStrategy(
+        htf_trend_filter_mode="htf_close_above_ema",
+        rsi_filter_mode="lt_70",
+        volume_filter_mode="ge_1_0",
+        daily_regime_filter_mode="self_above_sma200",
+        daily_regime_ma_window=200,
+    )
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD
+
+
+# Validation
+
+def test_invalid_filter_modes_rejected():
+    with pytest.raises(ValueError, match="htf_trend_filter_mode"):
+        VwapEmaPullbackStrategy(htf_trend_filter_mode="bogus")
+    with pytest.raises(ValueError, match="rsi_filter_mode"):
+        VwapEmaPullbackStrategy(rsi_filter_mode="bogus")
+    with pytest.raises(ValueError, match="volume_filter_mode"):
+        VwapEmaPullbackStrategy(volume_filter_mode="bogus")
+    with pytest.raises(ValueError, match="daily_regime_filter_mode"):
+        VwapEmaPullbackStrategy(daily_regime_filter_mode="bogus")
+    with pytest.raises(ValueError, match="rsi_window"):
+        VwapEmaPullbackStrategy(rsi_window=1)
+    with pytest.raises(ValueError, match="volume_mean_window"):
+        VwapEmaPullbackStrategy(volume_mean_window=0)
+    with pytest.raises(ValueError, match="daily_regime_ma_window"):
+        VwapEmaPullbackStrategy(daily_regime_ma_window=1)

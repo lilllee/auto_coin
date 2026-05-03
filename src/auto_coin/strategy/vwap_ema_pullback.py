@@ -5,6 +5,11 @@ from dataclasses import dataclass
 
 from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
 
+_VALID_HTF_MODES = frozenset({"off", "htf_close_above_ema", "htf_ema_fast_slow"})
+_VALID_RSI_MODES = frozenset({"off", "lt_70", "in_30_70", "lt_75", "in_40_70"})
+_VALID_VOLUME_MODES = frozenset({"off", "ge_1_0", "ge_1_2", "ge_1_5"})
+_VALID_DAILY_MODES = frozenset({"off", "self_above_sma200", "self_above_sma100"})
+
 
 @dataclass(frozen=True)
 class VwapEmaPullbackStrategy(Strategy):
@@ -12,6 +17,13 @@ class VwapEmaPullbackStrategy(Strategy):
 
     Phase 1 intentionally excludes short entries and active Volume Profile
     filtering.  SELL means spot-position exit only when already holding.
+
+    Phase 2 adds opt-in entry-side filters (HTF trend, RSI floor, volume gate,
+    daily regime).  All filter modes default to ``"off"`` so behavior is
+    backward-compatible with P1 candidates.  When a mode is set but the
+    required enricher column is absent, the helper returns ``False`` (BUY
+    blocked) — conservative fallback so a half-configured run never produces
+    spurious BUY signals.
     """
 
     name: str = "vwap_ema_pullback"
@@ -30,6 +42,14 @@ class VwapEmaPullbackStrategy(Strategy):
     volume_profile_lookback: int = 48
     volume_profile_bin_count: int = 24
     volume_gap_threshold: float = 0.3
+    # ----- P2 entry-side filters (default "off" — backward compat) -----
+    htf_trend_filter_mode: str = "off"
+    rsi_filter_mode: str = "off"
+    rsi_window: int = 14
+    volume_filter_mode: str = "off"
+    volume_mean_window: int = 20
+    daily_regime_filter_mode: str = "off"
+    daily_regime_ma_window: int = 200
 
     def __post_init__(self) -> None:
         if self.ema_period < 1:
@@ -58,6 +78,28 @@ class VwapEmaPullbackStrategy(Strategy):
             raise ValueError("volume_profile_bin_count must be >= 1")
         if self.volume_gap_threshold < 0:
             raise ValueError("volume_gap_threshold must be >= 0")
+        if self.htf_trend_filter_mode not in _VALID_HTF_MODES:
+            raise ValueError(
+                f"htf_trend_filter_mode must be one of {sorted(_VALID_HTF_MODES)}"
+            )
+        if self.rsi_filter_mode not in _VALID_RSI_MODES:
+            raise ValueError(
+                f"rsi_filter_mode must be one of {sorted(_VALID_RSI_MODES)}"
+            )
+        if self.rsi_window < 2:
+            raise ValueError("rsi_window must be >= 2")
+        if self.volume_filter_mode not in _VALID_VOLUME_MODES:
+            raise ValueError(
+                f"volume_filter_mode must be one of {sorted(_VALID_VOLUME_MODES)}"
+            )
+        if self.volume_mean_window < 1:
+            raise ValueError("volume_mean_window must be >= 1")
+        if self.daily_regime_filter_mode not in _VALID_DAILY_MODES:
+            raise ValueError(
+                f"daily_regime_filter_mode must be one of {sorted(_VALID_DAILY_MODES)}"
+            )
+        if self.daily_regime_ma_window < 2:
+            raise ValueError("daily_regime_ma_window must be >= 2")
 
     def generate_signal(self, snap: MarketSnapshot) -> Signal:
         if snap.current_price <= 0:
@@ -94,6 +136,14 @@ class VwapEmaPullbackStrategy(Strategy):
         if close < ema:
             return Signal.HOLD
         if self.require_bullish_candle and (open_ is None or close <= open_):
+            return Signal.HOLD
+        if not self._htf_trend_ok(last):
+            return Signal.HOLD
+        if not self._daily_regime_ok(last):
+            return Signal.HOLD
+        if not self._rsi_ok(last):
+            return Signal.HOLD
+        if not self._volume_ok(last):
             return Signal.HOLD
         if self.use_volume_profile and not self._volume_profile_ok(last):
             return Signal.HOLD
@@ -190,3 +240,70 @@ class VwapEmaPullbackStrategy(Strategy):
         """
         value = row.get("volume_profile_ok")
         return bool(value) if value is not None and value == value else False
+
+    # ----- P2 entry-side filter helpers -----
+    # Each helper short-circuits to True when its mode is "off" so P1 candidates
+    # see no behavior change. When mode is set but the required column is
+    # missing/NaN, the helper returns False — conservative fallback to avoid
+    # spurious BUY signals from a half-configured run.
+
+    @staticmethod
+    def _bool_or_none(value) -> bool | None:
+        if value is None:
+            return None
+        if isinstance(value, bool):
+            return value
+        # Skip NaN
+        if value != value:
+            return None
+        return bool(value)
+
+    def _htf_trend_ok(self, row) -> bool:
+        if self.htf_trend_filter_mode == "off":
+            return True
+        if self.htf_trend_filter_mode == "htf_close_above_ema":
+            v = self._bool_or_none(row.get("htf_close_above_ema"))
+            return v is True
+        if self.htf_trend_filter_mode == "htf_ema_fast_slow":
+            v = self._bool_or_none(row.get("htf_ema_fast_above_slow"))
+            return v is True
+        return True
+
+    def _rsi_ok(self, row) -> bool:
+        if self.rsi_filter_mode == "off":
+            return True
+        rsi = self._finite(row.get(f"rsi{self.rsi_window}"))
+        if rsi is None:
+            return False
+        if self.rsi_filter_mode == "lt_70":
+            return rsi < 70.0
+        if self.rsi_filter_mode == "lt_75":
+            return rsi < 75.0
+        if self.rsi_filter_mode == "in_30_70":
+            return 30.0 <= rsi <= 70.0
+        if self.rsi_filter_mode == "in_40_70":
+            return 40.0 <= rsi <= 70.0
+        return True
+
+    def _volume_ok(self, row) -> bool:
+        if self.volume_filter_mode == "off":
+            return True
+        vol = self._finite(row.get("volume"))
+        mean = self._finite(row.get(f"volume_mean{self.volume_mean_window}"))
+        if vol is None or mean is None or mean <= 0:
+            return False
+        if self.volume_filter_mode == "ge_1_0":
+            return vol >= mean * 1.0
+        if self.volume_filter_mode == "ge_1_2":
+            return vol >= mean * 1.2
+        if self.volume_filter_mode == "ge_1_5":
+            return vol >= mean * 1.5
+        return True
+
+    def _daily_regime_ok(self, row) -> bool:
+        if self.daily_regime_filter_mode == "off":
+            return True
+        v = self._bool_or_none(row.get("daily_above_sma"))
+        if v is None:
+            return False
+        return v

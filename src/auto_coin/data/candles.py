@@ -805,19 +805,42 @@ def enrich_vwap_ema_pullback(
     volume_profile_bin_count: int = 24,
     volume_gap_threshold: float = 0.3,
     atr_window: int = 14,
+    # ----- P2 entry-side filters (all opt-in via non-None values) -----
+    rsi_window: int | None = None,
+    volume_mean_window: int | None = None,
+    htf_df: pd.DataFrame | None = None,
+    htf_ema_window: int = 20,
+    htf_ema_slow_window: int = 60,
+    daily_df: pd.DataFrame | None = None,
+    daily_regime_ma_window: int = 200,
 ) -> pd.DataFrame:
     """VWAP + EMA pullback 전략용 보조 컬럼 추가.
 
-    Added columns:
+    Added columns (P1 — always):
         - ema{ema_period}: shifted EMA, completed-candle convention
         - vwap: shifted rolling candle VWAP based on HLC3 and volume
         - vwap_above: close > shifted VWAP
         - vwap_cross_count: recent close/VWAP side changes
         - ema_slope_ratio: shifted EMA slope over ``sideways_lookback`` bars
         - is_sideways: choppy VWAP crosses or flat EMA slope
+        - atr{atr_window}: True Range rolling mean (shifted)
+
+    Added columns (P2 — only when corresponding param is set):
+        - rsi{rsi_window}: Wilder RSI (shifted) — when ``rsi_window`` is not None.
+        - volume_mean{volume_mean_window}: rolling mean (shifted) — when
+          ``volume_mean_window`` is not None.
+        - htf_close_projected / htf_ema{htf_ema_window}_projected /
+          htf_ema{htf_ema_slow_window}_projected / htf_close_above_ema /
+          htf_ema_fast_above_slow: when ``htf_df`` provided. Higher-timeframe
+          features (e.g. 4h) projected onto the base index via forward-fill.
+        - daily_close_projected / daily_sma{daily_regime_ma_window}_projected /
+          daily_above_sma: when ``daily_df`` provided.
 
     Volume Profile is intentionally not implemented in Phase 1; parameters are
     accepted only for forward-compatible strategy configuration.
+
+    Defaults preserve P1 behavior — when no P2 params are passed, no P2 columns
+    are added (backward compat).
     """
     missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing:
@@ -885,6 +908,83 @@ def enrich_vwap_ema_pullback(
         # Placeholder column for future Phase 2/3 implementations.  It stays
         # False so enabling the option cannot silently approximate profile logic.
         out["volume_profile_ok"] = False
+
+    # ----- P2 entry-side filter columns (opt-in) -----
+    if rsi_window is not None:
+        if rsi_window < 2:
+            raise ValueError("rsi_window must be >= 2")
+        out[f"rsi{rsi_window}"] = _rsi(out["close"], rsi_window).shift(1)
+
+    if volume_mean_window is not None:
+        if volume_mean_window < 1:
+            raise ValueError("volume_mean_window must be >= 1")
+        out[f"volume_mean{volume_mean_window}"] = (
+            out["volume"].rolling(window=volume_mean_window).mean().shift(1)
+        )
+
+    if htf_df is not None:
+        if htf_ema_window < 1:
+            raise ValueError("htf_ema_window must be >= 1")
+        if htf_ema_slow_window < 1:
+            raise ValueError("htf_ema_slow_window must be >= 1")
+        htf_missing = [c for c in REQUIRED_COLUMNS if c not in htf_df.columns]
+        if htf_missing:
+            raise ValueError(f"htf_df missing required columns: {htf_missing}")
+        htf_src = htf_df.copy()
+        htf_ema_fast_col = f"htf_ema{htf_ema_window}_projected"
+        htf_ema_slow_col = f"htf_ema{htf_ema_slow_window}_projected"
+        htf_src[htf_ema_fast_col] = (
+            htf_src["close"].ewm(span=htf_ema_window, adjust=False).mean().shift(1)
+        )
+        htf_src[htf_ema_slow_col] = (
+            htf_src["close"].ewm(span=htf_ema_slow_window, adjust=False).mean().shift(1)
+        )
+        htf_src["htf_close_projected"] = htf_src["close"].shift(1)
+        htf_src["htf_close_above_ema"] = (
+            htf_src["htf_close_projected"] > htf_src[htf_ema_fast_col]
+        )
+        htf_src["htf_ema_fast_above_slow"] = (
+            htf_src[htf_ema_fast_col] > htf_src[htf_ema_slow_col]
+        )
+        projected = project_higher_timeframe_features(
+            htf_src,
+            out.index,
+            columns=[
+                "htf_close_projected",
+                htf_ema_fast_col,
+                htf_ema_slow_col,
+                "htf_close_above_ema",
+                "htf_ema_fast_above_slow",
+            ],
+        )
+        out = out.join(projected, how="left")
+
+    if daily_df is not None:
+        if daily_regime_ma_window < 2:
+            raise ValueError("daily_regime_ma_window must be >= 2")
+        daily_missing = [c for c in REQUIRED_COLUMNS if c not in daily_df.columns]
+        if daily_missing:
+            raise ValueError(f"daily_df missing required columns: {daily_missing}")
+        daily_src = daily_df.copy()
+        daily_sma_col = f"daily_sma{daily_regime_ma_window}_projected"
+        daily_src[daily_sma_col] = (
+            daily_src["close"].rolling(window=daily_regime_ma_window).mean().shift(1)
+        )
+        daily_src["daily_close_projected"] = daily_src["close"].shift(1)
+        daily_src["daily_above_sma"] = (
+            daily_src["daily_close_projected"] > daily_src[daily_sma_col]
+        )
+        projected = project_higher_timeframe_features(
+            daily_src,
+            out.index,
+            columns=[
+                "daily_close_projected",
+                daily_sma_col,
+                "daily_above_sma",
+            ],
+        )
+        out = out.join(projected, how="left")
+
     return out
 
 
@@ -1341,6 +1441,14 @@ def enrich_for_strategy(
             volume_profile_bin_count=strategy_params.get("volume_profile_bin_count", 24),
             volume_gap_threshold=strategy_params.get("volume_gap_threshold", 0.3),
             atr_window=strategy_params.get("atr_window", 14),
+            # P2 — opt-in. None / not-passed means "no extra columns" (P1 backward compat).
+            rsi_window=strategy_params.get("rsi_window"),
+            volume_mean_window=strategy_params.get("volume_mean_window"),
+            htf_df=strategy_params.get("htf_df"),
+            htf_ema_window=strategy_params.get("htf_ema_window", 20),
+            htf_ema_slow_window=strategy_params.get("htf_ema_slow_window", 60),
+            daily_df=strategy_params.get("daily_df"),
+            daily_regime_ma_window=strategy_params.get("daily_regime_ma_window", 200),
         )
     elif strategy_name == "regime_reclaim_30m":
         enriched = enrich_daily(df, ma_window=ma_window, k=k)
