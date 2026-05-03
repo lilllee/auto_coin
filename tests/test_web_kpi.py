@@ -326,3 +326,117 @@ def test_kpi_page_renders_slippage_section(app_env):
         r = client.get("/kpi")
         assert r.status_code == 200
         assert "슬리피지" in r.text
+
+
+# ---------------------------------------------------------------------------
+# Upbit ledger KPI section (Codex 0010)
+# ---------------------------------------------------------------------------
+
+def test_kpi_page_renders_ledger_section(app_env):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/kpi")
+        assert r.status_code == 200
+        # 별도 섹션 제목과 폼이 보여야 한다 — 로컬 KPI 와 의미가 분리됨을 명시
+        assert "업비트 원장 기준 KPI" in r.text
+        assert "봇 로컬 로그 기준 KPI" in r.text
+        assert "ledger-upload-form" in r.text
+
+
+def test_kpi_ledger_data_empty_when_no_export(app_env):
+    """업로드 전엔 available=false + 명시적 빈 페이로드."""
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        r = client.get("/kpi/ledger/data")
+        assert r.status_code == 200
+        d = r.json()
+        assert d["available"] is False
+        assert "업로드되지 않았습니다" in d["message"]
+        assert d["parsed_event_count"] == 0
+        assert d["matched_trade_count"] == 0
+
+
+def test_kpi_ledger_upload_then_data_round_trip(app_env):
+    """paste 업로드 → /kpi/ledger/data 조회까지 round-trip."""
+    app = create_app()
+    paste = (
+        "체결시간\t코인\t마켓\t종류\t거래수량\t거래단가\t거래금액\t수수료\t정산금액\t주문시간\n"
+        "2026-04-14 15:32:11\tDOGE\tKRW\t매수\t100\t100\t10,000\t5\t10,005\t2026-04-14 15:32:00\n"
+        "2026-04-14 16:45:30\tDOGE\tKRW\t매도\t100\t110\t11,000\t5.5\t10,994.5\t2026-04-14 16:45:00\n"
+    )
+    with TestClient(app) as client:
+        _login(client)
+        # CSRF 토큰을 세션 메타에서 추출
+        page = client.get("/kpi")
+        assert page.status_code == 200
+        import re
+        m = re.search(r'name="csrf-token" content="([^"]+)"', page.text)
+        assert m, "csrf token meta not found"
+        token = m.group(1)
+
+        r = client.post(
+            "/kpi/ledger/upload",
+            data={"paste": paste, "_csrf_token": token},
+        )
+        assert r.status_code == 200, r.text
+        d = r.json()
+        assert d["available"] is True
+        assert d["parsed_event_count"] == 2
+        assert d["matched_trade_count"] == 1
+        assert d["realized_pnl_krw"] == pytest.approx(989.5)
+
+        # 다시 GET 으로 조회해도 동일한 결과가 유지된다
+        r2 = client.get("/kpi/ledger/data")
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d2["available"] is True
+        assert d2["matched_trade_count"] == 1
+        assert d2["realized_pnl_krw"] == pytest.approx(989.5)
+
+
+def test_kpi_ledger_upload_rejects_unrecognized_paste(app_env):
+    app = create_app()
+    with TestClient(app) as client:
+        _login(client)
+        page = client.get("/kpi")
+        import re
+        m = re.search(r'name="csrf-token" content="([^"]+)"', page.text)
+        assert m
+        token = m.group(1)
+
+        r = client.post(
+            "/kpi/ledger/upload",
+            data={"paste": "this is not an upbit table\nblah blah", "_csrf_token": token},
+        )
+        assert r.status_code == 422
+
+
+def test_kpi_ledger_clear_resets_state(app_env):
+    app = create_app()
+    paste = (
+        "체결시간\t코인\t마켓\t종류\t거래수량\t거래단가\t거래금액\t수수료\t정산금액\t주문시간\n"
+        "2026-04-14 15:32:11\tDOGE\tKRW\t매수\t100\t100\t10,000\t5\t10,005\t2026-04-14 15:32:00\n"
+        "2026-04-14 16:45:30\tDOGE\tKRW\t매도\t100\t110\t11,000\t5.5\t10,994.5\t2026-04-14 16:45:00\n"
+    )
+    with TestClient(app) as client:
+        _login(client)
+        page = client.get("/kpi")
+        import re
+        m = re.search(r'name="csrf-token" content="([^"]+)"', page.text)
+        assert m
+        token = m.group(1)
+        r = client.post(
+            "/kpi/ledger/upload",
+            data={"paste": paste, "_csrf_token": token},
+        )
+        assert r.status_code == 200
+        # 초기화
+        r_clear = client.post("/kpi/ledger/clear", data={"_csrf_token": token})
+        assert r_clear.status_code == 200
+        d = r_clear.json()
+        assert d["available"] is False
+        # 다시 GET 시에도 빈 상태
+        r2 = client.get("/kpi/ledger/data").json()
+        assert r2["available"] is False

@@ -4,9 +4,12 @@
 <h1 class="text-xl font-semibold mb-3">KPI 요약</h1>
 
 <div class="mb-3 rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-xs text-amber-800 dark:text-amber-300">
-  ℹ️ 기본적으로 <b>"estimated_*"</b> 필드는 하위호환 이름을 유지합니다.
-  기간 전체에 <code>DailySnapshot.portfolio_equity_krw</code>가 있으면 해당 평가액 기준으로 계산하고,
-  없으면 <code>total_pnl_ratio</code> 합 기반 추정치로 계산합니다. "거래 통계"(승률·평균 수익률·거래별 실현 KRW)는 fee 반영된 정확한 값입니다.
+  ℹ️ 이 페이지에는 <b>두 가지 KPI</b>가 함께 표시됩니다:
+  <ul class="list-disc ml-5 mt-1 space-y-0.5">
+    <li><b>봇 로컬 로그 기준 KPI</b> — 자동매매 봇이 직접 기록한 <code>TradeLog</code>/<code>DailySnapshot</code> 만 본다. 외부에서 업비트 앱으로 한 매매·DB 비어있던 시기 거래는 빠진다.</li>
+    <li><b>업비트 원장 기준 KPI</b> — 사용자가 업비트에서 받은 체결내역 (paste/CSV) 을 FIFO로 매칭한 <b>실제 계좌 기준</b> KPI. 두 값이 다른 게 정상.</li>
+  </ul>
+  로컬 일별 추정 지표의 <code>estimated_*</code> 명명은 하위호환 유지. 기간 전체에 <code>DailySnapshot.portfolio_equity_krw</code>가 있으면 해당 평가액 기준이고, 없으면 <code>total_pnl_ratio</code> 합 기반 추정치다.
 </div>
 
 <form method="get" class="mb-3 flex gap-2 items-center">
@@ -23,6 +26,7 @@
 <div id="kpi-error" class="hidden rounded border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-3 py-2 text-sm text-red-700 dark:text-red-400"></div>
 
 <section id="kpi-body" class="hidden space-y-4">
+  <h2 class="text-base font-semibold text-slate-800 dark:text-slate-200">봇 로컬 로그 기준 KPI</h2>
   <!-- 거래 통계 카드 -->
   <div>
     <h2 class="text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">거래 통계 (fee 반영·정확)</h2>
@@ -92,6 +96,55 @@
       </div>
     </div>
   </div>
+
+  <!-- 업비트 원장 기준 KPI (별도 섹션) -->
+  <div class="pt-6 mt-6 border-t-2 border-slate-300 dark:border-slate-600">
+    <h2 class="text-base font-semibold mb-1 text-slate-800 dark:text-slate-200">업비트 원장 기준 KPI</h2>
+    <div class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+      업비트 한글 체결내역을 그대로 paste 하면 FIFO로 매칭해 <b>실계좌 기준</b> KPI 를 계산합니다.
+      헤더: <code>체결시간 / 코인 / 마켓 / 종류 / 거래수량 / 거래단가 / 거래금액 / 수수료 / 정산금액 / 주문시간</code>.
+      봇 로컬 KPI 와 값이 다른 것은 정상 — 외부 매매·DB 누락 거래까지 포함하기 때문입니다.
+    </div>
+
+    <form id="ledger-upload-form" class="mb-3 space-y-2">
+      <input type="hidden" name="_csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+      <textarea name="paste" rows="6" placeholder="여기에 업비트 한글 체결내역을 붙여넣고 [업로드 & 계산] 클릭"
+                class="w-full font-mono text-xs border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-2"></textarea>
+      <div class="flex gap-2">
+        <button type="submit" class="rounded bg-sky-600 hover:bg-sky-700 text-white text-sm px-3 py-1.5">업로드 & 계산</button>
+        <button type="button" id="ledger-clear-btn" class="rounded border border-slate-300 dark:border-slate-600 text-sm px-3 py-1.5">초기화</button>
+        <span id="ledger-form-msg" class="text-xs text-slate-500 dark:text-slate-400 self-center"></span>
+      </div>
+    </form>
+
+    <div id="ledger-empty" class="hidden rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+      아직 업비트 원장 데이터가 동기화/업로드되지 않았습니다.
+    </div>
+
+    <div id="ledger-content" class="hidden space-y-3">
+      <div id="ledger-summary-cards" class="grid grid-cols-2 gap-2"></div>
+
+      <div>
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">자산별</h3>
+        <div id="ledger-by-asset" class="overflow-x-auto"></div>
+      </div>
+
+      <div>
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">일자별</h3>
+        <div id="ledger-by-day" class="overflow-x-auto"></div>
+      </div>
+
+      <div id="ledger-open-lots-wrap" class="hidden">
+        <h3 class="text-xs font-semibold mb-1 text-slate-600 dark:text-slate-400">미체결 보유분 (open lots)</h3>
+        <div id="ledger-open-lots" class="overflow-x-auto"></div>
+      </div>
+
+      <div id="ledger-notes-wrap" class="hidden">
+        <h3 class="text-xs font-semibold mb-1 text-amber-700 dark:text-amber-300">경고/메모</h3>
+        <ul id="ledger-notes" class="list-disc ml-5 text-xs text-amber-700 dark:text-amber-300 space-y-0.5"></ul>
+      </div>
+    </div>
+  </div>
 </section>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -113,6 +166,18 @@
     slipByReason: document.getElementById("slippage-by-reason"),
     slipByTicker: document.getElementById("slippage-by-ticker"),
     slipRecent: document.getElementById("slippage-recent"),
+    ledgerEmpty: document.getElementById("ledger-empty"),
+    ledgerContent: document.getElementById("ledger-content"),
+    ledgerCards: document.getElementById("ledger-summary-cards"),
+    ledgerByAsset: document.getElementById("ledger-by-asset"),
+    ledgerByDay: document.getElementById("ledger-by-day"),
+    ledgerOpenLotsWrap: document.getElementById("ledger-open-lots-wrap"),
+    ledgerOpenLots: document.getElementById("ledger-open-lots"),
+    ledgerNotesWrap: document.getElementById("ledger-notes-wrap"),
+    ledgerNotes: document.getElementById("ledger-notes"),
+    ledgerForm: document.getElementById("ledger-upload-form"),
+    ledgerFormMsg: document.getElementById("ledger-form-msg"),
+    ledgerClearBtn: document.getElementById("ledger-clear-btn"),
   };
   const period = {{ period | tojson }};
 
@@ -322,6 +387,133 @@
     });
   }
 
+  function renderLedger(d){
+    if (!d || !d.available) {
+      els.ledgerEmpty.classList.remove("hidden");
+      els.ledgerContent.classList.add("hidden");
+      return;
+    }
+    els.ledgerEmpty.classList.add("hidden");
+    els.ledgerContent.classList.remove("hidden");
+
+    const win = (d.win_rate ?? 0).toFixed(2) + "%";
+    const period = (d.period_start ? fmtTimestamp(d.period_start) : "-")
+      + " ~ " + (d.period_end ? fmtTimestamp(d.period_end) : "-");
+    els.ledgerCards.innerHTML = [
+      card("기간", period, `이벤트 ${d.parsed_event_count}건 · 닫힌 lot ${d.matched_trade_count}건`),
+      card("실현 손익", `<span class="${pnlClass(d.realized_pnl_krw)}">${fmtKrw(d.realized_pnl_krw)}</span>`,
+           `수수료 합 ${fmtKrw(d.total_fee_krw)}`),
+      card("승률", win, `승 ${d.win_count} / 패 ${d.loss_count}`),
+      card("평균 수익률", `<span class="${pnlClass(d.avg_pnl_ratio)}">${fmtPct(d.avg_pnl_ratio)}</span>`,
+           "닫힌 lot 단위 평균"),
+      card("미체결 보유분", `${d.unmatched_buy_count}건`,
+           "FIFO 매칭 후 잔량 — 평가손익은 미반영"),
+      card("입출금 순합 (KRW)", fmtKrw(d.cash_flow_krw),
+           "deposit - withdraw · 거래 PnL과 별개"),
+    ].join("");
+
+    els.ledgerByAsset.innerHTML = table(
+      ["자산", "matched", "실현 KRW", "수수료", "승/패"],
+      d.by_asset.map(b => [
+        esc(b.asset),
+        `${b.matched_count}`,
+        `<span class="${pnlClass(b.realized_pnl_krw)}">${fmtKrw(b.realized_pnl_krw)}</span>`,
+        fmtKrw(b.fee_krw),
+        `${b.win_count} / ${b.loss_count}`,
+      ])
+    );
+
+    els.ledgerByDay.innerHTML = table(
+      ["일자", "matched", "실현 KRW", "수수료"],
+      d.by_day.map(b => [
+        esc(b.date),
+        `${b.matched_count}`,
+        `<span class="${pnlClass(b.realized_pnl_krw)}">${fmtKrw(b.realized_pnl_krw)}</span>`,
+        fmtKrw(b.fee_krw),
+      ])
+    );
+
+    if (d.open_lots && d.open_lots.length) {
+      els.ledgerOpenLotsWrap.classList.remove("hidden");
+      els.ledgerOpenLots.innerHTML = table(
+        ["자산", "매수시각", "잔량", "잔량 비례 비용 KRW"],
+        d.open_lots.map(o => [
+          esc(o.asset),
+          esc(fmtTimestamp(o.buy_time)),
+          Number(o.quantity).toLocaleString("ko-KR", {maximumFractionDigits: 8}),
+          fmtKrw(o.buy_net_krw),
+        ])
+      );
+    } else {
+      els.ledgerOpenLotsWrap.classList.add("hidden");
+    }
+
+    if (d.notes && d.notes.length) {
+      els.ledgerNotesWrap.classList.remove("hidden");
+      els.ledgerNotes.innerHTML = d.notes.map(n => `<li>${esc(n)}</li>`).join("");
+    } else {
+      els.ledgerNotesWrap.classList.add("hidden");
+    }
+  }
+
+  async function loadLedger(){
+    try {
+      const resp = await fetch(`/kpi/ledger/data`, {headers: {accept: "application/json"}});
+      const data = await resp.json().catch(() => ({}));
+      renderLedger(data);
+    } catch (e) {
+      // 원장 섹션은 페이지 전체를 막지 않는다 — 빈 상태로만 노출.
+      renderLedger({available: false});
+    }
+  }
+
+  function csrfHeader(){
+    const meta = document.querySelector("meta[name=csrf-token]");
+    return meta ? {"X-CSRF-Token": meta.getAttribute("content") || ""} : {};
+  }
+
+  els.ledgerForm.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const fd = new FormData(els.ledgerForm);
+    els.ledgerFormMsg.textContent = "업로드 중…";
+    try {
+      const resp = await fetch("/kpi/ledger/upload", {
+        method: "POST",
+        headers: csrfHeader(),
+        body: fd,
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        els.ledgerFormMsg.textContent = data.detail || `업로드 실패 (${resp.status})`;
+        return;
+      }
+      els.ledgerFormMsg.textContent = `완료 — 이벤트 ${data.parsed_event_count}건, matched ${data.matched_trade_count}건`;
+      renderLedger(data);
+    } catch (e) {
+      els.ledgerFormMsg.textContent = e?.message || "업로드 실패";
+    }
+  });
+
+  els.ledgerClearBtn.addEventListener("click", async () => {
+    if (!confirm("업로드된 원장 paste 를 삭제할까요?")) return;
+    els.ledgerFormMsg.textContent = "삭제 중…";
+    try {
+      const resp = await fetch("/kpi/ledger/clear", {
+        method: "POST",
+        headers: csrfHeader(),
+      });
+      const data = await resp.json().catch(() => ({}));
+      if (!resp.ok) {
+        els.ledgerFormMsg.textContent = data.detail || `삭제 실패 (${resp.status})`;
+        return;
+      }
+      els.ledgerFormMsg.textContent = "삭제 완료";
+      renderLedger(data);
+    } catch (e) {
+      els.ledgerFormMsg.textContent = e?.message || "삭제 실패";
+    }
+  });
+
   async function load(){
     try {
       const resp = await fetch(`/kpi/data?period=${encodeURIComponent(period)}`, {headers: {accept: "application/json"}});
@@ -341,6 +533,7 @@
       renderReason(data.trade_kpi.by_exit_reason);
       renderChart(data.daily_kpi.daily_series);
       renderSlippage(data.slippage_kpi);
+      loadLedger();
     } catch (e) {
       els.loading.classList.add("hidden");
       els.error.textContent = e?.message || "데이터를 불러오지 못했습니다.";
