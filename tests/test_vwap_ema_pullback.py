@@ -227,3 +227,109 @@ def test_next_open_ignores_last_candle_signal_without_next_open():
     df = _execution_df().iloc[:61].copy()
     trades = simulate_execution_trades(df, {}, execution_mode="next_open", mark_to_market=False)
     assert trades == []
+
+
+def _cooldown_two_trade_df() -> pd.DataFrame:
+    """Two-trade fixture: BUY60(exec61) → SELL62(exec63) → second BUY at row 64 and 66.
+
+    rows 65 / 67 의 open 만 override 한다 — close/low 는 default 유지해서 해당 row 가
+    스스로 BUY 신호를 내지 않게 한다. 만약 row 65 close 를 건드리면 ``_ema_pullback_touched``
+    가 row 64 의 touch 를 그대로 인식해 row 65 자체에서 추가 BUY 신호가 나오므로 fixture
+    의도가 깨진다.
+    """
+    out = _execution_df()
+    # Second BUY trigger at row 64 (within cooldown window when cooldown_bars=2)
+    out.iloc[64, out.columns.get_loc("open")] = 104.5
+    out.iloc[64, out.columns.get_loc("low")] = 100.1
+    out.iloc[64, out.columns.get_loc("close")] = 105.5
+    # row 65 stays default (open=120 close=120 → not bullish → 자체 BUY 안 남)
+    # Second BUY trigger at row 66 (after cooldown window when cooldown_bars=2)
+    out.iloc[66, out.columns.get_loc("open")] = 104.5
+    out.iloc[66, out.columns.get_loc("low")] = 100.1
+    out.iloc[66, out.columns.get_loc("close")] = 105.5
+    out.iloc[67, out.columns.get_loc("open")] = 112.0  # entry exec target if 66 BUY allowed
+    return out
+
+
+def test_cooldown_zero_matches_baseline_behavior():
+    """cooldown_bars=0 옵션은 기존 동작과 완전 동일 (회귀 보장)."""
+    base = simulate_execution_trades(
+        _execution_df(), {}, execution_mode="next_open", mark_to_market=False,
+    )
+    same = simulate_execution_trades(
+        _execution_df(), {}, execution_mode="next_open", mark_to_market=False,
+        cooldown_bars=0,
+    )
+    assert len(same) == len(base) == 1
+    assert same[0]["entry"] == pytest.approx(base[0]["entry"])
+    assert same[0]["exit"] == pytest.approx(base[0]["exit"])
+    assert same[0]["hold_bars"] == base[0]["hold_bars"]
+
+
+def test_cooldown_blocks_buy_within_window():
+    """cooldown_bars=2 → exit(row 63) 이후 row 64 BUY 차단, row 66 BUY 통과.
+
+    next_open 모드:
+      - cooldown=0: trade 2 entry at row 65 (signal at row 64).
+      - cooldown=2: row 64 BUY blocked, row 66 BUY → trade 2 entry at row 67.
+
+    open trade 가 SELL 없이 끝나므로 mark_to_market=True 로 닫는다.
+    """
+    df = _cooldown_two_trade_df()
+    no_cd = simulate_execution_trades(
+        df, {}, execution_mode="next_open", mark_to_market=True, cooldown_bars=0,
+    )
+    cd2 = simulate_execution_trades(
+        df, {}, execution_mode="next_open", mark_to_market=True, cooldown_bars=2,
+    )
+    row_65_ts = str(df.index[65])
+    row_67_ts = str(df.index[67])
+    no_cd_entry_ts = [t["entry_ts"] for t in no_cd]
+    cd2_entry_ts = [t["entry_ts"] for t in cd2]
+    # cooldown=0 → trade 2 entry timestamp 는 row 65
+    assert row_65_ts in no_cd_entry_ts
+    # cooldown=2 → trade 2 entry timestamp 는 row 67 (row 65 는 cooldown 로 막힘)
+    assert row_65_ts not in cd2_entry_ts
+    assert row_67_ts in cd2_entry_ts
+
+
+def test_cooldown_inactive_when_flat_initially():
+    """초기 BUY (직전 SELL 없음) 는 cooldown 영향 없음."""
+    trades = simulate_execution_trades(
+        _execution_df(), {}, execution_mode="next_open", mark_to_market=False,
+        cooldown_bars=10,  # 큰 값이라도 초기 BUY 는 통과
+    )
+    assert len(trades) == 1
+    assert trades[0]["entry"] == pytest.approx(110.0 * (1.0 + DEFAULT_SLIPPAGE))
+
+
+def test_cooldown_works_in_same_close_mode():
+    """same_close 모드에서도 cooldown 이 BUY 신호를 차단.
+
+    same_close: exit happens at bar 62 close (last_exit_i=62).
+      - Row 64 BUY: 64-62=2 ≤ 2 → blocked.
+      - Row 66 BUY: 66-62=4 > 2 → allowed.
+    """
+    df = _cooldown_two_trade_df()
+    cd0 = simulate_execution_trades(
+        df, {}, execution_mode="same_close", mark_to_market=True, cooldown_bars=0,
+    )
+    cd2 = simulate_execution_trades(
+        df, {}, execution_mode="same_close", mark_to_market=True, cooldown_bars=2,
+    )
+    # row 64 close == row 66 close (105.5) 라서 가격으로 구분 불가 → entry_ts 로 검증
+    cd0_entry_ts = [t["entry_ts"] for t in cd0]
+    cd2_entry_ts = [t["entry_ts"] for t in cd2]
+    # cooldown=0 should have an entry at row 64's timestamp; cooldown=2 should not.
+    row_64_ts = str(df.index[64])
+    row_66_ts = str(df.index[66])
+    assert row_64_ts in cd0_entry_ts
+    assert row_64_ts not in cd2_entry_ts
+    assert row_66_ts in cd2_entry_ts
+
+
+def test_cooldown_negative_value_rejected():
+    with pytest.raises(ValueError, match="cooldown_bars"):
+        simulate_execution_trades(
+            _execution_df(), {}, execution_mode="next_open", cooldown_bars=-1,
+        )

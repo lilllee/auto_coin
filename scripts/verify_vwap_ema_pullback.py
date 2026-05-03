@@ -176,8 +176,11 @@ def backtest_stats(
     period: str,
     *,
     execution_mode: str = "same_close",
+    cooldown_bars: int = 0,
 ) -> BacktestStats:
-    trades = simulate_execution_trades(enriched, params, execution_mode=execution_mode)
+    trades = simulate_execution_trades(
+        enriched, params, execution_mode=execution_mode, cooldown_bars=cooldown_bars,
+    )
     rets = [t["ret"] for t in trades]
     equity = []
     cur = 1.0
@@ -222,9 +225,18 @@ def simulate_execution_trades(
     *,
     execution_mode: str = "same_close",
     mark_to_market: bool = True,
+    cooldown_bars: int = 0,
 ) -> list[dict[str, Any]]:
+    """Backtest 시뮬레이터.
+
+    ``cooldown_bars > 0`` 일 때 직전 SELL exit 이후 N 캔들 동안 BUY 신호를 무시한다.
+    live `cooldown_minutes` 정책의 backtest 등가물. ``cooldown_bars=0`` (기본) 이면
+    기존 동작과 완전 동일 — 회귀 영향 없음.
+    """
     if execution_mode not in {"same_close", "next_open"}:
         raise ValueError("execution_mode must be same_close or next_open")
+    if cooldown_bars < 0:
+        raise ValueError("cooldown_bars must be >= 0")
     strategy = create_strategy("vwap_ema_pullback", params)
     has_position = False
     entry_price: float | None = None
@@ -233,6 +245,7 @@ def simulate_execution_trades(
     pending: Signal | None = None
     pending_i: int | None = None
     pending_ts = None
+    last_exit_i: int | None = None
     trades: list[dict[str, Any]] = []
 
     for i, (ts, row) in enumerate(enriched.iterrows()):
@@ -259,6 +272,7 @@ def simulate_execution_trades(
                         "signal_ts": str(pending_ts), "signal_i": pending_i,
                     })
                     has_position = False
+                    last_exit_i = i
                     entry_price = None
                     entry_i = None
                     entry_ts = None
@@ -268,6 +282,16 @@ def simulate_execution_trades(
 
         snap = MarketSnapshot(df=enriched.iloc[: i + 1], current_price=close, has_position=has_position)
         sig = strategy.generate_signal(snap)
+
+        # Re-entry cooldown: 직전 SELL exit 이후 N 캔들은 BUY 무시. flat 일 때만 적용.
+        if (
+            cooldown_bars > 0
+            and sig is Signal.BUY
+            and not has_position
+            and last_exit_i is not None
+            and (i - last_exit_i) <= cooldown_bars
+        ):
+            sig = Signal.HOLD
 
         if execution_mode == "same_close":
             if sig is Signal.BUY and not has_position:
@@ -285,6 +309,7 @@ def simulate_execution_trades(
                     "signal_ts": str(ts), "signal_i": i,
                 })
                 has_position = False
+                last_exit_i = i
                 entry_price = None
                 entry_i = None
                 entry_ts = None
@@ -373,7 +398,11 @@ def main() -> int:
     ap.add_argument("--cache-dir", default="data/validation_vwap")
     ap.add_argument("--execution-mode", choices=["same_close", "next_open"], default="same_close")
     ap.add_argument("--exit-mode", choices=["close_below_ema", "body_below_ema", "confirm_close_below_ema", "atr_buffer_exit"], default="close_below_ema")
+    ap.add_argument("--cooldown-bars", type=int, default=0,
+                    help="SELL exit 후 N 캔들 BUY 신호 무시 (live cooldown_minutes 의 backtest 등가물)")
     args = ap.parse_args()
+    if args.cooldown_bars < 0:
+        ap.error("--cooldown-bars must be >= 0")
 
     cache_dir = Path(args.cache_dir)
     run_params = {**DEFAULT_PARAMS, "exit_mode": args.exit_mode}
@@ -393,7 +422,11 @@ def main() -> int:
                 sliced = period_slice(enriched_full, days)
                 # 30m has 1y available because count=17520; day has 1y; all ok.
                 sig, trades, buys, sells = simulate_signals(sliced, run_params, ticker, label, period, meta["bar_hours"])
-                bt = backtest_stats(sliced, run_params, ticker, label, period, execution_mode=args.execution_mode)
+                bt = backtest_stats(
+                    sliced, run_params, ticker, label, period,
+                    execution_mode=args.execution_mode,
+                    cooldown_bars=args.cooldown_bars,
+                )
                 all_signal_stats.append(sig)
                 all_bt_stats.append(bt)
                 buy_samples.extend(buys)
