@@ -5,8 +5,8 @@ Date: 2026-05-03 KST · Workplan: codex-to-claude-0012
 ```text
 Implemented: vwap_ema_pullback 를 EXPERIMENTAL_STRATEGIES 로 마킹한 deferred research candidate 로 단일 커밋 정리. 검증 보고서 + 재검증용 스크립트 동봉.
 Decision: Option A (+bounded Option-C 가드 1줄)
-Commits: 87bc92a (예정 — 본 응답 작성 시점에는 push 직전)
-Validation: tests/test_vwap_ema_pullback.py + tests/test_strategy_registry.py + tests/test_config.py + tests/test_review_simulator.py + tests/test_web_review.py + KPI 회귀 모두 PASS. 전체 1101/1101 PASS.
+Commits: ab33e82 (pushed to origin/main)
+Validation: tests/test_vwap_ema_pullback.py + tests/test_strategy_registry.py + tests/test_config.py + tests/test_review_simulator.py + tests/test_web_review.py + KPI 회귀 모두 PASS. 전체 1085/1085 PASS (vwap 테스트 26건은 이미 worktree 에 있어 사전 baseline 1085 유지 = 추가 신규 fail 0).
 Strategy status: research-only · deferred (live/paper 모두 비활성)
 Remaining: P1 — next_open 체결 + body/confirm/atr_buffer exit 모드 가설 검증, intraday 거래 빈도 통제. Volume Profile Phase 2 는 P1 결과 후 재판단.
 ```
@@ -113,7 +113,7 @@ pytest -q tests/test_order_executor.py tests/test_kpi_service.py tests/test_web_
 
 # 전체
 pytest -q
-# 1101 passed
+# 1085 passed (pre-commit baseline 1085 와 동일 — 신규 fail 0)
 ```
 
 ruff: 변경/새 파일 모두 `All checks passed!`.
