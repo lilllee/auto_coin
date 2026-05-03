@@ -281,6 +281,37 @@ def test_live_buy_polls_fill_and_updates_volume(mocker, auth_client, store):
     assert state.position.avg_entry_price == pytest.approx(95_000_000.0)
 
 
+def test_live_buy_fill_avg_price_from_trades_array(mocker, auth_client, store):
+    """BUY도 avg_price 직접 필드가 없으면 trades[] 가중평균을 포지션에 반영한다."""
+    mocker.patch.object(
+        auth_client._upbit, "buy_market_order",
+        return_value={"uuid": "fill-uuid-trades", "side": "bid"},
+    )
+    mocker.patch.object(
+        auth_client._upbit, "get_order",
+        return_value={
+            "uuid": "fill-uuid-trades",
+            "state": "done",
+            "executed_volume": "3.0",
+            "trades": [
+                {"price": "100.0", "volume": "1.0", "funds": "100.0"},
+                {"price": "103.0", "volume": "2.0", "funds": "206.0"},
+            ],
+        },
+    )
+    ex = OrderExecutor(auth_client, store, "KRW-BTC", live=True,
+                       fill_poll_interval=0.01, fill_poll_timeout=1.0)
+    rec = ex.execute(
+        Decision(Action.BUY, reason="signal=BUY", krw_amount=10_000),
+        current_price=99.0,
+    )
+    assert rec is not None
+    state = store.load()
+    assert state.position is not None
+    assert state.position.volume == pytest.approx(3.0)
+    assert state.position.avg_entry_price == pytest.approx(102.0)
+
+
 def test_live_buy_poll_timeout_uses_estimate(mocker, auth_client, store):
     """폴링 타임아웃 시 추정 volume/price가 사용된다."""
     mocker.patch.object(

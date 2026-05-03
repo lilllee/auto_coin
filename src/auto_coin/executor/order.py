@@ -93,7 +93,7 @@ class OrderExecutor:
         return None
 
     @staticmethod
-    def _extract_sell_fill(
+    def _extract_fill(
         fill_info: dict,
     ) -> tuple[float | None, float | None, float | None]:
         """fill_info에서 (avg_price, executed_volume, paid_fee)를 안전하게 추출.
@@ -139,6 +139,9 @@ class OrderExecutor:
 
         return avg_price, executed_volume, paid_fee
 
+    # Backward-compatible name used by existing tests/call sites.
+    _extract_sell_fill = _extract_fill
+
     # ----- buy -----
 
     def _do_buy(self, decision: Decision, *, current_price: float) -> OrderRecord:
@@ -163,15 +166,11 @@ class OrderExecutor:
         if self._live:
             fill_info = self._poll_fill(external_uuid, "buy")
             if fill_info and fill_info.get("state") == "done":
-                executed_volume = float(fill_info.get("executed_volume", 0))
-                avg_price = (
-                    float(fill_info["avg_price"])
-                    if fill_info.get("avg_price")
-                    else current_price
-                )
-                if executed_volume > 0:
+                avg_price, executed_volume, _paid_fee = self._extract_fill(fill_info)
+                if executed_volume is not None and executed_volume > 0:
                     volume = executed_volume
-                    current_price = avg_price
+                    if avg_price is not None:
+                        current_price = avg_price
                 status = "filled"
                 note = f"client_uuid={client_uuid} | filled"
 
@@ -233,7 +232,7 @@ class OrderExecutor:
             fill_info = self._poll_fill(external_uuid, "sell")
             if fill_info and fill_info.get("state") == "done":
                 status = "filled"
-                fill_avg_price, fill_volume, paid_fee = self._extract_sell_fill(fill_info)
+                fill_avg_price, fill_volume, paid_fee = self._extract_fill(fill_info)
                 note = f"client_uuid={client_uuid} | filled"
 
         # OrderRecord: live면 fill 값 우선, 없으면 None(=미확정). paper는 current_price 사용.
