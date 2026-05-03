@@ -170,3 +170,8 @@ def test_strategy_name_custom():
 def test_strategy_params_json_custom():
     s = Settings(_env_file=None, strategy_params_json='{"k": 0.7}')
     assert s.strategy_params_json == '{"k": 0.7}'
+
+
+def test_time_exit_disabled_for_vwap_ema_pullback():
+    s = Settings(_env_file=None, strategy_name="vwap_ema_pullback")
+    assert s.time_exit_enabled is False

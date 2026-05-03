@@ -129,7 +129,7 @@ class Settings(BaseSettings):
         전역 08:55 강제 청산을 비활성화한다. 기존 변동성 돌파 계열 전략은
         현재 동작을 유지한다.
         """
-        return self.strategy_name != "sma200_ema_adx_composite"
+        return self.strategy_name not in {"sma200_ema_adx_composite", "vwap_ema_pullback"}
 
 
 def load_settings() -> Settings:

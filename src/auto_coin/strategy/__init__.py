@@ -21,6 +21,7 @@ from auto_coin.strategy.regime_relative_breakout_30m import RegimeRelativeBreako
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+from auto_coin.strategy.vwap_ema_pullback import VwapEmaPullbackStrategy
 
 # Registry: name → class
 STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
@@ -36,6 +37,7 @@ STRATEGY_REGISTRY: dict[str, type[Strategy]] = {
     "regime_reclaim_30m": RegimeReclaim30mStrategy,
     "regime_pullback_continuation_30m": RegimePullbackContinuation30mStrategy,
     "regime_relative_breakout_30m": RegimeRelativeBreakout30mStrategy,
+    "vwap_ema_pullback": VwapEmaPullbackStrategy,
 }
 
 # UI-friendly metadata for each strategy's parameters
@@ -673,6 +675,24 @@ STRATEGY_PARAMS: dict[str, list[dict]] = {
             "hint": "none=SMA touch, rsi=SMA touch+RSI>=50, consecutive=현재/전 bar SMA 위",
         },
     ],
+
+    "vwap_ema_pullback": [
+        {"name": "ema_period", "label": "EMA 기간", "type": "number", "min": "1", "max": "100", "default": 9, "hint": "눌림목/청산 기준 EMA. 기본 9"},
+        {"name": "vwap_period", "label": "VWAP rolling 기간", "type": "number", "min": "2", "max": "500", "default": 48, "hint": "HLC3×volume rolling VWAP 기간"},
+        {"name": "ema_touch_tolerance", "label": "EMA touch tolerance", "type": "number", "step": "0.001", "min": "0", "max": "0.05", "default": 0.003, "hint": "low <= EMA×(1+tolerance)면 눌림으로 인정"},
+        {"name": "sideways_lookback", "label": "횡보 필터 lookback", "type": "number", "min": "2", "max": "100", "default": 12, "hint": "VWAP 교차/EMA slope 판단 바 수"},
+        {"name": "max_vwap_cross_count", "label": "최대 VWAP 교차 수", "type": "number", "min": "0", "max": "50", "default": 3, "hint": "초과 시 횡보장으로 보고 진입 차단"},
+        {"name": "min_ema_slope_ratio", "label": "최소 EMA slope ratio", "type": "number", "step": "0.0001", "min": "0", "max": "0.1", "default": 0.001, "hint": "절대 기울기 비율이 이보다 작으면 횡보장"},
+        {"name": "require_bullish_candle", "label": "양봉 확인 필요", "type": "checkbox", "default": True, "hint": "close > open 조건 요구"},
+        {"name": "use_volume_profile", "label": "Volume Profile 사용", "type": "checkbox", "default": False, "hint": "Phase 1 기본 OFF. 정확/근사 Profile은 후속 단계"},
+        {"name": "exit_mode", "label": "Exit mode", "type": "text", "default": "close_below_ema", "hint": "close_below_ema/body_below_ema/confirm_close_below_ema/atr_buffer_exit"},
+        {"name": "exit_confirm_bars", "label": "Exit confirm bars", "type": "number", "min": "1", "max": "10", "default": 2, "hint": "confirm_close_below_ema 연속 확인봉 수"},
+        {"name": "exit_atr_multiplier", "label": "Exit ATR multiplier", "type": "number", "step": "0.1", "min": "0", "max": "5", "default": 0.3, "hint": "atr_buffer_exit: EMA - ATR×배수 아래에서 청산"},
+        {"name": "atr_window", "label": "ATR window", "type": "number", "min": "1", "max": "100", "default": 14, "hint": "ATR buffer exit 계산 기간"},
+        {"name": "volume_profile_lookback", "label": "Volume Profile lookback", "type": "number", "min": "1", "max": "500", "default": 48, "hint": "후속 Phase용 예약 파라미터"},
+        {"name": "volume_profile_bin_count", "label": "Volume Profile bins", "type": "number", "min": "1", "max": "200", "default": 24, "hint": "후속 Phase용 예약 파라미터"},
+        {"name": "volume_gap_threshold", "label": "Volume gap threshold", "type": "number", "step": "0.05", "min": "0", "max": "1", "default": 0.3, "hint": "후속 Phase용 예약 파라미터"},
+    ],
     "regime_relative_breakout_30m": [
         {"name": "regime_ticker", "label": "Daily regime 기준 티커", "type": "text", "default": "KRW-BTC", "hint": "BTC daily regime 참조 자산"},
         {"name": "daily_regime_ma_window", "label": "Daily regime SMA (일)", "type": "number", "min": "2", "max": "300", "default": 100, "hint": "BTC close > 전일 기준 SMA 일 때만 진입"},
@@ -724,6 +744,7 @@ STRATEGY_LABELS: dict[str, str] = {
     "regime_reclaim_30m": "Daily Regime + 1H Setup + 30m Trigger Reclaim",
     "regime_pullback_continuation_30m": "Daily/1H Trend Pullback + 30m Continuation",
     "regime_relative_breakout_30m": "BTC Regime + Alt RS + 1H Trend + 30m Breakout",
+    "vwap_ema_pullback": "VWAP + EMA9 눌림목",
 }
 
 EXPERIMENTAL_STRATEGIES: set[str] = {
@@ -733,6 +754,7 @@ EXPERIMENTAL_STRATEGIES: set[str] = {
     "regime_reclaim_30m",
     "regime_pullback_continuation_30m",
     "regime_relative_breakout_30m",
+    "vwap_ema_pullback",
 }
 
 
@@ -770,6 +792,7 @@ STRATEGY_ENTRY_CONFIRMATION: dict[str, int] = {
     "regime_reclaim_30m": 0,         # 30m 봉 확정 reclaim 진입
     "regime_pullback_continuation_30m": 0,  # 30m 봉 확정 continuation 진입
     "regime_relative_breakout_30m": 0,      # 30m 봉 확정 breakout 진입
+    "vwap_ema_pullback": 0,                 # VWAP/EMA pullback 즉시 판단
 }
 
 # 전략별 실행 모드.
@@ -788,4 +811,5 @@ STRATEGY_EXECUTION_MODE: dict[str, str] = {
     "regime_reclaim_30m": "intraday",
     "regime_pullback_continuation_30m": "intraday",
     "regime_relative_breakout_30m": "intraday",
+    "vwap_ema_pullback": "intraday",
 }

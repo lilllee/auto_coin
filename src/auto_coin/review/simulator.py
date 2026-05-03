@@ -351,5 +351,10 @@ def _extract_indicators(strategy_name: str, strategy: Strategy, row: pd.Series) 
         indicators[f"ema{strategy.ema_fast_window}"] = _float_or_none(row.get(f"ema{strategy.ema_fast_window}"))
         indicators[f"ema{strategy.ema_slow_window}"] = _float_or_none(row.get(f"ema{strategy.ema_slow_window}"))
         indicators[f"adx{strategy.adx_window}"] = _float_or_none(row.get(f"adx{strategy.adx_window}"))
+    elif strategy_name == "vwap_ema_pullback":
+        indicators[f"ema{strategy.ema_period}"] = _float_or_none(row.get(f"ema{strategy.ema_period}"))
+        indicators["vwap"] = _float_or_none(row.get("vwap"))
+        indicators["vwap_cross_count"] = _float_or_none(row.get("vwap_cross_count"))
+        indicators["ema_slope_ratio"] = _float_or_none(row.get("ema_slope_ratio"))
 
     return indicators

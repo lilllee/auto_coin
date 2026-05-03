@@ -14,7 +14,7 @@ REVIEW_SELL_OVERRIDABLE: frozenset[str] = frozenset({
     "ad_turtle",
 })
 ENTRY_ONLY_REVIEW_STRATEGIES: frozenset[str] = frozenset({"volatility_breakout"})
-ALWAYS_SELL_REVIEW_STRATEGIES: frozenset[str] = frozenset({"sma200_ema_adx_composite"})
+ALWAYS_SELL_REVIEW_STRATEGIES: frozenset[str] = frozenset({"sma200_ema_adx_composite", "vwap_ema_pullback"})
 
 
 def derive_review_reason(
@@ -80,6 +80,8 @@ def derive_review_reason(
         return _ema_adx_reason(strategy, row, has_position=has_position, signal=signal)
     if strategy_name == "ad_turtle":
         return _ad_turtle_reason(strategy, row, current_price=current_price, has_position=has_position, signal=signal)
+    if strategy_name == "vwap_ema_pullback":
+        return _vwap_ema_pullback_reason(strategy, row, current_price=current_price, has_position=has_position, signal=signal)
 
     return f"signal={signal.value}"
 
@@ -234,6 +236,38 @@ def _ad_turtle_reason(
     if current_price > high:
         return f"price>donchian_high_{strategy.entry_window} breakout"
     return f"price<=donchian_high_{strategy.entry_window}"
+
+
+def _vwap_ema_pullback_reason(
+    strategy: Strategy,
+    row: pd.Series,
+    *,
+    current_price: float,
+    has_position: bool,
+    signal: Signal,
+) -> str:
+    ema = _float_or_none(row.get(f"ema{strategy.ema_period}"))
+    vwap = _float_or_none(row.get("vwap"))
+    cross_count = _float_or_none(row.get("vwap_cross_count"))
+    slope = _float_or_none(row.get("ema_slope_ratio"))
+    is_sideways = bool(row.get("is_sideways")) if row.get("is_sideways") is not None else False
+    if ema is None or vwap is None:
+        return "ema/vwap unavailable"
+    if has_position:
+        if signal is Signal.SELL:
+            return f"close<ema{strategy.ema_period}, strategy exit"
+        return f"close>=ema{strategy.ema_period}, keep position"
+    if current_price <= vwap:
+        return "close<=vwap"
+    if is_sideways:
+        return "sideways filter blocked"
+    if cross_count is not None and cross_count > strategy.max_vwap_cross_count:
+        return "too many VWAP crosses"
+    if slope is not None and abs(slope) < strategy.min_ema_slope_ratio:
+        return "EMA slope too flat"
+    if signal is Signal.BUY:
+        return f"close>vwap and EMA{strategy.ema_period} pullback confirmed"
+    return "entry conditions not met"
 
 
 def _float_or_none(value: Any) -> float | None:

@@ -19,6 +19,7 @@ from auto_coin.strategy.regime_reclaim_1h import RegimeReclaim1HStrategy
 from auto_coin.strategy.sma200_ema_adx_composite import Sma200EmaAdxCompositeStrategy
 from auto_coin.strategy.sma200_regime import Sma200RegimeStrategy
 from auto_coin.strategy.volatility_breakout import VolatilityBreakout
+from auto_coin.strategy.vwap_ema_pullback import VwapEmaPullbackStrategy
 
 
 def test_registry_contains_volatility_breakout():
@@ -588,3 +589,48 @@ def test_strategy_params_has_regime_pullback_continuation_30m():
 def test_strategy_labels_has_regime_pullback_continuation_30m():
     assert "regime_pullback_continuation_30m" in STRATEGY_LABELS
     assert "Continuation" in STRATEGY_LABELS["regime_pullback_continuation_30m"]
+
+
+# --- VWAP + EMA Pullback ---
+
+def test_registry_contains_vwap_ema_pullback():
+    assert "vwap_ema_pullback" in STRATEGY_REGISTRY
+    assert STRATEGY_REGISTRY["vwap_ema_pullback"] is VwapEmaPullbackStrategy
+
+
+def test_create_strategy_vwap_ema_pullback_defaults():
+    s = create_strategy("vwap_ema_pullback")
+    assert isinstance(s, VwapEmaPullbackStrategy)
+    assert s.ema_period == 9
+    assert s.vwap_period == 48
+    assert s.use_volume_profile is False
+
+
+def test_create_strategy_vwap_ema_pullback_custom_params():
+    s = create_strategy(
+        "vwap_ema_pullback",
+        {"ema_period": 7, "vwap_period": 24, "require_bullish_candle": False},
+    )
+    assert isinstance(s, VwapEmaPullbackStrategy)
+    assert s.ema_period == 7
+    assert s.vwap_period == 24
+    assert s.require_bullish_candle is False
+
+
+def test_vwap_ema_pullback_listed_only_when_experimental_included():
+    """research-only deferred candidate — 기본 UI 목록엔 노출하지 않는다."""
+    from auto_coin.strategy import EXPERIMENTAL_STRATEGIES
+    assert "vwap_ema_pullback" in EXPERIMENTAL_STRATEGIES
+    assert "vwap_ema_pullback" not in get_strategy_names()
+    assert "vwap_ema_pullback" in get_strategy_names(include_experimental=True)
+
+
+def test_strategy_params_has_vwap_ema_pullback():
+    names = [p["name"] for p in STRATEGY_PARAMS["vwap_ema_pullback"]]
+    assert "ema_period" in names
+    assert "vwap_period" in names
+    assert "use_volume_profile" in names
+
+
+def test_strategy_labels_has_vwap_ema_pullback():
+    assert STRATEGY_LABELS["vwap_ema_pullback"] == "VWAP + EMA9 눌림목"

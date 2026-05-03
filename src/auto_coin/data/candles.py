@@ -792,6 +792,102 @@ def enrich_regime_reclaim_30m(
     return out
 
 
+def enrich_vwap_ema_pullback(
+    df: pd.DataFrame,
+    *,
+    ema_period: int = 9,
+    vwap_period: int = 48,
+    sideways_lookback: int = 12,
+    max_vwap_cross_count: int = 3,
+    min_ema_slope_ratio: float = 0.001,
+    use_volume_profile: bool = False,
+    volume_profile_lookback: int = 48,
+    volume_profile_bin_count: int = 24,
+    volume_gap_threshold: float = 0.3,
+    atr_window: int = 14,
+) -> pd.DataFrame:
+    """VWAP + EMA pullback 전략용 보조 컬럼 추가.
+
+    Added columns:
+        - ema{ema_period}: shifted EMA, completed-candle convention
+        - vwap: shifted rolling candle VWAP based on HLC3 and volume
+        - vwap_above: close > shifted VWAP
+        - vwap_cross_count: recent close/VWAP side changes
+        - ema_slope_ratio: shifted EMA slope over ``sideways_lookback`` bars
+        - is_sideways: choppy VWAP crosses or flat EMA slope
+
+    Volume Profile is intentionally not implemented in Phase 1; parameters are
+    accepted only for forward-compatible strategy configuration.
+    """
+    missing = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+    if missing:
+        raise ValueError(f"missing required columns: {missing}")
+    if ema_period < 1:
+        raise ValueError("ema_period must be >= 1")
+    if vwap_period < 1:
+        raise ValueError("vwap_period must be >= 1")
+    if sideways_lookback < 1:
+        raise ValueError("sideways_lookback must be >= 1")
+    if max_vwap_cross_count < 0:
+        raise ValueError("max_vwap_cross_count must be >= 0")
+    if min_ema_slope_ratio < 0:
+        raise ValueError("min_ema_slope_ratio must be >= 0")
+    if atr_window < 1:
+        raise ValueError("atr_window must be >= 1")
+    if volume_profile_lookback < 1:
+        raise ValueError("volume_profile_lookback must be >= 1")
+    if volume_profile_bin_count < 1:
+        raise ValueError("volume_profile_bin_count must be >= 1")
+    if volume_gap_threshold < 0:
+        raise ValueError("volume_gap_threshold must be >= 0")
+
+    out = df.copy()
+    ema_col = f"ema{ema_period}"
+    out[ema_col] = out["close"].ewm(span=ema_period, adjust=False).mean().shift(1)
+
+    typical_price = (out["high"] + out["low"] + out["close"]) / 3.0
+    volume = out["volume"].where(out["volume"].notna(), 0.0)
+    numerator = (typical_price * volume).rolling(window=vwap_period).sum()
+    denominator = volume.rolling(window=vwap_period).sum()
+    raw_vwap = numerator / denominator.replace(0, float("nan"))
+    out["vwap"] = raw_vwap.shift(1)
+
+    out["vwap_above"] = (out["close"] > out["vwap"]).astype("boolean")
+    out.loc[out["vwap"].isna() | out["close"].isna(), "vwap_above"] = pd.NA
+    side = out["vwap_above"]
+    cross = side.ne(side.shift(1)) & side.notna() & side.shift(1).notna()
+    out["vwap_cross_count"] = cross.astype("int").rolling(window=sideways_lookback).sum()
+
+    out["ema_slope_ratio"] = (
+        (out[ema_col] - out[ema_col].shift(sideways_lookback))
+        / out[ema_col].shift(sideways_lookback).replace(0, float("nan"))
+    )
+    out["is_sideways"] = (
+        (out["vwap_cross_count"] > max_vwap_cross_count)
+        | (out["ema_slope_ratio"].abs() < min_ema_slope_ratio)
+    )
+    out.loc[out["vwap_cross_count"].isna() | out["ema_slope_ratio"].isna(), "is_sideways"] = False
+
+    high = out["high"]
+    low = out["low"]
+    prev_close = out["close"].shift(1)
+    tr = pd.concat(
+        [
+            high - low,
+            (high - prev_close).abs(),
+            (low - prev_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+    out[f"atr{atr_window}"] = tr.rolling(window=atr_window).mean().shift(1)
+
+    if use_volume_profile:
+        # Placeholder column for future Phase 2/3 implementations.  It stays
+        # False so enabling the option cannot silently approximate profile logic.
+        out["volume_profile_ok"] = False
+    return out
+
+
 def _rsi(close: pd.Series, window: int) -> pd.Series:
     """Wilder-style EWM RSI used by intraday strategy enrichers."""
     delta = close.diff()
@@ -1231,6 +1327,21 @@ def enrich_for_strategy(
             atr_window=strategy_params.get("atr_window", 14),
             regime_df=regime_df,
         )
+    elif strategy_name == "vwap_ema_pullback":
+        enriched = enrich_daily(df, ma_window=ma_window, k=k)
+        return enrich_vwap_ema_pullback(
+            enriched,
+            ema_period=strategy_params.get("ema_period", 9),
+            vwap_period=strategy_params.get("vwap_period", 48),
+            sideways_lookback=strategy_params.get("sideways_lookback", 12),
+            max_vwap_cross_count=strategy_params.get("max_vwap_cross_count", 3),
+            min_ema_slope_ratio=strategy_params.get("min_ema_slope_ratio", 0.001),
+            use_volume_profile=strategy_params.get("use_volume_profile", False),
+            volume_profile_lookback=strategy_params.get("volume_profile_lookback", 48),
+            volume_profile_bin_count=strategy_params.get("volume_profile_bin_count", 24),
+            volume_gap_threshold=strategy_params.get("volume_gap_threshold", 0.3),
+            atr_window=strategy_params.get("atr_window", 14),
+        )
     elif strategy_name == "regime_reclaim_30m":
         enriched = enrich_daily(df, ma_window=ma_window, k=k)
         return enrich_regime_reclaim_30m(
@@ -1348,6 +1459,15 @@ def recommended_history_days(
             int(params.get("dip_lookback_bars", 8)),
             int(params.get("rsi_window", 14)),
             int(params.get("reclaim_ema_window", 6)),
+            int(params.get("atr_window", 14)),
+            base_window,
+        )
+    elif strategy_name == "vwap_ema_pullback":
+        window = max(
+            int(params.get("ema_period", 9)),
+            int(params.get("vwap_period", 48)),
+            int(params.get("sideways_lookback", 12)),
+            int(params.get("volume_profile_lookback", 48)),
             int(params.get("atr_window", 14)),
             base_window,
         )
