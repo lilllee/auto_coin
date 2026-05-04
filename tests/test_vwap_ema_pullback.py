@@ -717,3 +717,105 @@ def test_invalid_filter_modes_rejected():
         VwapEmaPullbackStrategy(volume_mean_window=0)
     with pytest.raises(ValueError, match="daily_regime_ma_window"):
         VwapEmaPullbackStrategy(daily_regime_ma_window=1)
+
+
+# =============================================================================
+# P2.5 — fine-grid threshold extension
+# Test spec: .omx/plans/test-spec-vwap-ema-pullback-p25-2026-05-04.md §2
+# =============================================================================
+
+def test_volume_ge_1_1_blocks_below_threshold():
+    df = _entry_df_with_p2_cols(volume_value=109.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_1")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD  # 109 < 110
+
+
+def test_volume_ge_1_1_allows_above_threshold():
+    # `100.0 * 1.1` 은 FP 부정확 (≈ 110.00000000000001) — clearly-above 값 사용.
+    df = _entry_df_with_p2_cols(volume_value=111.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_1")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_volume_ge_1_3_blocks_below():
+    df = _entry_df_with_p2_cols(volume_value=129.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_3")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD  # 129 < 130
+
+
+def test_volume_ge_1_3_allows_above_threshold():
+    df = _entry_df_with_p2_cols(volume_value=131.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_3")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_volume_ge_1_4_blocks_below():
+    df = _entry_df_with_p2_cols(volume_value=139.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_4")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.HOLD  # 139 < 140
+
+
+def test_volume_ge_1_4_allows_above_threshold():
+    df = _entry_df_with_p2_cols(volume_value=141.0, volume_mean_value=100.0)
+    s = VwapEmaPullbackStrategy(volume_filter_mode="ge_1_4")
+    snap = MarketSnapshot(df=df, current_price=float(df.iloc[-1]["close"]),
+                          has_position=False)
+    assert s.generate_signal(snap) is Signal.BUY
+
+
+def test_new_volume_modes_in_valid_set():
+    from auto_coin.strategy.vwap_ema_pullback import _VALID_VOLUME_MODES
+    # P2.5 신규
+    assert "ge_1_1" in _VALID_VOLUME_MODES
+    assert "ge_1_3" in _VALID_VOLUME_MODES
+    assert "ge_1_4" in _VALID_VOLUME_MODES
+    # P2 기존 (회귀)
+    assert "ge_1_0" in _VALID_VOLUME_MODES
+    assert "ge_1_2" in _VALID_VOLUME_MODES
+    assert "ge_1_5" in _VALID_VOLUME_MODES
+    assert "off" in _VALID_VOLUME_MODES
+
+
+def test_invalid_volume_mode_rejected_p25():
+    """P2.5 외 random invalid mode 거부."""
+    with pytest.raises(ValueError, match="volume_filter_mode"):
+        VwapEmaPullbackStrategy(volume_filter_mode="ge_1_25")
+    with pytest.raises(ValueError, match="volume_filter_mode"):
+        VwapEmaPullbackStrategy(volume_filter_mode="ge_2_0")
+    with pytest.raises(ValueError, match="volume_filter_mode"):
+        VwapEmaPullbackStrategy(volume_filter_mode="ge_0_5")
+
+
+def test_volume_threshold_dispatch_consistent():
+    """PRD §3.2 의 threshold 매핑이 dispatch 함수에 정확히 반영."""
+    from auto_coin.strategy.vwap_ema_pullback import _VOLUME_THRESHOLD_MAP
+    assert _VOLUME_THRESHOLD_MAP == {
+        "ge_1_0": 1.0, "ge_1_1": 1.1, "ge_1_2": 1.2,
+        "ge_1_3": 1.3, "ge_1_4": 1.4, "ge_1_5": 1.5,
+    }
+    # 각 multiplier 의 above/below 경계 검증. FP 정확도 회피해서 +1/-1 margin.
+    for mode, mult in _VOLUME_THRESHOLD_MAP.items():
+        s = VwapEmaPullbackStrategy(volume_filter_mode=mode)
+        threshold = 100.0 * mult
+        # 경계 위 (threshold + 1) — 통과
+        df_above = _entry_df_with_p2_cols(volume_value=threshold + 1.0,
+                                          volume_mean_value=100.0)
+        snap_above = MarketSnapshot(df=df_above, current_price=float(df_above.iloc[-1]["close"]),
+                                    has_position=False)
+        assert s.generate_signal(snap_above) is Signal.BUY, f"{mode} above-threshold should allow"
+        # 경계 아래 (threshold - 1) — 차단
+        df_below = _entry_df_with_p2_cols(volume_value=threshold - 1.0,
+                                          volume_mean_value=100.0)
+        snap_below = MarketSnapshot(df=df_below, current_price=float(df_below.iloc[-1]["close"]),
+                                    has_position=False)
+        assert s.generate_signal(snap_below) is Signal.HOLD, f"{mode} below-threshold should block"

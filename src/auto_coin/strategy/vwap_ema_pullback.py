@@ -7,7 +7,18 @@ from auto_coin.strategy.base import MarketSnapshot, Signal, Strategy
 
 _VALID_HTF_MODES = frozenset({"off", "htf_close_above_ema", "htf_ema_fast_slow"})
 _VALID_RSI_MODES = frozenset({"off", "lt_70", "in_30_70", "lt_75", "in_40_70"})
-_VALID_VOLUME_MODES = frozenset({"off", "ge_1_0", "ge_1_2", "ge_1_5"})
+
+# Volume threshold dispatch — P2 (1.0/1.2/1.5) + P2.5 fine-grid (1.1/1.3/1.4).
+_VOLUME_THRESHOLD_MAP: dict[str, float] = {
+    "ge_1_0": 1.0,
+    "ge_1_1": 1.1,
+    "ge_1_2": 1.2,
+    "ge_1_3": 1.3,
+    "ge_1_4": 1.4,
+    "ge_1_5": 1.5,
+}
+_VALID_VOLUME_MODES = frozenset({"off", *_VOLUME_THRESHOLD_MAP.keys()})
+
 _VALID_DAILY_MODES = frozenset({"off", "self_above_sma200", "self_above_sma100"})
 
 
@@ -292,13 +303,10 @@ class VwapEmaPullbackStrategy(Strategy):
         mean = self._finite(row.get(f"volume_mean{self.volume_mean_window}"))
         if vol is None or mean is None or mean <= 0:
             return False
-        if self.volume_filter_mode == "ge_1_0":
-            return vol >= mean * 1.0
-        if self.volume_filter_mode == "ge_1_2":
-            return vol >= mean * 1.2
-        if self.volume_filter_mode == "ge_1_5":
-            return vol >= mean * 1.5
-        return True
+        multiplier = _VOLUME_THRESHOLD_MAP.get(self.volume_filter_mode)
+        if multiplier is None:
+            return True
+        return vol >= mean * multiplier
 
     def _daily_regime_ok(self, row) -> bool:
         if self.daily_regime_filter_mode == "off":
